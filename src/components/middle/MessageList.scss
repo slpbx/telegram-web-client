@@ -6,6 +6,9 @@
   overflow-y: scroll;
   overflow-x: hidden;
 
+  /* [CRMchat] Do not scroll parent window when scrolling message list */
+  overscroll-behavior: contain;
+
   /* stylelint-disable-next-line plugin/no-low-performance-animation-properties */
   transition: bottom 150ms ease-out, transform var(--layer-transition);
 

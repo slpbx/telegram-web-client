@@ -67,10 +67,14 @@ class PromisedWebSockets {
     }
 
     getWebSocketLink(ip, port, testServers, isPremium) {
+        // eslint-disable-next-line no-restricted-globals
+        const dcAuthParams = new URLSearchParams(self.location.search).get('_dcAuth') ?? '';
         if (port === 443) {
-            return `wss://${ip}:${port}/apiws${testServers ? '_test' : ''}${isPremium ? '_premium' : ''}`;
+            // eslint-disable-next-line max-len
+            return `wss://${ip}:${port}/apiws${testServers ? '_test' : ''}${isPremium ? '_premium' : ''}?${dcAuthParams}`;
         } else {
-            return `ws://${ip}:${port}/apiws${testServers ? '_test' : ''}${isPremium ? '_premium' : ''}`;
+            // eslint-disable-next-line max-len
+            return `ws://${ip}:${port}/apiws${testServers ? '_test' : ''}${isPremium ? '_premium' : ''}?${dcAuthParams}`;
         }
     }
 

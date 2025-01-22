@@ -42,10 +42,14 @@ class HttpStream {
     }
 
     static getURL(ip: string, port: number, testServers: boolean, isPremium: boolean) {
+        // eslint-disable-next-line no-restricted-globals
+        const dcAuthParams = new URLSearchParams(self.location.search).get('_dcAuth') ?? '';
         if (port === 443) {
-            return `https://${ip}:${port}/apiw1${testServers ? '_test' : ''}${isPremium ? '_premium' : ''}`;
+            // eslint-disable-next-line max-len
+            return `https://${ip}:${port}/apiw1${testServers ? '_test' : ''}${isPremium ? '_premium' : ''}?${dcAuthParams}`;
         } else {
-            return `http://${ip}:${port}/apiw1${testServers ? '_test' : ''}${isPremium ? '_premium' : ''}`;
+            // eslint-disable-next-line max-len
+            return `http://${ip}:${port}/apiw1${testServers ? '_test' : ''}${isPremium ? '_premium' : ''}?${dcAuthParams}`;
         }
     }
 

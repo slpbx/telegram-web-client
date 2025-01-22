@@ -37,7 +37,7 @@ import {
   clearGlobalForLockScreen, updateManagementProgress, updatePasscodeSettings,
 } from '../../reducers';
 
-addActionHandler('initApi', (global, actions): ActionReturnType => {
+addActionHandler('initApi', async (global, actions): Promise<void> => {
   const initialLocationHash = parseInitialLocationHash();
 
   const hasTestParam = window.location.search.includes('test') || initialLocationHash?.tgWebAuthTest === '1';
@@ -45,7 +45,7 @@ addActionHandler('initApi', (global, actions): ActionReturnType => {
   void initApi(actions.apiUpdate, {
     userAgent: navigator.userAgent,
     platform: PLATFORM_ENV,
-    sessionData: loadStoredSession(),
+    sessionData: await loadStoredSession(),
     isWebmSupported: IS_WEBM_SUPPORTED,
     maxBufferSize: MAX_BUFFER_SIZE,
     webAuthToken: initialLocationHash?.tgWebAuthToken,
@@ -254,7 +254,7 @@ addActionHandler('deleteDeviceToken', (global): ActionReturnType => {
 });
 
 addActionHandler('lockScreen', async (global): Promise<void> => {
-  const sessionJson = JSON.stringify({ ...loadStoredSession(), userId: global.currentUserId });
+  const sessionJson = JSON.stringify({ ...(await loadStoredSession()), userId: global.currentUserId });
   const globalJson = await serializeGlobal(global);
 
   await encryptSession(sessionJson, globalJson);

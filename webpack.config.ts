@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import 'webpack-dev-server';
 
 import StatoscopeWebpackPlugin from '@statoscope/webpack-plugin';
@@ -40,7 +41,7 @@ const {
 
 const CSP = `
   default-src 'self';
-  connect-src 'self' wss://*.web.telegram.org blob: http: https: ${APP_ENV === 'development' ? 'wss:' : ''};
+  connect-src 'self' wss://*.dc.crmchat.ai blob: http: https: ${APP_ENV === 'development' ? 'wss: ws:' : ''};
   script-src 'self' 'wasm-unsafe-eval' https://t.me/_websync_ https://telegram.me/_websync_;
   style-src 'self' 'unsafe-inline';
   img-src 'self' data: blob: https://ss3.4sqi.net/img/categories_v2/
@@ -225,6 +226,7 @@ export default function createConfig(
       new ProvidePlugin({
         Buffer: ['buffer', 'Buffer'],
       }),
+      /*
       new StatoscopeWebpackPlugin({
         statsOptions: {
           context: __dirname,
@@ -235,6 +237,7 @@ export default function createConfig(
         open: 'file',
         extensions: [new WebpackContextExtension()], // eslint-disable-line @typescript-eslint/no-use-before-define
       }),
+      */
     ],
 
     devtool: APP_ENV === 'production' && IS_PACKAGED_ELECTRON ? undefined : 'source-map',

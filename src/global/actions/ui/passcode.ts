@@ -31,7 +31,7 @@ addActionHandler('setPasscode', async (global, actions, payload): Promise<void> 
   setGlobal(global);
   await setupPasscode(passcode);
 
-  const sessionJson = JSON.stringify({ ...loadStoredSession(), userId: global.currentUserId });
+  const sessionJson = JSON.stringify({ ...(await loadStoredSession()), userId: global.currentUserId });
   global = getGlobal();
   const globalJson = serializeGlobal(updatePasscodeSettings(global, {
     hasPasscode: true,

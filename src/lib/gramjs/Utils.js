@@ -641,37 +641,41 @@ function isListLike(item) {
  * @return {{port: number, ipAddress: string, id: number}}
  */
 function getDC(dcId, downloadDC = false) {
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    const postfix = isDevelopment ? '.dc.localhost' : '.dc.crmchat.ai';
+    const port = isDevelopment ? 80 : 443;
+
     // TODO Move to external config
     switch (dcId) {
         case 1:
             return {
                 id: 1,
-                ipAddress: `zws1${downloadDC ? '-1' : ''}.web.telegram.org`,
-                port: 443,
+                ipAddress: `zws1${downloadDC ? '-1' : ''}${postfix}`,
+                port,
             };
         case 2:
             return {
                 id: 2,
-                ipAddress: `zws2${downloadDC ? '-1' : ''}.web.telegram.org`,
-                port: 443,
+                ipAddress: `zws2${downloadDC ? '-1' : ''}${postfix}`,
+                port,
             };
         case 3:
             return {
                 id: 3,
-                ipAddress: `zws3${downloadDC ? '-1' : ''}.web.telegram.org`,
-                port: 443,
+                ipAddress: `zws3${downloadDC ? '-1' : ''}${postfix}`,
+                port,
             };
         case 4:
             return {
                 id: 4,
-                ipAddress: `zws4${downloadDC ? '-1' : ''}.web.telegram.org`,
-                port: 443,
+                ipAddress: `zws4${downloadDC ? '-1' : ''}${postfix}`,
+                port,
             };
         case 5:
             return {
                 id: 5,
-                ipAddress: `zws5${downloadDC ? '-1' : ''}.web.telegram.org`,
-                port: 443,
+                ipAddress: `zws5${downloadDC ? '-1' : ''}${postfix}`,
+                port,
             };
         default:
             throw new Error(`Cannot find the DC with the ID of ${dcId}`);

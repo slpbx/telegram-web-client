@@ -302,6 +302,8 @@ const MiddleHeader: FC<OwnProps & StateProps> = ({
   }
 
   function renderBackButton(asClose = false, withUnreadCounter = false) {
+    /* [CRMchat] Trap user in the chat dialog */
+    return undefined;
     return (
       <div className="back-button">
         <Button

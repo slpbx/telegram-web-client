@@ -209,6 +209,22 @@ const App: FC<StateProps> = ({
     );
   }, [theme]);
 
+  /* [CRMchat] Redirect user to CRMchat.ai if they try to open this client directly */
+  useEffect(() => {
+    if (window.parent.location === window.location) {
+      setTimeout(() => {
+        window.location.href = 'https://crmchat.ai';
+      }, 3000);
+    }
+  }, []);
+  if (window.parent.location === window.location) {
+    return (
+      <div className={styles.crmchat}>
+        Go to <a href="https://crmchat.ai">CRMchat.ai</a> to use CRM
+      </div>
+    );
+  }
+
   return (
     <UiLoader page={page} isMobile={isMobile}>
       <Transition

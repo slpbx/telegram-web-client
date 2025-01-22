@@ -1,13 +1,17 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import type { ApiSessionData } from '../api/types';
 
 import {
   DEBUG, IS_SCREEN_LOCKED_CACHE_KEY,
   SESSION_USER_KEY,
 } from '../config';
+import { requestSessionFromCrmChat, updateSessionInCrmChat } from './crmchat';
 
 const DC_IDS = [1, 2, 3, 4, 5];
 
 export function hasStoredSession() {
+  return true;
+  /*
   if (checkSessionLocked()) {
     return true;
   }
@@ -24,9 +28,12 @@ export function hasStoredSession() {
     // Do nothing.
     return false;
   }
+  */
 }
 
 export function storeSession(sessionData: ApiSessionData, currentUserId?: string) {
+  return updateSessionInCrmChat(sessionData);
+  /*
   const {
     mainDcId, keys, hashes, isTest,
   } = sessionData;
@@ -46,9 +53,13 @@ export function storeSession(sessionData: ApiSessionData, currentUserId?: string
       localStorage.setItem(`dc${dcId}_hash`, JSON.stringify(hashes[dcId]));
     });
   }
+  */
 }
 
 export function clearStoredSession() {
+  // [CRMchat] clearing is unsupported
+  return undefined;
+  /*
   [
     SESSION_USER_KEY,
     'dc',
@@ -58,9 +69,12 @@ export function clearStoredSession() {
   ].forEach((key) => {
     localStorage.removeItem(key);
   });
+  */
 }
 
-export function loadStoredSession(): ApiSessionData | undefined {
+export function loadStoredSession(): Promise<ApiSessionData | undefined> {
+  return requestSessionFromCrmChat();
+  /*
   if (!hasStoredSession()) {
     return undefined;
   }
@@ -102,6 +116,7 @@ export function loadStoredSession(): ApiSessionData | undefined {
     hashes,
     isTest,
   };
+  */
 }
 
 export function importTestSession() {
@@ -117,6 +132,7 @@ export function importTestSession() {
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function checkSessionLocked() {
   return localStorage.getItem(IS_SCREEN_LOCKED_CACHE_KEY) === 'true';
 }

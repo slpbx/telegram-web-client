@@ -17,6 +17,8 @@ type OwnProps = {
 };
 
 const UnconfirmedSession = ({ sessions, onHeightChange } : OwnProps) => {
+  /* [CRMchat] Do not show unconfirmed sessions dialog */
+  return undefined;
   const { changeSessionSettings, terminateAuthorization, showNotification } = getActions();
   // eslint-disable-next-line no-null/no-null
   const ref = useRef<HTMLDivElement>(null);

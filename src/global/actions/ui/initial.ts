@@ -129,9 +129,10 @@ addCallback((global: GlobalState) => {
 
   const { messageTextSize, language } = global.settings.byKey;
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const globalTheme = selectTheme(global);
   const systemTheme = getSystemTheme();
-  const theme = global.settings.byKey.shouldUseSystemTheme ? systemTheme : globalTheme;
+  const theme = new URLSearchParams(window.location.search).get('theme') as typeof globalTheme ?? systemTheme;
 
   const performanceType = selectPerformanceSettings(global);
 
