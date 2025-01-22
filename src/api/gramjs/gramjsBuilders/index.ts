@@ -2,7 +2,6 @@ import BigInt from 'big-integer';
 import { Api as GramJs } from '../../../lib/gramjs';
 import { generateRandomBytes, readBigIntFromBuffer } from '../../../lib/gramjs/Helpers';
 
-import type { ApiInputPrivacyRules, ApiPrivacyKey } from '../../../types';
 import type {
   ApiBotApp,
   ApiChatAdminRights,
@@ -11,6 +10,7 @@ import type {
   ApiChatReactions,
   ApiFormattedText,
   ApiGroupCall,
+  ApiInputPrivacyRules,
   ApiInputReplyInfo,
   ApiInputStorePaymentPurpose,
   ApiMessageEntity,
@@ -19,6 +19,7 @@ import type {
   ApiPhoto,
   ApiPoll,
   ApiPremiumGiftCodeOption,
+  ApiPrivacyKey,
   ApiReactionWithPaid,
   ApiReportReason,
   ApiRequestInputInvoice,
@@ -237,6 +238,7 @@ export function buildFilterFromApiFolder(folder: ApiChatFolder): GramJs.DialogFi
     pinnedChatIds,
     includedChatIds,
     excludedChatIds,
+    noTitleAnimations,
   } = folder;
 
   const pinnedPeers = pinnedChatIds
@@ -254,17 +256,18 @@ export function buildFilterFromApiFolder(folder: ApiChatFolder): GramJs.DialogFi
   if (folder.isChatList) {
     return new GramJs.DialogFilterChatlist({
       id: folder.id,
-      title: folder.title,
+      title: buildInputTextWithEntities(folder.title),
       emoticon: emoticon || undefined,
       pinnedPeers,
       includePeers,
       hasMyInvites: folder.hasMyInvites,
+      titleNoanimate: noTitleAnimations,
     });
   }
 
   return new GramJs.DialogFilter({
     id: folder.id,
-    title: folder.title,
+    title: buildInputTextWithEntities(folder.title),
     emoticon: emoticon || undefined,
     contacts: contacts || undefined,
     nonContacts: nonContacts || undefined,
@@ -277,6 +280,7 @@ export function buildFilterFromApiFolder(folder: ApiChatFolder): GramJs.DialogFi
     pinnedPeers,
     includePeers,
     excludePeers,
+    titleNoanimate: noTitleAnimations,
   });
 }
 
@@ -639,13 +643,14 @@ export function buildInputInvoice(invoice: ApiRequestInputInvoice) {
 
     case 'stargift': {
       const {
-        user, shouldHideName, giftId, message,
+        user, shouldHideName, giftId, message, shouldUpgrade,
       } = invoice;
       return new GramJs.InputInvoiceStarGift({
         userId: buildInputEntity(user.id, user.accessHash) as GramJs.InputUser,
         hideName: shouldHideName || undefined,
         giftId: BigInt(giftId),
         message: message && buildInputTextWithEntities(message),
+        includeUpgrade: shouldUpgrade,
       });
     }
 
@@ -666,6 +671,13 @@ export function buildInputInvoice(invoice: ApiRequestInputInvoice) {
     case 'chatInviteSubscription': {
       return new GramJs.InputInvoiceChatInviteSubscription({
         hash: invoice.hash,
+      });
+    }
+
+    case 'stargiftUpgrade': {
+      return new GramJs.InputInvoiceStarGiftUpgrade({
+        msgId: invoice.messageId,
+        keepOriginalDetails: invoice.shouldKeepOriginalDetails,
       });
     }
 

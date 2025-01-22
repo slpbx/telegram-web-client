@@ -1,5 +1,4 @@
-import type { WebPageMediaSize } from '../../global/types';
-import type { ThreadId } from '../../types';
+import type { ThreadId, WebPageMediaSize } from '../../types';
 import type { ApiWebDocument } from './bots';
 import type { ApiGroupCall, PhoneCallAction } from './calls';
 import type { ApiChat, ApiPeerColor } from './chats';
@@ -7,7 +6,8 @@ import type {
   ApiInputStorePaymentPurpose,
   ApiLabeledPrice,
   ApiPremiumGiftCodeOption,
-  ApiStarGift,
+  ApiStarGiftRegular,
+  ApiStarGiftUnique,
 } from './payments';
 import type {
   ApiMessageStoryData, ApiStory, ApiWebPageStickerData, ApiWebPageStoryData,
@@ -25,7 +25,7 @@ export interface ApiPhotoSize extends ApiDimensions {
 
 export interface ApiVideoSize extends ApiDimensions {
   type: 'u' | 'v';
-  videoStartTs: number;
+  videoStartTs?: number;
   size: number;
 }
 
@@ -265,6 +265,7 @@ export type ApiInputInvoiceStarGift = {
   userId: string;
   giftId: string;
   message?: ApiFormattedText;
+  shouldUpgrade?: true;
 };
 
 export type ApiInputInvoiceStarsGiveaway = {
@@ -287,8 +288,14 @@ export type ApiInputInvoiceChatInviteSubscription = {
   hash: string;
 };
 
+export type ApiInputInvoiceStarGiftUpgrade = {
+  type: 'stargiftUpgrade';
+  messageId: number;
+  shouldKeepOriginalDetails?: true;
+};
+
 export type ApiInputInvoice = ApiInputInvoiceMessage | ApiInputInvoiceSlug | ApiInputInvoiceGiveaway
-| ApiInputInvoiceGiftCode | ApiInputInvoiceStars | ApiInputInvoiceStarsGift
+| ApiInputInvoiceGiftCode | ApiInputInvoiceStars | ApiInputInvoiceStarsGift | ApiInputInvoiceStarGiftUpgrade
 | ApiInputInvoiceStarsGiveaway | ApiInputInvoiceStarGift | ApiInputInvoiceChatInviteSubscription;
 
 /* Used for Invoice request */
@@ -325,6 +332,7 @@ export type ApiRequestInputInvoiceStarGift = {
   user: ApiUser;
   giftId: string;
   message?: ApiFormattedText;
+  shouldUpgrade?: true;
 };
 
 export type ApiRequestInputInvoiceChatInviteSubscription = {
@@ -332,9 +340,15 @@ export type ApiRequestInputInvoiceChatInviteSubscription = {
   hash: string;
 };
 
+export type ApiRequestInputInvoiceStarGiftUpgrade = {
+  type: 'stargiftUpgrade';
+  messageId: number;
+  shouldKeepOriginalDetails?: true;
+};
+
 export type ApiRequestInputInvoice = ApiRequestInputInvoiceMessage | ApiRequestInputInvoiceSlug
 | ApiRequestInputInvoiceGiveaway | ApiRequestInputInvoiceStars | ApiRequestInputInvoiceStarsGiveaway
-| ApiRequestInputInvoiceChatInviteSubscription | ApiRequestInputInvoiceStarGift;
+| ApiRequestInputInvoiceChatInviteSubscription | ApiRequestInputInvoiceStarGift | ApiRequestInputInvoiceStarGiftUpgrade;
 
 export interface ApiInvoice {
   prices: ApiLabeledPrice[];
@@ -460,12 +474,28 @@ export type ApiNewPoll = {
 };
 
 export interface ApiMessageActionStarGift {
+  type: 'starGift';
   isNameHidden: boolean;
   isSaved: boolean;
-  isConverted?: boolean;
-  gift: ApiStarGift;
+  isConverted?: true;
+  gift: ApiStarGiftRegular;
   message?: ApiFormattedText;
   starsToConvert?: number;
+  canUpgrade?: true;
+  isUpgraded?: true;
+  upgradeMsgId?: number;
+  alreadyPaidUpgradeStars?: number;
+}
+
+export interface ApiMessageActionStarGiftUnique {
+  type: 'starGiftUnique';
+  isUpgrade?: true;
+  isTransferred?: true;
+  isSaved?: true;
+  isRefunded?: true;
+  gift: ApiStarGiftUnique;
+  canExportAt?: number;
+  transferStars?: number;
 }
 
 export interface ApiAction {
@@ -479,6 +509,7 @@ export interface ApiAction {
   | 'chatCreate'
   | 'topicCreate'
   | 'suggestProfilePhoto'
+  | 'updateProfilePhoto'
   | 'joinedChannel'
   | 'chatBoost'
   | 'receipt'
@@ -487,6 +518,7 @@ export interface ApiAction {
   | 'giftCode'
   | 'prizeStars'
   | 'starGift'
+  | 'starGiftUnique'
   | 'other';
   photo?: ApiPhoto;
   amount?: number;
@@ -497,7 +529,7 @@ export interface ApiAction {
     currency: string;
     amount: number;
   };
-  starGift?: ApiMessageActionStarGift;
+  starGift?: ApiMessageActionStarGift | ApiMessageActionStarGiftUnique;
   translationValues: string[];
   call?: Partial<ApiGroupCall>;
   phoneCall?: PhoneCallAction;
@@ -527,6 +559,7 @@ export interface ApiWebPage {
   document?: ApiDocument;
   video?: ApiVideo;
   story?: ApiWebPageStoryData;
+  gift?: ApiStarGiftUnique;
   stickers?: ApiWebPageStickerData;
   mediaSize?: WebPageMediaSize;
   hasLargeMedia?: boolean;
@@ -756,6 +789,8 @@ export interface ApiMessage {
   effectId?: string;
   isInvertedMedia?: true;
   isVideoProcessingPending?: true;
+  areReactionsPossible?: true;
+  reportDeliveryUntilDate?: number;
 }
 
 export interface ApiReactions {
@@ -1009,6 +1044,7 @@ export type ApiTranscription = {
 
 export type ApiMessageSearchType = 'text' | 'media' | 'documents' | 'links' | 'audio' | 'voice' | 'profilePhoto';
 export type ApiGlobalMessageSearchType = 'text' | 'channels' | 'media' | 'documents' | 'links' | 'audio' | 'voice';
+export type ApiMessageSearchContext = 'all' | 'users' | 'groups' | 'channels';
 
 export type ApiReportReason = 'spam' | 'violence' | 'pornography' | 'childAbuse'
 | 'copyright' | 'geoIrrelevant' | 'fake' | 'illegalDrugs' | 'personalDetails' | 'other';

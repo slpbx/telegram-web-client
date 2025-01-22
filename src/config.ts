@@ -1,5 +1,6 @@
-import type { ApiReactionEmoji } from './api/types';
-import type { ApiLimitType, ApiLimitTypeForPromo, ApiPremiumSection } from './global/types';
+import type {
+  ApiLimitType, ApiLimitTypeForPromo, ApiPremiumSection, ApiReactionEmoji,
+} from './api/types';
 
 // eslint-disable-next-line no-restricted-globals, max-len
 export const CRM_CHAT_ACCOUNT_ID = typeof location !== 'undefined' ? (new URLSearchParams(location?.search ?? '').get('accountId') ?? '') : '';
@@ -23,6 +24,7 @@ export const DEBUG = process.env.APP_ENV !== 'production';
 export const DEBUG_MORE = false;
 export const DEBUG_LOG_FILENAME = 'tt-log.json';
 export const STRICTERDOM_ENABLED = DEBUG;
+export const BOT_VERIFICATION_PEERS_LIMIT = 20;
 
 export const BETA_CHANGELOG_URL = 'https://telegra.ph/WebA-Beta-03-20';
 export const ELECTRON_HOST_URL = process.env.ELECTRON_HOST_URL!;
@@ -54,7 +56,7 @@ export const MEDIA_PROGRESSIVE_CACHE_DISABLED = false;
 export const MEDIA_PROGRESSIVE_CACHE_NAME = 'tt-media-progressive';
 export const MEDIA_CACHE_MAX_BYTES = 512 * 1024; // 512 KB
 export const CUSTOM_BG_CACHE_NAME = 'tt-custom-bg';
-export const LANG_CACHE_NAME = 'tt-lang-packs-v45';
+export const LANG_CACHE_NAME = 'tt-lang-packs-v49';
 export const ASSET_CACHE_NAME = 'tt-assets';
 export const AUTODOWNLOAD_FILESIZE_MB_LIMITS = [1, 5, 10, 50, 100, 500];
 export const DATA_BROADCAST_CHANNEL_NAME = 'tt-global';
@@ -151,6 +153,9 @@ export const CUSTOM_APPENDIX_ATTRIBUTE = 'data-has-custom-appendix';
 export const MESSAGE_CONTENT_CLASS_NAME = 'message-content';
 export const MESSAGE_CONTENT_SELECTOR = '.message-content';
 
+export const RESIZE_HANDLE_CLASS_NAME = 'resizeHandle';
+export const RESIZE_HANDLE_SELECTOR = `.${RESIZE_HANDLE_CLASS_NAME}`;
+
 export const SNAP_EFFECT_CONTAINER_ID = 'snap-effect-container';
 export const SNAP_EFFECT_ID = 'snap-effect';
 
@@ -224,6 +229,8 @@ export const SLIDE_TRANSITION_DURATION = 450;
 
 export const BIRTHDAY_NUMBERS_SET = 'FestiveFontEmoji';
 export const RESTRICTED_EMOJI_SET = 'RestrictedEmoji';
+
+export const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
 
 export const VIDEO_WEBM_TYPE = 'video/webm';
 export const GIF_MIME_TYPE = 'image/gif';
@@ -319,7 +326,6 @@ export const MAX_MEDIA_FILES_FOR_ALBUM = 10;
 export const MAX_ACTIVE_PINNED_CHATS = 5;
 export const SCHEDULED_WHEN_ONLINE = 0x7FFFFFFE;
 export const DEFAULT_LANG_CODE = 'en';
-export const OLD_DEFAULT_LANG_PACK = 'android';
 export const LANG_PACKS = ['android', 'ios', 'tdesktop', 'macos'] as const;
 export const FEEDBACK_URL = 'https://bugs.telegram.org/?tag_ids=41&sort=time';
 export const FAQ_URL = 'https://telegram.org/faq';
@@ -363,7 +369,7 @@ export const DEFAULT_LIMITS: Record<ApiLimitType, readonly [number, number]> = {
   dialogFiltersChats: [100, 200],
   dialogFilters: [10, 20],
   dialogFolderPinned: [5, 10],
-  captionLength: [1024, 2048],
+  captionLength: [1024, 4096],
   channels: [500, 1000],
   channelsPublic: [10, 20],
   aboutLength: [70, 140],
@@ -372,6 +378,7 @@ export const DEFAULT_LIMITS: Record<ApiLimitType, readonly [number, number]> = {
   recommendedChannels: [10, 100],
   savedDialogsPinned: [5, 100],
 };
+export const DEFAULT_MAX_MESSAGE_LENGTH = 4096;
 
 export const ONE_TIME_MEDIA_TTL_SECONDS = 2147483647;
 

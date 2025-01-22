@@ -20,6 +20,7 @@ import useHistoryBack from '../../../hooks/useHistoryBack';
 import useMedia from '../../../hooks/useMedia';
 import useOldLang from '../../../hooks/useOldLang';
 
+import Icon from '../../common/icons/Icon';
 import AvatarEditable from '../../ui/AvatarEditable';
 import ConfirmDialog from '../../ui/ConfirmDialog';
 import FloatingActionButton from '../../ui/FloatingActionButton';
@@ -218,25 +219,26 @@ const ManageChannel: FC<OwnProps & StateProps> = ({
             onChange={handleSetPhoto}
             disabled={!canChangeInfo}
           />
-          <InputText
-            id="channel-title"
-            label={lang('EnterChannelName')}
-            onChange={handleTitleChange}
-            value={title}
-            error={error === CHANNEL_TITLE_EMPTY ? error : undefined}
-            disabled={!canChangeInfo}
-          />
-          <TextArea
-            id="channel-about"
-            className="mb-2"
-            label={lang('DescriptionPlaceholder')}
-            onChange={handleAboutChange}
-            value={about}
-            maxLength={CHANNEL_MAX_DESCRIPTION}
-            maxLengthIndicator={(CHANNEL_MAX_DESCRIPTION - about.length).toString()}
-            disabled={!canChangeInfo}
-            noReplaceNewlines
-          />
+          <div className="settings-edit">
+            <InputText
+              id="channel-title"
+              label={lang('EnterChannelName')}
+              onChange={handleTitleChange}
+              value={title}
+              error={error === CHANNEL_TITLE_EMPTY ? error : undefined}
+              disabled={!canChangeInfo}
+            />
+            <TextArea
+              id="channel-about"
+              label={lang('DescriptionPlaceholder')}
+              onChange={handleAboutChange}
+              value={about}
+              maxLength={CHANNEL_MAX_DESCRIPTION}
+              maxLengthIndicator={(CHANNEL_MAX_DESCRIPTION - about.length).toString()}
+              disabled={!canChangeInfo}
+              noReplaceNewlines
+            />
+          </div>
           {chat.isCreator && (
             <ListItem icon="lock" multiline onClick={handleClickEditType}>
               <span className="title">{lang('ChannelType')}</span>
@@ -330,7 +332,7 @@ const ManageChannel: FC<OwnProps & StateProps> = ({
         {isLoading ? (
           <Spinner color="white" />
         ) : (
-          <i className="icon icon-check" />
+          <Icon name="check" />
         )}
       </FloatingActionButton>
       <ConfirmDialog

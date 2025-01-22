@@ -9,12 +9,13 @@ import type {
   ApiMediaAreaChannelPost,
   ApiPeer, ApiStealthMode, ApiStory, ApiTypeStory,
 } from '../../api/types';
-import type { IDimensions } from '../../global/types';
+import type { IDimensions } from '../../types';
+import type { IconName } from '../../types/icons';
 import type { Signal } from '../../util/signals';
 import { MAIN_THREAD_ID } from '../../api/types';
 
 import { EDITABLE_STORY_INPUT_CSS_SELECTOR, EDITABLE_STORY_INPUT_ID } from '../../config';
-import { getSenderTitle, isChatChannel, isUserId } from '../../global/helpers';
+import { getPeerTitle, isChatChannel, isUserId } from '../../global/helpers';
 import {
   selectChat,
   selectIsCurrentUserPremium,
@@ -71,8 +72,6 @@ interface OwnProps {
   peerId: string;
   storyId: number;
   dimensions: IDimensions;
-  // eslint-disable-next-line react/no-unused-prop-types
-  isReportModalOpen?: boolean;
   // eslint-disable-next-line react/no-unused-prop-types
   isDeleteModalOpen?: boolean;
   isPrivateStories?: boolean;
@@ -199,7 +198,7 @@ function Story({
     isOut && (story!.date + viewersExpirePeriod) < getServerTime(),
   );
 
-  const forwardSenderTitle = forwardSender ? getSenderTitle(lang, forwardSender)
+  const forwardSenderTitle = forwardSender ? getPeerTitle(lang, forwardSender)
     : (isLoadedStory && story.forwardInfo?.fromName);
 
   const canCopyLink = Boolean(
@@ -492,7 +491,7 @@ function Story({
       : story.isForContacts ? 'contacts' : (story.isForCloseFriends ? 'closeFriends' : 'nobody');
 
     let message;
-    const myName = getSenderTitle(lang, peer);
+    const myName = getPeerTitle(lang, peer);
     switch (visibility) {
       case 'nobody':
         message = lang('StorySelectedContactsHint', myName);
@@ -560,7 +559,7 @@ function Story({
           className={buildClassName(styles.button, isOpen && 'active')}
           ariaLabel={lang('AccDescrOpenMenu2')}
         >
-          <i className={buildClassName('icon icon-more')} aria-hidden />
+          <Icon name="more" />
         </Button>
       );
     };
@@ -587,7 +586,7 @@ function Story({
   function renderStoryPrivacyButton() {
     if (!isUserStory) return undefined;
 
-    let privacyIcon = 'channel-filled';
+    let privacyIcon: IconName = 'channel-filled';
     const gradient: Record<string, [string, string]> = {
       'channel-filled': ['#50ABFF', '#007AFF'],
       'user-filled': ['#C36EFF', '#8B60FA'],
@@ -627,8 +626,8 @@ function Story({
         onClick={isOut ? handleInfoPrivacyEdit : handleInfoPrivacyClick}
         style={`--color-from: ${gradient[privacyIcon][0]}; --color-to: ${gradient[privacyIcon][1]}`}
       >
-        <i className={`icon icon-${privacyIcon}`} aria-hidden />
-        {isOut && <i className="icon icon-next" aria-hidden />}
+        <Icon name={privacyIcon} />
+        {isOut && <Icon name="next" />}
       </div>
     );
   }
@@ -643,7 +642,7 @@ function Story({
         />
         <div className={styles.senderMeta}>
           <span onClick={handleOpenChat} className={styles.senderName}>
-            {renderText(getSenderTitle(lang, peer) || '')}
+            {renderText(getPeerTitle(lang, peer) || '')}
           </span>
           <div className={styles.storyMetaRow}>
             {forwardSenderTitle && (
@@ -668,7 +667,7 @@ function Story({
               >
                 <Avatar peer={fromPeer} size="micro" />
                 <span className={styles.headerTitle}>
-                  {renderText(getSenderTitle(lang, fromPeer) || '')}
+                  {renderText(getPeerTitle(lang, fromPeer) || '')}
                 </span>
               </span>
             )}
@@ -704,13 +703,7 @@ function Story({
               onClick={handleVolumeMuted}
               ariaLabel={lang('Volume')}
             >
-              <i
-                className={buildClassName(
-                  'icon',
-                  isMuted || noSound ? 'icon-speaker-muted-story' : 'icon-speaker-story',
-                )}
-                aria-hidden
-              />
+              <Icon name={(isMuted || noSound) ? 'speaker-muted-story' : 'speaker-story'} />
             </Button>
           )}
           <DropdownMenu
@@ -752,7 +745,7 @@ function Story({
             ariaLabel={lang('Close')}
             onClick={onClose}
           >
-            <i className={buildClassName('icon icon-close')} aria-hidden />
+            <Icon name="close" />
           </Button>
         </div>
       </div>
@@ -853,7 +846,7 @@ function Story({
                 withStory
                 storyViewerMode="disabled"
               />
-              <div className={styles.name}>{renderText(getSenderTitle(lang, peer) || '')}</div>
+              <div className={styles.name}>{renderText(getPeerTitle(lang, peer) || '')}</div>
             </div>
           </div>
         )}
@@ -908,7 +901,6 @@ function Story({
 export default memo(withGlobal<OwnProps>((global, {
   peerId,
   storyId,
-  isReportModalOpen,
   isDeleteModalOpen,
 }): StateProps => {
   const { appConfig } = global;
@@ -927,13 +919,15 @@ export default memo(withGlobal<OwnProps>((global, {
     premiumModal,
     safeLinkModalUrl,
     mapModal,
+    reportModal,
+    giftInfoModal,
   } = tabState;
   const { isOpen: isPremiumModalOpen } = premiumModal || {};
   const story = selectPeerStory(global, peerId, storyId);
   const isLoadedStory = story && 'content' in story;
   const shouldForcePause = Boolean(
-    viewModal || forwardedStoryId || tabState.reactionPicker?.storyId || isReportModalOpen || isPrivacyModalOpen
-    || isPremiumModalOpen || isDeleteModalOpen || safeLinkModalUrl || isStealthModalOpen || mapModal,
+    viewModal || forwardedStoryId || tabState.reactionPicker?.storyId || reportModal || isPrivacyModalOpen
+    || isPremiumModalOpen || isDeleteModalOpen || safeLinkModalUrl || isStealthModalOpen || mapModal || giftInfoModal,
   );
 
   const forwardInfo = isLoadedStory ? story.forwardInfo : undefined;

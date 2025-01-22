@@ -2,14 +2,15 @@ import type {
   ApiInputInvoice,
   ApiMessage,
   ApiRequestInputInvoice,
+  ApiStarsAmount,
   ApiStarsTransaction,
   ApiStarsTransactionPeer,
   ApiStarsTransactionPeerPeer,
 } from '../../api/types';
 import type { CustomPeer } from '../../types';
+import type { LangFn } from '../../util/localization';
 import type { GlobalState } from '../types';
 
-import { formatInteger } from '../../util/textFormat';
 import { selectChat, selectUser } from '../selectors';
 
 export function getRequestInputInvoice<T extends GlobalState>(
@@ -19,7 +20,7 @@ export function getRequestInputInvoice<T extends GlobalState>(
 
   if (inputInvoice.type === 'stargift') {
     const {
-      userId, shouldHideName, giftId, message,
+      userId, shouldHideName, giftId, message, shouldUpgrade,
     } = inputInvoice;
     const user = selectUser(global, userId);
 
@@ -31,6 +32,7 @@ export function getRequestInputInvoice<T extends GlobalState>(
       shouldHideName,
       giftId,
       message,
+      shouldUpgrade,
     };
   }
 
@@ -171,6 +173,15 @@ export function getRequestInputInvoice<T extends GlobalState>(
     };
   }
 
+  if (inputInvoice.type === 'stargiftUpgrade') {
+    const { messageId, shouldKeepOriginalDetails } = inputInvoice;
+    return {
+      type: 'stargiftUpgrade',
+      messageId,
+      shouldKeepOriginalDetails,
+    };
+  }
+
   return undefined;
 }
 
@@ -247,12 +258,17 @@ export function buildStarsTransactionCustomPeer(
   };
 }
 
-export function formatStarsTransactionAmount(amount: number) {
+export function formatStarsTransactionAmount(lang: LangFn, starsAmount: ApiStarsAmount) {
+  const amount = starsAmount.amount + starsAmount.nanos / 1e9;
   if (amount < 0) {
-    return `- ${formatInteger(Math.abs(amount))}`;
+    return `- ${lang.number(Math.abs(amount))}`;
   }
 
-  return `+ ${formatInteger(amount)}`;
+  return `+ ${lang.number(amount)}`;
+}
+
+export function formatStarsAmount(lang: LangFn, starsAmount: ApiStarsAmount) {
+  return lang.number(starsAmount.amount + starsAmount.nanos / 1e9);
 }
 
 export function getStarsTransactionFromGift(message: ApiMessage): ApiStarsTransaction | undefined {
@@ -264,7 +280,10 @@ export function getStarsTransactionFromGift(message: ApiMessage): ApiStarsTransa
 
   return {
     id: transactionId!,
-    stars: stars!,
+    stars: {
+      amount: stars!,
+      nanos: 0,
+    },
     peer: {
       type: 'peer',
       id: message.isOutgoing ? message.chatId : (message.senderId || message.chatId),
@@ -284,7 +303,10 @@ export function getPrizeStarsTransactionFromGiveaway(message: ApiMessage): ApiSt
 
   return {
     id: transactionId!,
-    stars: stars!,
+    stars: {
+      amount: stars!,
+      nanos: 0,
+    },
     peer: {
       type: 'peer',
       id: targetChatId!,

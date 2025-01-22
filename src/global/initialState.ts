@@ -103,6 +103,7 @@ export const INITIAL_GLOBAL_STATE: GlobalState = {
     previewMediaByBotId: {},
     commonChatsById: {},
     giftsById: {},
+    botAppPermissionsById: {},
   },
 
   chats: {
@@ -114,6 +115,7 @@ export const INITIAL_GLOBAL_STATE: GlobalState = {
     byId: {},
     fullInfoById: {},
     similarChannelsById: {},
+    similarBotsById: {},
     topicsInfoById: {},
     loadingParameters: {
       active: {},
@@ -179,11 +181,6 @@ export const INITIAL_GLOBAL_STATE: GlobalState = {
     hash: {},
   },
   availableEffectById: {},
-  starGiftsById: {},
-  starGiftCategoriesByName: {
-    all: [],
-    limited: [],
-  },
 
   stickers: {
     setsById: {},
@@ -206,9 +203,6 @@ export const INITIAL_GLOBAL_STATE: GlobalState = {
     effect: {
       stickers: [],
       emojis: [],
-    },
-    starGifts: {
-      stickers: {},
     },
     forEmoji: {},
   },
@@ -298,6 +292,7 @@ export const INITIAL_GLOBAL_STATE: GlobalState = {
     performance: INITIAL_PERFORMANCE_STATE_MAX,
     privacy: {},
     notifyExceptions: {},
+    botVerificationShownPeerIds: [],
   },
 
   serviceNotifications: [],

@@ -5,8 +5,8 @@ import type {
   ApiChat,
   ApiMessage, ApiPeer, ApiReplyInfo, MediaContainer,
 } from '../../../api/types';
-import type { ChatTranslatedMessages } from '../../../global/types';
 import type { ObserveFn } from '../../../hooks/useIntersectionObserver';
+import type { ChatTranslatedMessages } from '../../../types';
 import type { IconName } from '../../../types/icons';
 
 import { CONTENT_NOT_SUPPORTED } from '../../../config';
@@ -14,7 +14,7 @@ import {
   getMessageIsSpoiler,
   getMessageMediaHash,
   getMessageRoundVideo,
-  getSenderTitle,
+  getPeerTitle,
   isActionMessage,
   isChatChannel,
   isChatGroup,
@@ -120,10 +120,10 @@ const EmbeddedMessage: FC<OwnProps> = ({
 
   const lang = useOldLang();
 
-  const senderTitle = sender ? getSenderTitle(lang, sender)
+  const senderTitle = sender ? getPeerTitle(lang, sender)
     : (replyForwardInfo?.hiddenUserName || message?.forwardInfo?.hiddenUserName);
-  const senderChatTitle = senderChat ? getSenderTitle(lang, senderChat) : undefined;
-  const forwardSenderTitle = forwardSender ? getSenderTitle(lang, forwardSender)
+  const senderChatTitle = senderChat ? getPeerTitle(lang, senderChat) : undefined;
+  const forwardSenderTitle = forwardSender ? getPeerTitle(lang, forwardSender)
     : message?.forwardInfo?.hiddenUserName;
   const areSendersSame = sender && sender.id === forwardSender?.id;
 

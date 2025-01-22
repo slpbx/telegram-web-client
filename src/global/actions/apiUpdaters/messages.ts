@@ -2,10 +2,10 @@ import type {
   ApiChat, ApiMediaExtendedPreview, ApiMessage, ApiReactions,
   MediaContent,
 } from '../../../api/types';
-import type { ThreadId } from '../../../types';
+import type { ActiveEmojiInteraction, ThreadId } from '../../../types';
 import type { RequiredGlobalActions } from '../../index';
 import type {
-  ActionReturnType, ActiveEmojiInteraction, GlobalState, RequiredGlobalState,
+  ActionReturnType, GlobalState, RequiredGlobalState,
 } from '../../types';
 import { MAIN_THREAD_ID } from '../../../api/types';
 
@@ -18,6 +18,7 @@ import {
 import { getMessageKey, isLocalMessageId } from '../../../util/keys/messageKey';
 import { notifyAboutMessage } from '../../../util/notifications';
 import { onTickEnd } from '../../../util/schedulers';
+import { getServerTime } from '../../../util/serverTime';
 import {
   addPaidReaction,
   checkIfHasUnreadReactions, getIsSavedDialog, getMessageContent, getMessageText, isActionMessage,
@@ -163,10 +164,14 @@ addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
         global = updatePoll(global, poll.id, poll);
       }
 
+      if (message.reportDeliveryUntilDate && message.reportDeliveryUntilDate > getServerTime()) {
+        actions.reportMessageDelivery({ chatId, messageId: id });
+      }
+
       setGlobal(global);
 
       // Reload dialogs if chat is not present in the list
-      if (!isLocal && !selectIsChatListed(global, chatId)) {
+      if (!isLocal && !chat?.isNotJoined && !selectIsChatListed(global, chatId)) {
         actions.loadTopChats();
       }
 
@@ -405,6 +410,7 @@ addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
         ...currentMessage,
         ...message,
         previousLocalId: localId,
+        isDeleting: undefined,
       });
 
       if (poll) {
@@ -444,8 +450,9 @@ addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
         lastReadInboxMessageId: message.id,
       });
 
+      const chat = selectChat(global, chatId);
       // Reload dialogs if chat is not present in the list
-      if (!selectIsChatListed(global, chatId)) {
+      if (!chat?.isNotJoined && !selectIsChatListed(global, chatId)) {
         actions.loadTopChats();
       }
 
@@ -481,6 +488,7 @@ addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
         ...currentMessage,
         ...message,
         previousLocalId: localId,
+        isDeleting: undefined,
       });
 
       if (poll) {
@@ -1171,7 +1179,9 @@ export function deleteMessages<T extends GlobalState>(
 
     setTimeout(() => {
       global = getGlobal();
-      global = deleteChatMessages(global, chatId, ids);
+      // Prevent local deletion of sent messages in case of desync
+      const stillDeletedIds = ids.filter((id) => selectChatMessage(global, chatId, id)?.isDeleting);
+      global = deleteChatMessages(global, chatId, stillDeletedIds);
       setGlobal(global);
     }, isAnimatingAsSnap ? SNAP_ANIMATION_DELAY : ANIMATION_DELAY);
 

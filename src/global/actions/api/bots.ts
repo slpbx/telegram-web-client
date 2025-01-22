@@ -1,10 +1,15 @@
 import type { InlineBotSettings } from '../../../types';
+import type { WebApp } from '../../../types/webapp';
 import type { RequiredGlobalActions } from '../../index';
 import type {
-  ActionReturnType, GlobalState, TabArgs, WebApp,
+  ActionReturnType, GlobalState, TabArgs,
 } from '../../types';
 import {
-  type ApiChat, type ApiContact, type ApiInputMessageReplyInfo, type ApiPeer, type ApiUrlAuthResult,
+  type ApiChat,
+  type ApiContact,
+  type ApiInputMessageReplyInfo,
+  type ApiPeer,
+  type ApiUrlAuthResult,
   MAIN_THREAD_ID,
 } from '../../../api/types';
 import { ManagementProgress } from '../../../types';
@@ -26,7 +31,11 @@ import {
   addActionHandler, getGlobal, setGlobal,
 } from '../../index';
 import {
-  removeBlockedUser, updateManagementProgress, updateUser, updateUserFullInfo,
+  removeBlockedUser,
+  updateBotAppPermissions,
+  updateManagementProgress,
+  updateUser,
+  updateUserFullInfo,
 } from '../../reducers';
 import {
   activateWebAppIfOpen,
@@ -1310,6 +1319,44 @@ addActionHandler('setBotInfo', async (global, actions, payload): Promise<void> =
 
   global = getGlobal();
   global = updateManagementProgress(global, ManagementProgress.Complete, tabId);
+  setGlobal(global);
+});
+
+addActionHandler('toggleUserEmojiStatusPermission', async (global, actions, payload): Promise<void> => {
+  const {
+    botId, isEnabled, isBotAccessEmojiGranted,
+  } = payload;
+
+  const bot = selectBot(global, botId);
+
+  if (!botId || !bot) {
+    return;
+  }
+
+  const result = await callApi('toggleUserEmojiStatusPermission', {
+    bot, isEnabled,
+  });
+
+  if (!result) return;
+
+  global = getGlobal();
+  global = updateUserFullInfo(global, botId, {
+    isBotCanManageEmojiStatus: isEnabled,
+    isBotAccessEmojiGranted,
+  });
+  setGlobal(global);
+});
+
+addActionHandler('toggleUserLocationPermission', (global, actions, payload): ActionReturnType => {
+  const {
+    botId, isAccessGranted,
+  } = payload;
+
+  const bot = selectUser(global, botId);
+  if (!bot) return;
+
+  global = getGlobal();
+  global = updateBotAppPermissions(global, bot.id, { geolocation: isAccessGranted });
   setGlobal(global);
 });
 

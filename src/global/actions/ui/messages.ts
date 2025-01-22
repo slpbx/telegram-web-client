@@ -1,11 +1,10 @@
 import type { ApiMessage } from '../../../api/types';
 import type {
   ActionReturnType,
-  ActiveDownloads,
   GlobalState,
 } from '../../types';
 import { MAIN_THREAD_ID } from '../../../api/types';
-import { FocusDirection } from '../../../types';
+import { type ActiveDownloads, FocusDirection } from '../../../types';
 
 import {
   ANIMATION_END_DELAY,
@@ -30,7 +29,7 @@ import {
   getMediaHash,
   getMessageDownloadableMedia,
   getMessageStatefulContent,
-  getSenderTitle,
+  getPeerTitle,
   isChatChannel,
   isJoinedChannelMessage,
 } from '../../helpers';
@@ -51,8 +50,10 @@ import {
 import { updateTabState } from '../../reducers/tabs';
 import {
   selectAllowedMessageActionsSlow,
+  selectCanForwardMessage,
   selectChat,
   selectChatLastMessageId,
+  selectChatMessage,
   selectChatMessages,
   selectChatScheduledMessages,
   selectCurrentChat,
@@ -611,7 +612,16 @@ addActionHandler('openForwardMenuForSelectedMessages', (global, actions, payload
 
   const { chatId: fromChatId, messageIds } = tabState.selectedMessages;
 
-  actions.openForwardMenu({ fromChatId, messageIds, tabId });
+  const forwardableMessageIds = messageIds.filter((id) => {
+    const message = selectChatMessage(global, fromChatId, id);
+    return message && selectCanForwardMessage(global, message);
+  });
+
+  if (!forwardableMessageIds.length) {
+    return;
+  }
+
+  actions.openForwardMenu({ fromChatId, messageIds: forwardableMessageIds, tabId });
 });
 
 addActionHandler('cancelMediaDownload', (global, actions, payload): ActionReturnType => {
@@ -1012,7 +1022,7 @@ function copyTextForMessages(global: GlobalState, chatId: string, messageIds: nu
 
   messages.forEach((message) => {
     const sender = isChatChannel(chat) ? chat : selectSender(global, message);
-    const senderTitle = `> ${sender ? getSenderTitle(lang, sender) : message.forwardInfo?.hiddenUserName || ''}:`;
+    const senderTitle = `> ${sender ? getPeerTitle(lang, sender) : message.forwardInfo?.hiddenUserName || ''}:`;
     const statefulContent = getMessageStatefulContent(global, message);
 
     resultHtml.push(senderTitle);

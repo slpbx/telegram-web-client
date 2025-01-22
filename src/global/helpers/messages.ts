@@ -10,7 +10,7 @@ import type {
   ApiPoll, MediaContainer, MediaContent, StatefulMediaContent,
 } from '../../api/types/messages';
 import type { OldLangFn } from '../../hooks/useOldLang';
-import type { ThreadId } from '../../types';
+import type { CustomPeer, ThreadId } from '../../types';
 import type { LangFn } from '../../util/localization';
 import type { GlobalState } from '../types';
 import { ApiMessageEntityTypes, MAIN_THREAD_ID } from '../../api/types';
@@ -209,8 +209,12 @@ export function isAnonymousOwnMessage(message: ApiMessage) {
   return Boolean(message.senderId) && !isUserId(message.senderId) && isOwnMessage(message);
 }
 
-export function getSenderTitle(lang: OldLangFn | LangFn, sender: ApiPeer) {
-  return isPeerUser(sender) ? getUserFullName(sender) : getChatTitle(lang, sender);
+export function getPeerTitle(lang: OldLangFn | LangFn, peer: ApiPeer | CustomPeer) {
+  if ('isCustomPeer' in peer) {
+    // TODO: Remove any after full migration to new lang
+    return peer.titleKey ? lang(peer.titleKey as any) : peer.title;
+  }
+  return isPeerUser(peer) ? getUserFullName(peer) : getChatTitle(lang, peer);
 }
 
 export function getSendingState(message: ApiMessage) {
@@ -407,4 +411,35 @@ export function getMessageLink(peer: ApiPeer, topicId?: ThreadId, messageId?: nu
   const topicPart = topicId && topicId !== MAIN_THREAD_ID ? `/${topicId}` : '';
   const messagePart = messageId ? `/${messageId}` : '';
   return `${TME_LINK_PREFIX}${chatPart}${topicPart}${messagePart}`;
+}
+
+export function splitMessagesForForwarding(messages: ApiMessage[], limit: number): ApiMessage[][] {
+  const result: ApiMessage[][] = [];
+  let currentArr: ApiMessage[] = [];
+
+  // Group messages by `groupedId`
+  messages.reduce<ApiMessage[][]>((acc, message) => {
+    const lastGroup = acc[acc.length - 1];
+    if (message.groupedId && lastGroup?.[0]?.groupedId === message.groupedId) {
+      lastGroup.push(message);
+      return acc;
+    }
+
+    acc.push([message]);
+    return acc;
+  }, []).forEach((batch) => {
+    // Fit them into `limit` size
+    if (currentArr.length + batch.length > limit) {
+      result.push(currentArr);
+      currentArr = [];
+    }
+
+    currentArr.push(...batch);
+  });
+
+  if (currentArr.length) {
+    result.push(currentArr);
+  }
+
+  return result;
 }

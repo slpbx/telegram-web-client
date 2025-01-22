@@ -1,6 +1,5 @@
 import type { FC } from '../../../lib/teact/teact';
 import React, {
-  beginHeavyAnimation,
   memo,
   useCallback,
   useEffect,
@@ -28,10 +27,16 @@ import type {
   ApiTypeStory,
   ApiUser,
 } from '../../../api/types';
-import type { ActiveEmojiInteraction, ChatTranslatedMessages, MessageListType } from '../../../global/types';
 import type { ObserveFn } from '../../../hooks/useIntersectionObserver';
 import type {
-  FocusDirection, IAlbum, ISettings, ScrollTargetPosition, ThreadId,
+  ActiveEmojiInteraction,
+  ChatTranslatedMessages,
+  FocusDirection,
+  IAlbum,
+  ISettings,
+  MessageListType,
+  ScrollTargetPosition,
+  ThreadId,
 } from '../../../types';
 import type { Signal } from '../../../util/signals';
 import type { OnIntersectPinnedMessage } from '../hooks/usePinnedMessage';
@@ -48,7 +53,7 @@ import {
   getMessageHtmlId,
   getMessageSingleCustomEmoji,
   getMessageSingleRegularEmoji,
-  getSenderTitle,
+  getPeerTitle,
   hasMessageText,
   hasMessageTtl,
   isAnonymousForwardsChat,
@@ -105,17 +110,12 @@ import {
   selectUploadProgress,
   selectUser,
 } from '../../../global/selectors';
-import { isAnimatingScroll } from '../../../util/animateScroll';
 import buildClassName from '../../../util/buildClassName';
-import { isElementInViewport } from '../../../util/isElementInViewport';
 import { getMessageKey } from '../../../util/keys/messageKey';
 import stopEvent from '../../../util/stopEvent';
+import { isElementInViewport } from '../../../util/visibility/isElementInViewport';
 import { IS_ANDROID, IS_ELECTRON, IS_TRANSLATION_SUPPORTED } from '../../../util/windowEnvironment';
-import {
-  calculateDimensionsForMessageMedia,
-  getStickerDimensions,
-  REM,
-} from '../../common/helpers/mediaDimensions';
+import { calculateDimensionsForMessageMedia, getStickerDimensions, REM } from '../../common/helpers/mediaDimensions';
 import { getPeerColorClass } from '../../common/helpers/peerColor';
 import renderText from '../../common/helpers/renderText';
 import { getCustomEmojiSize } from '../composer/helpers/customEmoji';
@@ -133,10 +133,9 @@ import { useOnIntersect } from '../../../hooks/useIntersectionObserver';
 import useLastCallback from '../../../hooks/useLastCallback';
 import useOldLang from '../../../hooks/useOldLang';
 import usePreviousDeprecated from '../../../hooks/usePreviousDeprecated';
-import useResizeObserver from '../../../hooks/useResizeObserver';
+import useMessageResizeObserver from '../../../hooks/useResizeMessageObserver';
 import useShowTransition from '../../../hooks/useShowTransition';
 import useTextLanguage from '../../../hooks/useTextLanguage';
-import useThrottledCallback from '../../../hooks/useThrottledCallback';
 import useDetectChatLanguage from './hooks/useDetectChatLanguage';
 import useFocusMessage from './hooks/useFocusMessage';
 import useInnerHandlers from './hooks/useInnerHandlers';
@@ -296,7 +295,6 @@ type StateProps = {
   canTranscribeVoice?: boolean;
   viaBusinessBot?: ApiUser;
   effect?: ApiAvailableEffect;
-  availableStars?: number;
   poll?: ApiPoll;
 };
 
@@ -317,9 +315,6 @@ const APPEARANCE_DELAY = 10;
 const NO_MEDIA_CORNERS_THRESHOLD = 18;
 const QUICK_REACTION_SIZE = 1.75 * REM;
 const EXTRA_SPACE_FOR_REACTIONS = 2.25 * REM;
-const BOTTOM_FOCUS_SCROLL_THRESHOLD = 5;
-const THROTTLE_MS = 300;
-const RESIZE_ANIMATION_DURATION = 400;
 
 const Message: FC<OwnProps & StateProps> = ({
   message,
@@ -418,7 +413,6 @@ const Message: FC<OwnProps & StateProps> = ({
   canTranscribeVoice,
   viaBusinessBot,
   effect,
-  availableStars,
   poll,
   onIntersectPinnedMessage,
 }) => {
@@ -437,8 +431,6 @@ const Message: FC<OwnProps & StateProps> = ({
   const bottomMarkerRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line no-null/no-null
   const quickReactionRef = useRef<HTMLDivElement>(null);
-
-  const messageHeightRef = useRef(0);
 
   const lang = useOldLang();
 
@@ -614,7 +606,6 @@ const Message: FC<OwnProps & StateProps> = ({
   );
 
   const {
-    handleAvatarClick,
     handleSenderClick,
     handleViaBotClick,
     handleReplyClick,
@@ -675,13 +666,15 @@ const Message: FC<OwnProps & StateProps> = ({
 
   useEffect(() => {
     const element = ref.current;
-    if (message.isDeleting && element) {
+    const isPartialAlbumDelete = message.isInAlbum && album?.messages.some((msg) => !msg.isDeleting);
+    if (message.isDeleting && element && !isPartialAlbumDelete) {
       if (animateSnap(element)) {
         setIsPlayingSnapAnimation(true);
       } else {
         setIsPlayingDeleteAnimation(true);
       }
     }
+  // eslint-disable-next-line react-hooks-static-deps/exhaustive-deps -- Only start animation on `isDeleting` change
   }, [message.isDeleting]);
 
   const textMessage = album?.hasMultipleCaptions ? undefined : (album?.captionMessage || message);
@@ -828,53 +821,26 @@ const Message: FC<OwnProps & StateProps> = ({
     replyStory,
   );
 
-  useFocusMessage(
-    ref,
+  useFocusMessage({
+    elementRef: ref,
     chatId,
     isFocused,
     focusDirection,
     noFocusHighlight,
     isResizingContainer,
     isJustAdded,
-    Boolean(focusedQuote),
+    isQuote: Boolean(focusedQuote),
     scrollTargetPosition,
-  );
+  });
 
-  const viaBusinessBotTitle = viaBusinessBot ? getSenderTitle(lang, viaBusinessBot) : undefined;
+  const viaBusinessBotTitle = viaBusinessBot ? getPeerTitle(lang, viaBusinessBot) : undefined;
 
   const canShowPostAuthor = !message.senderId;
   const signature = viaBusinessBotTitle || (canShowPostAuthor && message.postAuthorTitle)
     || ((asForwarded || isChatWithSelf) && forwardInfo?.postAuthorTitle)
     || undefined;
 
-  const shouldFocusOnResize = isLastInList;
-
-  const handleResize = useLastCallback((entry: ResizeObserverEntry) => {
-    const lastHeight = messageHeightRef.current;
-
-    const newHeight = entry.contentRect.height;
-    messageHeightRef.current = newHeight;
-
-    if (isAnimatingScroll() || !lastHeight || newHeight <= lastHeight) return;
-
-    const container = entry.target.closest<HTMLDivElement>('.MessageList');
-    if (!container) return;
-
-    beginHeavyAnimation(RESIZE_ANIMATION_DURATION);
-
-    const resizeDiff = newHeight - lastHeight;
-    const { offsetHeight, scrollHeight, scrollTop } = container;
-    const currentScrollBottom = Math.round(scrollHeight - scrollTop - offsetHeight);
-    const previousScrollBottom = currentScrollBottom - resizeDiff;
-
-    if (previousScrollBottom <= BOTTOM_FOCUS_SCROLL_THRESHOLD) {
-      focusLastMessage();
-    }
-  });
-
-  const throttledResize = useThrottledCallback(handleResize, [handleResize], THROTTLE_MS, false);
-
-  useResizeObserver(ref, throttledResize, !shouldFocusOnResize);
+  useMessageResizeObserver(ref, isLastInList);
 
   useEffect(() => {
     const bottomMarker = bottomMarkerRef.current;
@@ -970,19 +936,6 @@ const Message: FC<OwnProps & StateProps> = ({
     contentWidth, noMediaCorners, style, reactionsMaxWidth,
   } = sizeCalculations;
 
-  function renderAvatar() {
-    const hiddenName = (!avatarPeer && forwardInfo) ? forwardInfo.hiddenUserName : undefined;
-
-    return (
-      <Avatar
-        size={isMobile ? 'small-mobile' : 'small'}
-        peer={avatarPeer}
-        text={hiddenName}
-        onClick={avatarPeer ? handleAvatarClick : undefined}
-      />
-    );
-  }
-
   function renderMessageText(isForAnimation?: boolean) {
     if (!textMessage) return undefined;
     return (
@@ -1062,7 +1015,6 @@ const Message: FC<OwnProps & StateProps> = ({
         noRecentReactors={isChannel}
         tags={tags}
         isCurrentUserPremium={isPremium}
-        availableStars={availableStars}
       />
     );
   }
@@ -1497,11 +1449,11 @@ const Message: FC<OwnProps & StateProps> = ({
     let senderTitle;
     let senderColor;
     if (senderPeer && !(isCustomShape && viaBotId)) {
-      senderTitle = getSenderTitle(lang, senderPeer);
+      senderTitle = getPeerTitle(lang, senderPeer);
     } else if (forwardInfo?.hiddenUserName) {
       senderTitle = forwardInfo.hiddenUserName;
     } else if (storyData && originSender) {
-      senderTitle = getSenderTitle(lang, originSender!);
+      senderTitle = getPeerTitle(lang, originSender!);
     }
     const senderEmojiStatus = senderPeer && 'emojiStatus' in senderPeer && senderPeer.emojiStatus;
     const senderIsPremium = senderPeer && 'isPremium' in senderPeer && senderPeer.isPremium;
@@ -1626,7 +1578,6 @@ const Message: FC<OwnProps & StateProps> = ({
           )}
         </div>
       )}
-      {withAvatar && renderAvatar()}
       <div
         className={buildClassName('message-content-wrapper',
           contentClassName.includes('text') && 'can-select-text',
@@ -1701,7 +1652,6 @@ const Message: FC<OwnProps & StateProps> = ({
             observeIntersection={observeIntersectionForPlaying}
             noRecentReactors={isChannel}
             tags={tags}
-            availableStars={availableStars}
           />
         )}
       </div>
@@ -1852,7 +1802,6 @@ export default memo(withGlobal<OwnProps>(
 
     const effect = effectId ? global.availableEffectById[effectId] : undefined;
 
-    const { balance: availableStars } = global.stars || {};
     const poll = selectPollFromMessage(global, message);
 
     return {
@@ -1941,7 +1890,6 @@ export default memo(withGlobal<OwnProps>(
       canTranscribeVoice,
       viaBusinessBot,
       effect,
-      availableStars,
       poll,
     };
   },

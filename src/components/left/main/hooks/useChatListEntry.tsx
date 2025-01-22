@@ -4,10 +4,9 @@ import React, {
 import { getGlobal } from '../../../../global';
 
 import type {
-  ApiChat, ApiMessage, ApiPeer, ApiTopic, ApiTypingStatus, ApiUser,
+  ApiChat, ApiDraft, ApiMessage, ApiPeer, ApiTopic, ApiTypingStatus,
   StatefulMediaContent,
 } from '../../../../api/types';
-import type { ApiDraft } from '../../../../global/types';
 import type { ObserveFn } from '../../../../hooks/useIntersectionObserver';
 
 import { ANIMATION_END_DELAY, CHAT_HEIGHT_PX } from '../../../../config';
@@ -22,9 +21,9 @@ import {
   getMessageSticker,
   getMessageVideo,
   isActionMessage,
-  isChatChannel,
   isExpiredMessage,
 } from '../../../../global/helpers';
+import { isApiPeerChat } from '../../../../global/helpers/peers';
 import { getMessageReplyInfo } from '../../../../global/helpers/replies';
 import buildClassName from '../../../../util/buildClassName';
 import { renderActionMessageText } from '../../../common/helpers/renderActionMessageText';
@@ -38,6 +37,7 @@ import useMedia from '../../../../hooks/useMedia';
 import useOldLang from '../../../../hooks/useOldLang';
 
 import ChatForumLastMessage from '../../../common/ChatForumLastMessage';
+import Icon from '../../../common/icons/Icon';
 import MessageSummary from '../../../common/MessageSummary';
 import TypingStatus from '../../../common/TypingStatus';
 
@@ -155,15 +155,13 @@ export default function useChatListEntry({
     }
 
     if (isAction) {
-      const isChat = chat && (isChatChannel(chat) || lastMessage.senderId === lastMessage.chatId);
-
       return (
         <p className="last-message shared-canvas-container" dir={oldLang.isRtl ? 'auto' : 'ltr'}>
           {renderActionMessageText(
             oldLang,
             lastMessage,
-            !isChat ? lastMessageSender as ApiUser : undefined,
-            isChat ? chat : undefined,
+            lastMessageSender && !isApiPeerChat(lastMessageSender) ? lastMessageSender : undefined,
+            lastMessageSender && isApiPeerChat(lastMessageSender) ? lastMessageSender : chat,
             actionTargetUsers,
             actionTargetMessage,
             actionTargetChatId,
@@ -186,8 +184,8 @@ export default function useChatListEntry({
             <span className="colon">:</span>
           </>
         )}
-        {!isSavedDialog && lastMessage.forwardInfo && (<i className="icon icon-share-filled chat-prefix-icon" />)}
-        {lastMessage.replyInfo?.type === 'story' && (<i className="icon icon-story-reply chat-prefix-icon" />)}
+        {!isSavedDialog && lastMessage.forwardInfo && (<Icon name="share-filled" className="chat-prefix-icon" />)}
+        {lastMessage.replyInfo?.type === 'story' && (<Icon name="story-reply" className="chat-prefix-icon" />)}
         {renderSummary(lastMessage, observeIntersection, mediaBlobUrl || mediaThumbnail, isRoundVideo)}
       </p>
     );
@@ -282,7 +280,7 @@ function renderSummary(
         }
         draggable={false}
       />
-      {getMessageVideo(message) && <i className="icon icon-play" />}
+      {getMessageVideo(message) && <Icon name="play" />}
       {messageSummary}
     </span>
   );

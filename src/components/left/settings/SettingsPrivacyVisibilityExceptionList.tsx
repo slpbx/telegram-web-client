@@ -4,8 +4,9 @@ import React, {
 } from '../../../lib/teact/teact';
 import { getActions, getGlobal, withGlobal } from '../../../global';
 
+import type { ApiPrivacySettings } from '../../../api/types';
 import type { GlobalState } from '../../../global/types';
-import type { ApiPrivacySettings, CustomPeerType, UniqueCustomPeer } from '../../../types';
+import type { CustomPeerType, UniqueCustomPeer } from '../../../types';
 import { SettingsScreens } from '../../../types';
 
 import { ALL_FOLDER_ID, ARCHIVED_FOLDER_ID, SERVICE_NOTIFICATIONS_USER_ID } from '../../../config';
@@ -21,6 +22,7 @@ import useHistoryBack from '../../../hooks/useHistoryBack';
 import useLang from '../../../hooks/useLang';
 import useOldLang from '../../../hooks/useOldLang';
 
+import Icon from '../../common/icons/Icon';
 import PeerPicker from '../../common/pickers/PeerPicker';
 import FloatingActionButton from '../../ui/FloatingActionButton';
 
@@ -199,7 +201,7 @@ const SettingsPrivacyVisibilityExceptionList: FC<OwnProps & StateProps> = ({
         onClick={handleSubmit}
         ariaLabel={isAllowList ? oldLang('AlwaysAllow') : oldLang('NeverAllow')}
       >
-        <i className="icon icon-check" />
+        <Icon name="check" />
       </FloatingActionButton>
     </div>
   );

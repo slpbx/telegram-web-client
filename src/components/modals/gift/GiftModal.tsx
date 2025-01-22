@@ -6,16 +6,19 @@ import { getActions, withGlobal } from '../../../global';
 
 import type {
   ApiPremiumGiftCodeOption,
-  ApiStarGift,
+  ApiStarGiftRegular,
+  ApiStarsAmount,
   ApiUser,
 } from '../../../api/types';
-import type { StarGiftCategory, TabState } from '../../../global/types';
+import type { TabState } from '../../../global/types';
+import type { StarGiftCategory } from '../../../types';
 
 import { getUserFullName } from '../../../global/helpers';
 import { selectUser } from '../../../global/selectors';
 import buildClassName from '../../../util/buildClassName';
 
 import useCurrentOrPrev from '../../../hooks/useCurrentOrPrev';
+import { useIntersectionObserver } from '../../../hooks/useIntersectionObserver';
 import useLang from '../../../hooks/useLang';
 import useLastCallback from '../../../hooks/useLastCallback';
 import useOldLang from '../../../hooks/useOldLang';
@@ -39,22 +42,27 @@ export type OwnProps = {
   modal: TabState['giftModal'];
 };
 
-export type GiftOption = ApiPremiumGiftCodeOption | ApiStarGift;
+export type GiftOption = ApiPremiumGiftCodeOption | ApiStarGiftRegular;
 
 type StateProps = {
   boostPerSentGift?: number;
-  starGiftsById?: Record<string, ApiStarGift>;
-  starGiftCategoriesByName: Record<StarGiftCategory, string[]>;
-  starBalance?: number;
+  starGiftsById?: Record<string, ApiStarGiftRegular>;
+  starGiftIdsByCategory?: Record<StarGiftCategory, string[]>;
+  starBalance?: ApiStarsAmount;
   user?: ApiUser;
+  isSelf?: boolean;
 };
+
+const AVATAR_SIZE = 100;
+const INTERSECTION_THROTTLE = 200;
 
 const PremiumGiftModal: FC<OwnProps & StateProps> = ({
   modal,
   starGiftsById,
-  starGiftCategoriesByName,
+  starGiftIdsByCategory,
   starBalance,
   user,
+  isSelf,
 }) => {
   const {
     closeGiftModal, requestConfetti,
@@ -65,6 +73,9 @@ const PremiumGiftModal: FC<OwnProps & StateProps> = ({
   const transitionRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line no-null/no-null
   const giftHeaderRef = useRef<HTMLHeadingElement>(null);
+
+  // eslint-disable-next-line no-null/no-null
+  const scrollerRef = useRef<HTMLDivElement>(null);
 
   const isOpen = Boolean(modal);
   const renderingModal = useCurrentOrPrev(modal);
@@ -86,6 +97,10 @@ const PremiumGiftModal: FC<OwnProps & StateProps> = ({
   const baseGift = useMemo(() => {
     return filteredGifts?.reduce((prev, gift) => (prev.amount < gift.amount ? prev : gift));
   }, [filteredGifts]);
+
+  const {
+    observe: observeIntersection,
+  } = useIntersectionObserver({ rootRef: scrollerRef, throttleMs: INTERSECTION_THROTTLE, isDisabled: !isOpen });
 
   const showConfetti = useLastCallback(() => {
     const dialog = dialogRef.current;
@@ -141,9 +156,14 @@ const PremiumGiftModal: FC<OwnProps & StateProps> = ({
     ),
   }, { withNodes: true });
 
-  const starGiftDescription = lang('StarGiftDescription', {
-    user: getUserFullName(user)!,
-  }, { withNodes: true });
+  const starGiftDescription = isSelf
+    ? lang('StarGiftDescriptionSelf', undefined, {
+      withNodes: true,
+      renderTextFilters: ['br'],
+    })
+    : lang('StarGiftDescription', {
+      user: getUserFullName(user)!,
+    }, { withNodes: true, withMarkdown: true });
 
   function renderGiftPremiumHeader() {
     return (
@@ -164,7 +184,7 @@ const PremiumGiftModal: FC<OwnProps & StateProps> = ({
   function renderStarGiftsHeader() {
     return (
       <h2 ref={giftHeaderRef} className={buildClassName(styles.headerText, styles.center)}>
-        {lang('StarsGiftHeader')}
+        {lang(isSelf ? 'StarsGiftHeaderSelf' : 'StarsGiftHeader')}
       </h2>
     );
   }
@@ -186,11 +206,12 @@ const PremiumGiftModal: FC<OwnProps & StateProps> = ({
   function renderStarGifts() {
     return (
       <div className={styles.starGiftsContainer}>
-        {starGiftsById && starGiftCategoriesByName[selectedCategory].map((giftId) => {
+        {starGiftsById && starGiftIdsByCategory?.[selectedCategory].map((giftId) => {
           const gift = starGiftsById[giftId];
           return (
             <GiftItemStar
               gift={gift}
+              observeIntersection={observeIntersection}
               onClick={handleGiftClick}
             />
           );
@@ -229,18 +250,17 @@ const PremiumGiftModal: FC<OwnProps & StateProps> = ({
 
   function renderMainScreen() {
     return (
-      <div className={buildClassName(styles.main, 'custom-scroll')} onScroll={handleScroll}>
+      <div ref={scrollerRef} className={buildClassName(styles.main, 'custom-scroll')} onScroll={handleScroll}>
         <div className={styles.avatars}>
           <Avatar
-            size="huge"
+            size={AVATAR_SIZE}
             peer={user}
           />
           <img className={styles.logoBackground} src={StarsBackground} alt="" draggable={false} />
         </div>
-        {renderGiftPremiumHeader()}
-        {renderGiftPremiumDescription()}
-
-        {renderPremiumGifts()}
+        {!isSelf && renderGiftPremiumHeader()}
+        {!isSelf && renderGiftPremiumDescription()}
+        {!isSelf && renderPremiumGifts()}
 
         {renderStarGiftsHeader()}
         {renderStarGiftsDescription()}
@@ -290,7 +310,7 @@ const PremiumGiftModal: FC<OwnProps & StateProps> = ({
           slideClassName={styles.headerSlide}
         >
           <h2 className={styles.commonHeaderText}>
-            {lang(isHeaderForStarGifts ? 'StarsGiftHeader' : 'GiftPremiumHeader')}
+            {lang(isHeaderForStarGifts ? (isSelf ? 'StarsGiftHeaderSelf' : 'StarsGiftHeader') : 'GiftPremiumHeader')}
           </h2>
         </Transition>
       </div>
@@ -310,25 +330,28 @@ const PremiumGiftModal: FC<OwnProps & StateProps> = ({
 };
 
 export default memo(withGlobal<OwnProps>((global, { modal }): StateProps => {
-  const { starGiftsById, starGiftCategoriesByName, stars } = global;
+  const {
+    starGifts,
+    stars,
+    currentUserId,
+  } = global;
 
   const user = modal?.forUserId ? selectUser(global, modal.forUserId) : undefined;
+  const isSelf = Boolean(currentUserId && modal?.forUserId === currentUserId);
 
   return {
     boostPerSentGift: global.appConfig?.boostsPerSentGift,
-    starGiftsById,
-    starGiftCategoriesByName,
+    starGiftsById: starGifts?.byId,
+    starGiftIdsByCategory: starGifts?.idsByCategory,
     starBalance: stars?.balance,
     user,
+    isSelf,
   };
 })(PremiumGiftModal));
 
 function getCategoryKey(category: StarGiftCategory) {
-  if (category === 'all') {
-    return -1;
-  }
-  if (category === 'limited') {
-    return 0;
-  }
+  if (category === 'all') return -2;
+  if (category === 'stock') return -1;
+  if (category === 'limited') return 0;
   return category;
 }

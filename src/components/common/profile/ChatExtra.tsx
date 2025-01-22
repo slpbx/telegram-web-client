@@ -1,12 +1,18 @@
 import type { FC } from '../../../lib/teact/teact';
 import React, {
-  memo, useEffect, useMemo, useState,
+  memo, useMemo,
 } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
 import type {
-  ApiChat, ApiCountryCode, ApiUser, ApiUserFullInfo, ApiUsername,
+  ApiBotVerification,
+  ApiChat,
+  ApiCountryCode,
+  ApiUser,
+  ApiUserFullInfo,
+  ApiUsername,
 } from '../../../api/types';
+import type { BotAppPermissions } from '../../../types';
 import { MAIN_THREAD_ID } from '../../../api/types';
 
 import { FRAGMENT_PHONE_CODE, FRAGMENT_PHONE_LENGTH } from '../../../config';
@@ -19,6 +25,7 @@ import {
   selectIsChatMuted,
 } from '../../../global/helpers';
 import {
+  selectBotAppPermissions,
   selectChat,
   selectChatFullInfo,
   selectCurrentMessageList,
@@ -30,7 +37,6 @@ import {
 } from '../../../global/selectors';
 import { copyTextToClipboard } from '../../../util/clipboard';
 import { formatPhoneNumberWithCode } from '../../../util/phoneNumber';
-import { debounce } from '../../../util/schedulers';
 import stopEvent from '../../../util/stopEvent';
 import { extractCurrentThemeParams } from '../../../util/themeStyle';
 import { ChatAnimationTypes } from '../../left/main/hooks';
@@ -49,6 +55,7 @@ import Button from '../../ui/Button';
 import ListItem from '../../ui/ListItem';
 import Skeleton from '../../ui/placeholder/Skeleton';
 import Switcher from '../../ui/Switcher';
+import CustomEmoji from '../CustomEmoji';
 import SafeLink from '../SafeLink';
 import BusinessHours from './BusinessHours';
 import UserBirthday from './UserBirthday';
@@ -75,6 +82,9 @@ type StateProps = {
   hasSavedMessages?: boolean;
   personalChannel?: ApiChat;
   hasMainMiniApp?: boolean;
+  isBotCanManageEmojiStatus?: boolean;
+  botAppPermissions?: BotAppPermissions;
+  botVerification?: ApiBotVerification;
 };
 
 const DEFAULT_MAP_CONFIG = {
@@ -83,7 +93,7 @@ const DEFAULT_MAP_CONFIG = {
   zoom: 15,
 };
 
-const runDebounced = debounce((cb) => cb(), 500, false);
+const BOT_VERIFICATION_ICON_SIZE = 16;
 
 const ChatExtra: FC<OwnProps & StateProps> = ({
   chatOrUserId,
@@ -101,6 +111,9 @@ const ChatExtra: FC<OwnProps & StateProps> = ({
   hasSavedMessages,
   personalChannel,
   hasMainMiniApp,
+  isBotCanManageEmojiStatus,
+  botAppPermissions,
+  botVerification,
 }) => {
   const {
     showNotification,
@@ -111,6 +124,8 @@ const ChatExtra: FC<OwnProps & StateProps> = ({
     openMapModal,
     requestCollectibleInfo,
     requestMainWebView,
+    toggleUserEmojiStatusPermission,
+    toggleUserLocationPermission,
   } = getActions();
 
   const {
@@ -129,12 +144,6 @@ const ChatExtra: FC<OwnProps & StateProps> = ({
   } = userFullInfo || {};
   const oldLang = useOldLang();
   const lang = useLang();
-
-  const [areNotificationsEnabled, setAreNotificationsEnabled] = useState(!isMuted);
-
-  useEffect(() => {
-    setAreNotificationsEnabled(!isMuted);
-  }, [isMuted]);
 
   useEffectWithPrevDeps(([prevPeerId]) => {
     if (!peerId || prevPeerId === peerId) return;
@@ -193,23 +202,25 @@ const ChatExtra: FC<OwnProps & StateProps> = ({
   });
 
   const handleNotificationChange = useLastCallback(() => {
-    setAreNotificationsEnabled((current) => {
-      const newAreNotificationsEnabled = !current;
-
-      runDebounced(() => {
-        if (isTopicInfo) {
-          updateTopicMutedState({
-            chatId: chatId!,
-            topicId: topicId!,
-            isMuted: !newAreNotificationsEnabled,
-          });
-        } else {
-          updateChatMutedState({ chatId: chatId!, isMuted: !newAreNotificationsEnabled });
-        }
+    if (isTopicInfo) {
+      updateTopicMutedState({
+        chatId: chatId!,
+        topicId: topicId!,
+        isMuted: !isMuted,
       });
+    } else {
+      updateChatMutedState({ chatId: chatId!, isMuted: !isMuted });
+    }
+  });
 
-      return newAreNotificationsEnabled;
-    });
+  const manageEmojiStatusChange = useLastCallback(() => {
+    if (!user) return;
+    toggleUserEmojiStatusPermission({ botId: user.id, isEnabled: !isBotCanManageEmojiStatus });
+  });
+
+  const handleLocationPermissionChange = useLastCallback(() => {
+    if (!user) return;
+    toggleUserLocationPermission({ botId: user.id, isAccessGranted: !botAppPermissions?.geolocation });
   });
 
   const handleOpenSavedDialog = useLastCallback(() => {
@@ -411,7 +422,7 @@ const ChatExtra: FC<OwnProps & StateProps> = ({
           <Switcher
             id="group-notifications"
             label={userId ? 'Toggle User Notifications' : 'Toggle Chat Notifications'}
-            checked={areNotificationsEnabled}
+            checked={isMuted}
             inactive
           />
         </ListItem>
@@ -437,6 +448,36 @@ const ChatExtra: FC<OwnProps & StateProps> = ({
           <span>{oldLang('SavedMessagesTab')}</span>
         </ListItem>
       )}
+      {userFullInfo && 'isBotAccessEmojiGranted' in userFullInfo && (
+        <ListItem icon="user" narrow ripple onClick={manageEmojiStatusChange}>
+          <span>{oldLang('BotProfilePermissionEmojiStatus')}</span>
+          <Switcher
+            label={oldLang('BotProfilePermissionEmojiStatus')}
+            checked={isBotCanManageEmojiStatus}
+            inactive
+          />
+        </ListItem>
+      )}
+      {botAppPermissions?.geolocation !== undefined && (
+        <ListItem icon="location" narrow ripple onClick={handleLocationPermissionChange}>
+          <span>{oldLang('BotProfilePermissionLocation')}</span>
+          <Switcher
+            label={oldLang('BotProfilePermissionLocation')}
+            checked={botAppPermissions?.geolocation}
+            inactive
+          />
+        </ListItem>
+      )}
+      {botVerification && (
+        <div className={styles.botVerificationSection}>
+          <CustomEmoji
+            className={styles.botVerificationIcon}
+            documentId={botVerification.iconId}
+            size={BOT_VERIFICATION_ICON_SIZE}
+          />
+          {botVerification.description}
+        </div>
+      )}
     </div>
   );
 };
@@ -447,6 +488,7 @@ export default memo(withGlobal<OwnProps>(
 
     const chat = chatOrUserId ? selectChat(global, chatOrUserId) : undefined;
     const user = chatOrUserId ? selectUser(global, chatOrUserId) : undefined;
+    const botAppPermissions = chatOrUserId ? selectBotAppPermissions(global, chatOrUserId) : undefined;
     const isForum = chat?.isForum;
     const isMuted = chat && selectIsChatMuted(chat, selectNotifySettings(global), selectNotifyExceptions(global));
     const { threadId } = selectCurrentMessageList(global) || {};
@@ -455,8 +497,9 @@ export default memo(withGlobal<OwnProps>(
     const chatFullInfo = chat && selectChatFullInfo(global, chat.id);
     const userFullInfo = user && selectUserFullInfo(global, user.id);
 
-    const chatInviteLink = chatFullInfo?.inviteLink;
+    const botVerification = userFullInfo?.botVerification || chatFullInfo?.botVerification;
 
+    const chatInviteLink = chatFullInfo?.inviteLink;
     const description = userFullInfo?.bio || chatFullInfo?.about;
 
     const canInviteUsers = chat && !user && (
@@ -480,6 +523,7 @@ export default memo(withGlobal<OwnProps>(
       user,
       userFullInfo,
       canInviteUsers,
+      botAppPermissions,
       isMuted,
       topicId,
       chatInviteLink,
@@ -488,6 +532,8 @@ export default memo(withGlobal<OwnProps>(
       hasSavedMessages,
       personalChannel,
       hasMainMiniApp,
+      isBotCanManageEmojiStatus: userFullInfo?.isBotCanManageEmojiStatus,
+      botVerification,
     };
   },
 )(ChatExtra));

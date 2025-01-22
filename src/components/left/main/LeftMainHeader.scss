@@ -144,7 +144,12 @@
 
   .left-search-picker-item {
     color: var(--color-text-secondary);
-    font-weight: 500;
+    font-weight: var(--font-weight-medium);
     padding-right: 0;
+
+    &[dir="rtl"] {
+      left: auto;
+      right: -0.125rem;
+    }
   }
 }

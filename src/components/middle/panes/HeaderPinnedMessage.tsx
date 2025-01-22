@@ -2,8 +2,7 @@ import React, { memo, useEffect } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
 import type { ApiChat, ApiMessage, ApiPeer } from '../../../api/types';
-import type { MessageListType } from '../../../global/types';
-import type { ThreadId } from '../../../types';
+import type { MessageListType, ThreadId } from '../../../types';
 import type { Signal } from '../../../util/signals';
 import { MAIN_THREAD_ID } from '../../../api/types';
 
@@ -13,7 +12,7 @@ import {
   getMessageMediaHash,
   getMessageSingleInlineButton,
   getMessageVideo,
-  getSenderTitle,
+  getPeerTitle,
 } from '../../../global/helpers';
 import {
   selectAllowedMessageActionsSlow,
@@ -111,7 +110,7 @@ const HeaderPinnedMessage = ({
     ? pinnedMessageIds.length : (pinnedMessageIds ? 1 : 0);
   const pinnedMessageNumber = Math.max(pinnedMessagesCount - currentPinnedIndex, 1);
 
-  const topMessageTitle = topMessageSender ? getSenderTitle(lang, topMessageSender) : undefined;
+  const topMessageTitle = topMessageSender ? getPeerTitle(lang, topMessageSender) : undefined;
 
   const video = pinnedMessage && getMessageVideo(pinnedMessage);
   const gif = video?.isGif ? video : undefined;

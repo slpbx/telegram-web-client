@@ -1,12 +1,13 @@
 import type {
   ApiChat, ApiChatFullInfo, ApiChatMember,
 } from '../../api/types';
-import type { ChatListType, GlobalState } from '../types';
+import type { ChatListType } from '../../types';
+import type { GlobalState } from '../types';
 
 import { ARCHIVED_FOLDER_ID } from '../../config';
 import { areDeepEqual } from '../../util/areDeepEqual';
 import {
-  areSortedArraysEqual, buildCollectionByKey, omit, pick, unique,
+  areSortedArraysEqual, buildCollectionByKey, omit, omitUndefined, pick, unique,
 } from '../../util/iteratees';
 import { selectChatFullInfo } from '../selectors';
 
@@ -86,7 +87,7 @@ export function updateChatsLastMessageId<T extends GlobalState>(
   };
 }
 
-export function updateChatListIds<T extends GlobalState>(
+export function addChatListIds<T extends GlobalState>(
   global: T, type: ChatListType, idsUpdate: string[],
 ): T {
   const { [type]: listIds } = global.chats.listIds;
@@ -310,7 +311,7 @@ function getUpdatedChat<T extends GlobalState>(
     return undefined;
   }
 
-  return updatedChat;
+  return omitUndefined(updatedChat);
 }
 
 export function updateChatListType<T extends GlobalState>(
@@ -372,10 +373,6 @@ export function updateChatListSecondaryInfo<T extends GlobalState>(
       totalCount: {
         ...global.chats.totalCount,
         [totalCountKey]: info.totalChatCount,
-      },
-      isFullyLoaded: {
-        ...global.chats.isFullyLoaded,
-        [type]: false,
       },
     },
   };
@@ -461,6 +458,27 @@ export function toggleSimilarChannels<T extends GlobalState>(
         [chatId]: {
           ...similarChannels,
           shouldShowInChat: !similarChannels.shouldShowInChat,
+        },
+      },
+    },
+  };
+}
+
+export function addSimilarBots<T extends GlobalState>(
+  global: T,
+  chatId: string,
+  similarBotsIds: string[],
+  count?: number,
+) {
+  return {
+    ...global,
+    chats: {
+      ...global.chats,
+      similarBotsById: {
+        ...global.chats.similarBotsById,
+        [chatId]: {
+          similarBotsIds,
+          count,
         },
       },
     },

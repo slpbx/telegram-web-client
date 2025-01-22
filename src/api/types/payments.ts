@@ -1,4 +1,4 @@
-import type { ApiPremiumSection } from '../../global/types';
+import type { PREMIUM_FEATURE_SECTIONS } from '../../config';
 import type { ApiWebDocument } from './bots';
 import type { ApiChat } from './chats';
 import type {
@@ -7,9 +7,9 @@ import type {
   ApiInvoice,
   ApiMessageEntity,
   ApiPaymentCredentials,
+  ApiSticker,
   BoughtPaidMedia,
 } from './messages';
-import type { ApiStarsSubscriptionPricing } from './misc';
 import type { StatisticsOverviewPercentage } from './statistics';
 import type { ApiUser } from './users';
 
@@ -116,6 +116,8 @@ export interface ApiReceiptRegular {
 
 export type ApiReceipt = ApiReceiptRegular | ApiReceiptStars;
 
+export type ApiPremiumSection = typeof PREMIUM_FEATURE_SECTIONS[number];
+
 export interface ApiPremiumPromo {
   videoSections: ApiPremiumSection[];
   videos: ApiDocument[];
@@ -188,10 +190,11 @@ export type ApiInputStorePaymentStarsGiveaway = {
 export type ApiInputStorePaymentPurpose = ApiInputStorePaymentGiveaway | ApiInputStorePaymentGiftcode |
 ApiInputStorePaymentStarsTopup | ApiInputStorePaymentStarsGift | ApiInputStorePaymentStarsGiveaway;
 
-export type ApiStarGift = {
+export interface ApiStarGiftRegular {
+  type: 'starGift';
   isLimited?: true;
   id: string;
-  stickerId: string;
+  sticker: ApiSticker;
   stars: number;
   availabilityRemains?: number;
   availabilityTotal?: number;
@@ -199,7 +202,59 @@ export type ApiStarGift = {
   isSoldOut?: true;
   firstSaleDate?: number;
   lastSaleDate?: number;
-};
+  isBirthday?: true;
+  upgradeStars?: number;
+}
+
+export interface ApiStarGiftUnique {
+  type: 'starGiftUnique';
+  id: string;
+  title: string;
+  number: number;
+  ownerId?: string;
+  ownerName?: string;
+  issuedCount: number;
+  totalCount: number;
+  attributes: ApiStarGiftAttribute[];
+  slug: string;
+}
+
+export type ApiStarGift = ApiStarGiftRegular | ApiStarGiftUnique;
+
+export interface ApiStarGiftAttributeModel {
+  type: 'model';
+  name: string;
+  rarityPercent: number;
+  sticker: ApiSticker;
+}
+
+export interface ApiStarGiftAttributePattern {
+  type: 'pattern';
+  name: string;
+  rarityPercent: number;
+  sticker: ApiSticker;
+}
+
+export interface ApiStarGiftAttributeBackdrop {
+  type: 'backdrop';
+  name: string;
+  centerColor: string;
+  edgeColor: string;
+  patternColor: string;
+  textColor: string;
+  rarityPercent: number;
+}
+
+export interface ApiStarGiftAttributeOriginalDetails {
+  type: 'originalDetails';
+  senderId?: string;
+  recipientId: string;
+  date: number;
+  message?: ApiFormattedText;
+}
+
+export type ApiStarGiftAttribute = ApiStarGiftAttributeModel | ApiStarGiftAttributePattern
+| ApiStarGiftAttributeBackdrop | ApiStarGiftAttributeOriginalDetails;
 
 export interface ApiUserStarGift {
   isNameHidden?: boolean;
@@ -210,7 +265,11 @@ export interface ApiUserStarGift {
   message?: ApiFormattedText;
   messageId?: number;
   starsToConvert?: number;
+  canUpgrade?: true;
+  alreadyPaidUpgradeStars?: number;
+  transferStars?: number;
   isConverted?: boolean; // Local field, used for Action Message
+  upgradeMsgId?: number; // Local field, used for Action Message
 }
 
 export interface ApiPremiumGiftCodeOption {
@@ -302,6 +361,11 @@ export type ApiCheckedGiftCode = {
   usedAt?: number;
 };
 
+export interface ApiStarsAmount {
+  amount: number;
+  nanos: number;
+}
+
 export interface ApiStarsTransactionPeerUnsupported {
   type: 'unsupported';
 }
@@ -349,7 +413,7 @@ export interface ApiStarsTransaction {
   id?: string;
   peer: ApiStarsTransactionPeer;
   messageId?: number;
-  stars: number;
+  stars: ApiStarsAmount;
   isRefund?: true;
   isGift?: true;
   starGift?: ApiStarGift;
@@ -364,6 +428,8 @@ export interface ApiStarsTransaction {
   photo?: ApiWebDocument;
   extendedMedia?: BoughtPaidMedia[];
   subscriptionPeriod?: number;
+  starRefCommision?: number;
+  isGiftUpgrade?: true;
 }
 
 export interface ApiStarsSubscription {
@@ -380,6 +446,11 @@ export interface ApiStarsSubscription {
   photo?: ApiWebDocument;
   invoiceSlug?: string;
 }
+
+export type ApiStarsSubscriptionPricing = {
+  period: number;
+  amount: number;
+};
 
 export interface ApiStarTopupOption {
   isExtended?: true;
@@ -403,3 +474,5 @@ export interface ApiStarGiveawayOption {
   amount: number;
   winners: ApiStarsGiveawayWinnerOption[];
 }
+
+export type ApiPaymentStatus = 'paid' | 'failed' | 'pending' | 'cancelled';

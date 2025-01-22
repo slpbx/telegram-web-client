@@ -5,11 +5,10 @@ import React, {
 import { getActions, getGlobal, withGlobal } from '../../global';
 
 import type {
-  ApiChat, ApiMessage, ApiSticker, ApiTopic, ApiUser,
+  ApiChat, ApiMessage, ApiMessageActionStarGift, ApiSticker, ApiTopic, ApiUser,
 } from '../../api/types';
-import type { MessageListType } from '../../global/types';
 import type { ObserveFn } from '../../hooks/useIntersectionObserver';
-import type { FocusDirection, ThreadId } from '../../types';
+import type { FocusDirection, MessageListType, ThreadId } from '../../types';
 import type { OnIntersectPinnedMessage } from './hooks/usePinnedMessage';
 
 import { getChatTitle, getMessageHtmlId, isJoinedChannelMessage } from '../../global/helpers';
@@ -20,8 +19,8 @@ import {
   selectChatMessage,
   selectGiftStickerForDuration,
   selectGiftStickerForStars,
+  selectIsCurrentUserPremium,
   selectIsMessageFocused,
-  selectStarGiftSticker,
   selectTabState,
   selectTheme,
   selectTopicFromMessage,
@@ -29,6 +28,7 @@ import {
 } from '../../global/selectors';
 import buildClassName from '../../util/buildClassName';
 import { formatInteger, formatIntegerCompact } from '../../util/textFormat';
+import { getGiftAttributes, getStickerFromGift } from '../common/helpers/gifts';
 import { renderActionMessageText } from '../common/helpers/renderActionMessageText';
 import renderText from '../common/helpers/renderText';
 import { renderTextWithEntities } from '../common/helpers/renderTextWithEntities';
@@ -40,15 +40,19 @@ import useFlag from '../../hooks/useFlag';
 import { useIsIntersecting, useOnIntersect } from '../../hooks/useIntersectionObserver';
 import useLang from '../../hooks/useLang';
 import useOldLang from '../../hooks/useOldLang';
+import useMessageResizeObserver from '../../hooks/useResizeMessageObserver';
 import useShowTransitionDeprecated from '../../hooks/useShowTransitionDeprecated';
 import useFocusMessage from './message/hooks/useFocusMessage';
 
 import AnimatedIconFromSticker from '../common/AnimatedIconFromSticker';
 import Avatar from '../common/Avatar';
 import GiftRibbon from '../common/gift/GiftRibbon';
+import RadialPatternBackground from '../common/profile/RadialPatternBackground';
 import Sparkles from '../common/Sparkles';
 import ActionMessageSuggestedAvatar from './ActionMessageSuggestedAvatar';
+import ActionMessageUpdatedAvatar from './ActionMessageUpdatedAvatar';
 import ContextMenuContainer from './message/ContextMenuContainer.async';
+import Reactions from './message/reactions/Reactions';
 import SimilarChannels from './message/SimilarChannels';
 
 type OwnProps = {
@@ -79,10 +83,10 @@ type StateProps = {
   focusDirection?: FocusDirection;
   noFocusHighlight?: boolean;
   premiumGiftSticker?: ApiSticker;
-  starGiftSticker?: ApiSticker;
   starsGiftSticker?: ApiSticker;
   canPlayAnimatedEmojis?: boolean;
   patternColor?: string;
+  isCurrentUserPremium?: boolean;
 };
 
 const APPEARANCE_DELAY = 10;
@@ -90,6 +94,7 @@ const STAR_GIFT_STICKER_SIZE = 120;
 
 const ActionMessage: FC<OwnProps & StateProps> = ({
   message,
+  threadId,
   isEmbedded,
   appearanceOrder = 0,
   isJustAdded,
@@ -104,7 +109,6 @@ const ActionMessage: FC<OwnProps & StateProps> = ({
   focusDirection,
   noFocusHighlight,
   premiumGiftSticker,
-  starGiftSticker,
   starsGiftSticker,
   isInsideTopic,
   topic,
@@ -115,6 +119,7 @@ const ActionMessage: FC<OwnProps & StateProps> = ({
   observeIntersectionForLoading,
   observeIntersectionForPlaying,
   onIntersectPinnedMessage,
+  isCurrentUserPremium,
 }) => {
   const {
     openPremiumModal,
@@ -137,7 +142,14 @@ const ActionMessage: FC<OwnProps & StateProps> = ({
     message.replyInfo?.type === 'message' ? message.replyInfo.replyToMsgId : undefined,
     targetMessage,
   );
-  useFocusMessage(ref, message.chatId, isFocused, focusDirection, noFocusHighlight, isJustAdded);
+  useFocusMessage({
+    elementRef: ref,
+    chatId: message.chatId,
+    isFocused,
+    focusDirection,
+    noFocusHighlight,
+    isJustAdded,
+  });
 
   useUnmountCleanup(() => {
     if (message.isPinned) {
@@ -150,10 +162,16 @@ const ActionMessage: FC<OwnProps & StateProps> = ({
   const isPremiumGift = message.content.action?.type === 'giftPremium';
   const isGiftCode = message.content.action?.type === 'giftCode';
   const isSuggestedAvatar = message.content.action?.type === 'suggestProfilePhoto' && message.content.action!.photo;
+  const isUpdatedAvatar = message.content.action?.type === 'updateProfilePhoto' && message.content.action!.photo;
   const isJoinedMessage = isJoinedChannelMessage(message);
   const isStarsGift = message.content.action?.type === 'giftStars';
   const isStarGift = message.content.action?.type === 'starGift';
+  const isStarGiftUnique = message.content.action?.type === 'starGiftUnique';
   const isPrizeStars = message.content.action?.type === 'prizeStars';
+
+  const withServiceReactions = Boolean(message.areReactionsPossible && message?.reactions);
+
+  useMessageResizeObserver(ref, isLastInList);
 
   useEffect(() => {
     if (noAppearanceAnimation) {
@@ -219,6 +237,9 @@ const ActionMessage: FC<OwnProps & StateProps> = ({
   };
 
   const handleStarGiftClick = () => {
+    const starGift = message.content.action?.starGift;
+    if (!starGift) return;
+
     openGiftInfoModalFromMessage({
       chatId: message.chatId,
       messageId: message.id,
@@ -306,7 +327,7 @@ const ActionMessage: FC<OwnProps & StateProps> = ({
     const giftMessage = message.content.action?.message;
     return (
       <span
-        className="action-message-gift action-message-gift-code"
+        className="action-message-gift action-message-centered"
         tabIndex={0}
         role="button"
         onClick={handleGiftCodeClick}
@@ -354,7 +375,7 @@ const ActionMessage: FC<OwnProps & StateProps> = ({
   function renderStarsGift() {
     return (
       <span
-        className="action-message-gift action-message-gift-code"
+        className="action-message-gift action-message-centered"
         tabIndex={0}
         role="button"
         onClick={handleStarGiftClick}
@@ -387,9 +408,10 @@ const ActionMessage: FC<OwnProps & StateProps> = ({
 
   function renderStarGiftUserCaption() {
     const targetUser = targetUsers && targetUsers[0];
-    if (!targetUser || !senderUser) return undefined;
+    const starGift = message.content.action?.starGift;
+    if (!targetUser || !senderUser || !starGift) return undefined;
 
-    if (message.isOutgoing) {
+    if (message.isOutgoing || (starGift.type === 'starGiftUnique' && starGift.isUpgrade)) {
       return (
         <div className="action-message-user-caption">
           <span> {lang('GiftTo')} </span>
@@ -409,65 +431,85 @@ const ActionMessage: FC<OwnProps & StateProps> = ({
   }
 
   function renderStarGiftUserDescription() {
-    const starGift = message.content.action?.starGift;
+    const starGift = message.content.action?.starGift as ApiMessageActionStarGift;
     const targetUser = targetUsers && targetUsers[0]?.firstName;
-    const starGiftMessage = message.content.action?.starGift?.message;
+    const starGiftMessage = starGift?.message;
     if (!starGift) return undefined;
 
     if (starGiftMessage) {
       return renderTextWithEntities({ text: starGiftMessage.text, entities: starGiftMessage.entities });
     }
-    const amount = starGift?.starsToConvert;
-
-    if (message.isOutgoing) {
-      return lang('ActionStarGiftOutDescription', {
-        user: targetUser || 'User',
-        count: amount,
-      }, { withNodes: true });
-    }
+    const amountToConvert = starGift?.starsToConvert;
 
     if (starGift.isSaved) {
       return lang('ActionStarGiftDisplaying');
     }
 
+    if (starGift.isUpgraded) {
+      return lang('ActionStarGiftUpgraded');
+    }
+
+    if (message.isOutgoing) {
+      if (amountToConvert) {
+        return lang('ActionStarGiftOutDescription', {
+          user: targetUser || 'User',
+          count: amountToConvert,
+        }, { withNodes: true, pluralValue: amountToConvert });
+      }
+
+      if (starGift.canUpgrade) {
+        return lang('ActionStarGiftOutDescriptionUpgrade', {
+          user: targetUser || 'User',
+        });
+      }
+    }
+
     if (starGift.isConverted) {
       return message.isOutgoing
         ? lang('GiftInfoDescriptionOutConverted', {
-          amount: formatInteger(amount!),
+          amount: formatInteger(amountToConvert!),
           user: targetUser || 'User',
         }, {
-          pluralValue: amount!,
+          pluralValue: amountToConvert!,
           withNodes: true,
           withMarkdown: true,
         })
         : lang('GiftInfoDescriptionConverted', {
-          amount: formatInteger(amount!),
+          amount: formatInteger(amountToConvert!),
         }, {
-          pluralValue: amount!,
+          pluralValue: amountToConvert!,
           withNodes: true,
           withMarkdown: true,
         });
     }
 
-    return lang('ActionStarGiftDescription', {
-      count: amount,
-    }, { withNodes: true });
+    if (amountToConvert) {
+      return lang('ActionStarGiftDescription', {
+        count: amountToConvert,
+      }, { withNodes: true, pluralValue: amountToConvert });
+    }
+
+    if (starGift.canUpgrade) {
+      return lang('ActionStarGiftDescriptionUpgrade');
+    }
+
+    return undefined;
   }
 
   function renderStarGift() {
-    const starGift = message.content.action?.starGift;
-    if (!starGift) return undefined;
+    const starGift = message.content.action?.starGift as ApiMessageActionStarGift;
+    if (!starGift || starGift.gift.type !== 'starGift') return undefined;
 
     return (
       <span
-        className="action-message-gift action-message-gift-code action-message-star-gift"
+        className="action-message-gift action-message-centered"
         tabIndex={0}
         role="button"
         onClick={handleStarGiftClick}
       >
 
         <AnimatedIconFromSticker
-          sticker={starGiftSticker}
+          sticker={starGift.gift.sticker}
           play={canPlayAnimatedEmojis}
           noLoop
           nonInteractive
@@ -479,12 +521,11 @@ const ActionMessage: FC<OwnProps & StateProps> = ({
           {renderStarGiftUserDescription()}
         </div>
 
-        {!message.isOutgoing && (
-          <div className="action-message-button">
-            <Sparkles preset="button" />
-            {oldLang('ActionGiftPremiumView')}
-          </div>
-        )}
+        <div className="action-message-button">
+          <Sparkles preset="button" />
+          {starGift.alreadyPaidUpgradeStars && (!message.isOutgoing || targetUsers?.[0]?.isSelf)
+            ? lang('ActionStarGiftUnpack') : oldLang('ActionGiftPremiumView')}
+        </div>
         {starGift.gift.availabilityTotal && (
           <GiftRibbon
             color={patternColor || 'blue'}
@@ -495,19 +536,94 @@ const ActionMessage: FC<OwnProps & StateProps> = ({
     );
   }
 
+  function renderStarGiftUnique() {
+    const starGift = message.content.action?.starGift;
+    if (!starGift || starGift.gift.type !== 'starGiftUnique') return undefined;
+
+    const sticker = getStickerFromGift(starGift.gift)!;
+    const attributes = getGiftAttributes(starGift.gift);
+    const { backdrop, pattern, model } = attributes || {};
+
+    if (!backdrop || !pattern || !model) return undefined;
+
+    const backgroundColors = [backdrop.centerColor, backdrop.edgeColor];
+
+    const adaptedPatternColor = `${backdrop.patternColor.slice(0, 7)}55`;
+
+    return (
+      <span
+        className="action-message-gift action-message-centered action-message-unique"
+        tabIndex={0}
+        role="button"
+        style={`--pattern-color: ${adaptedPatternColor}`}
+        onClick={handleStarGiftClick}
+      >
+        <div className="action-message-unique-background-wrapper">
+          <RadialPatternBackground
+            className="action-message-unique-background"
+            backgroundColors={backgroundColors}
+            patternColor={backdrop.patternColor}
+            patternIcon={pattern.sticker}
+            clearBottomSector
+          />
+        </div>
+        <AnimatedIconFromSticker
+          sticker={sticker}
+          play={canPlayAnimatedEmojis}
+          noLoop
+          nonInteractive
+          size={STAR_GIFT_STICKER_SIZE}
+        />
+        {renderStarGiftUserCaption()}
+        <div className="action-message-unique-title" style={`color: ${backdrop.textColor}`}>
+          {starGift.gift.title} #{starGift.gift.number}
+        </div>
+        <div className="action-message-unique-properties" style={`color: ${backdrop.textColor}`}>
+          <div className="action-message-unique-property">
+            {oldLang('Gift2AttributeModel')}
+          </div>
+          <div className="action-message-unique-value">
+            {model.name}
+          </div>
+          <div className="action-message-unique-property">
+            {oldLang('Gift2AttributeBackdrop')}
+          </div>
+          <div className="action-message-unique-value">
+            {backdrop.name}
+          </div>
+          <div className="action-message-unique-property">
+            {oldLang('Gift2AttributeSymbol')}
+          </div>
+          <div className="action-message-unique-value">
+            {pattern.name}
+          </div>
+        </div>
+
+        <div className="action-message-button">
+          <Sparkles preset="button" />
+          {oldLang('Gift2UniqueView')}
+        </div>
+        <GiftRibbon
+          color={adaptedPatternColor}
+          text={oldLang('ActionStarGift')}
+        />
+      </span>
+    );
+  }
+
   function renderPrizeStars() {
     const isUnclaimed = message.content.action?.isUnclaimed;
 
     return (
       <span
-        className="action-message-gift action-message-gift-code"
+        className="action-message-gift action-message-centered"
         tabIndex={0}
         role="button"
         onClick={handlePrizeStarsClick}
       >
         <AnimatedIconFromSticker
           key={message.id}
-          sticker={starGiftSticker}
+          sticker={starsGiftSticker}
           play={canPlayAnimatedEmojis}
           noLoop
           nonInteractive
@@ -542,7 +658,7 @@ const ActionMessage: FC<OwnProps & StateProps> = ({
   const className = buildClassName(
     'ActionMessage message-list-item',
     isFocused && !noFocusHighlight && 'focused',
-    (isPremiumGift || isSuggestedAvatar) && 'centered-action',
+    (isPremiumGift || isSuggestedAvatar || isUpdatedAvatar) && 'centered-action',
     isContextMenuShown && 'has-menu-open',
     isLastInList && 'last-in-list',
     transitionClassNames,
@@ -558,16 +674,20 @@ const ActionMessage: FC<OwnProps & StateProps> = ({
       onMouseDown={handleMouseDown}
       onContextMenu={handleContextMenu}
     >
-      {!isSuggestedAvatar && !isGiftCode && !isJoinedMessage && (
+      {!isSuggestedAvatar && !isGiftCode && !isJoinedMessage && !isUpdatedAvatar && (
         <span className="action-message-content" onClick={handleClick}>{renderContent()}</span>
       )}
       {isPremiumGift && renderGift()}
       {isGiftCode && renderGiftCode()}
       {isStarsGift && renderStarsGift()}
       {isStarGift && renderStarGift()}
+      {isStarGiftUnique && renderStarGiftUnique()}
       {isPrizeStars && renderPrizeStars()}
       {isSuggestedAvatar && (
         <ActionMessageSuggestedAvatar message={message} renderContent={renderContent} />
+      )}
+      {isUpdatedAvatar && (
+        <ActionMessageUpdatedAvatar message={message} renderContent={renderContent} />
       )}
       {isJoinedMessage && <SimilarChannels chatId={targetChatId!} />}
       {contextMenuAnchor && (
@@ -578,6 +698,15 @@ const ActionMessage: FC<OwnProps & StateProps> = ({
           messageListType="thread"
           onClose={handleContextMenuClose}
           onCloseAnimationEnd={handleContextMenuHide}
+        />
+      )}
+      {withServiceReactions && (
+        <Reactions
+          isOutside
+          message={message!}
+          threadId={threadId}
+          observeIntersection={observeIntersectionForPlaying}
+          isCurrentUserPremium={isCurrentUserPremium}
         />
       )}
     </div>
@@ -615,9 +744,7 @@ export default memo(withGlobal<OwnProps>(
     const giftDuration = content.action?.months;
     const premiumGiftSticker = selectGiftStickerForDuration(global, giftDuration);
 
-    const starGift = content.action?.type === 'starGift' ? content.action.starGift?.gift : undefined;
     const starCount = content.action?.stars;
-    const starGiftSticker = starGift?.stickerId ? selectStarGiftSticker(global, starGift.stickerId) : undefined;
     const starsGiftSticker = selectGiftStickerForStars(global, starCount);
 
     const topic = selectTopicFromMessage(global, message);
@@ -631,7 +758,6 @@ export default memo(withGlobal<OwnProps>(
       targetMessage,
       isFocused,
       premiumGiftSticker,
-      starGiftSticker,
       starsGiftSticker,
       topic,
       patternColor,
@@ -640,6 +766,7 @@ export default memo(withGlobal<OwnProps>(
         focusDirection,
         noFocusHighlight,
       }),
+      isCurrentUserPremium: selectIsCurrentUserPremium(global),
     };
   },
 )(ActionMessage));

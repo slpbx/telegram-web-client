@@ -1,6 +1,5 @@
-import type {
-  StarGiftCategory,
-} from '../../types';
+import type { ApiUserStarGift } from '../../../api/types';
+import type { StarGiftCategory } from '../../../types';
 
 import { getCurrentTabId } from '../../../util/establishMultitabRole';
 import { buildCollectionByKey } from '../../../util/iteratees';
@@ -9,9 +8,11 @@ import { addActionHandler, getGlobal, setGlobal } from '../../index';
 import {
   appendStarsSubscriptions,
   appendStarsTransactions,
+  replaceUserGifts,
   updateStarsBalance,
   updateStarsSubscriptionLoading,
 } from '../../reducers';
+import { updateTabState } from '../../reducers/tabs';
 import {
   selectPeer,
   selectUser,
@@ -91,45 +92,42 @@ addActionHandler('loadStarGifts', async (global): Promise<void> => {
     return;
   }
 
-  const { gifts, stickers } = result;
+  const byId = buildCollectionByKey(result, 'id');
 
-  const starGiftsById = buildCollectionByKey(gifts, 'id');
-
-  const starGiftCategoriesByName: Record<StarGiftCategory, string[]> = {
+  const idsByCategoryName: Record<StarGiftCategory, string[]> = {
     all: [],
+    stock: [],
     limited: [],
   };
 
-  const allStarGiftIds = Object.keys(starGiftsById);
-  const allStarGifts = Object.values(starGiftsById);
+  const allStarGiftIds = Object.keys(byId);
+  const allStarGifts = Object.values(byId);
 
-  const limitedStarGiftIds = allStarGifts.map(
-    (gift) => {
-      return gift.isLimited ? gift.id : undefined;
-    },
-  ).filter(Boolean) as string[];
+  const limitedStarGiftIds = allStarGifts.map((gift) => (gift.isLimited ? gift.id : undefined))
+    .filter(Boolean) as string[];
 
-  starGiftCategoriesByName.all = allStarGiftIds;
-  starGiftCategoriesByName.limited = limitedStarGiftIds;
+  const stockedStarGiftIds = allStarGifts.map((gift) => (
+    gift.availabilityRemains || !gift.availabilityTotal ? gift.id : undefined
+  )).filter(Boolean) as string[];
+
+  idsByCategoryName.all = allStarGiftIds;
+  idsByCategoryName.limited = limitedStarGiftIds;
+  idsByCategoryName.stock = stockedStarGiftIds;
 
   allStarGifts.forEach((gift) => {
     const starsCategory = gift.stars;
-    if (!starGiftCategoriesByName[starsCategory]) {
-      starGiftCategoriesByName[starsCategory] = [];
+    if (!idsByCategoryName[starsCategory]) {
+      idsByCategoryName[starsCategory] = [];
     }
-    starGiftCategoriesByName[starsCategory].push(gift.id);
+    idsByCategoryName[starsCategory].push(gift.id);
   });
 
   global = getGlobal();
   global = {
     ...global,
-    starGiftsById,
-    starGiftCategoriesByName,
-    stickers: {
-      ...global.stickers,
-      starGifts: {
-        stickers,
-      },
+    starGifts: {
+      byId,
+      idsByCategory: idsByCategoryName,
     },
   };
   setGlobal(global);
@@ -159,19 +157,7 @@ addActionHandler('loadUserGifts', async (global, actions, payload): Promise<void
 
   const newGifts = currentGifts && !shouldRefresh ? currentGifts.gifts.concat(result.gifts) : result.gifts;
 
-  global = {
-    ...global,
-    users: {
-      ...global.users,
-      giftsById: {
-        ...global.users.giftsById,
-        [userId]: {
-          gifts: newGifts,
-          nextOffset: result.nextOffset,
-        },
-      },
-    },
-  };
+  global = replaceUserGifts(global, userId, newGifts, result.nextOffset);
   setGlobal(global);
 });
 
@@ -229,33 +215,46 @@ addActionHandler('fulfillStarsSubscription', async (global, actions, payload): P
   actions.loadStarStatus();
 });
 
-addActionHandler('changeGiftVisilibity', async (global, actions, payload): Promise<void> => {
-  const { userId, messageId, shouldUnsave } = payload;
+addActionHandler('changeGiftVisibility', async (global, actions, payload): Promise<void> => {
+  const { messageId, shouldUnsave } = payload;
 
-  const user = selectUser(global, userId);
-  if (!user) return;
+  const currentUserId = global.currentUserId!;
+
+  const oldGifts = global.users.giftsById[currentUserId];
+  if (oldGifts?.gifts?.length) {
+    const newGifts = oldGifts.gifts.map((gift) => {
+      if (gift.messageId === messageId) {
+        return {
+          ...gift,
+          isUnsaved: shouldUnsave,
+        } satisfies ApiUserStarGift;
+      }
+      return gift;
+    });
+    global = replaceUserGifts(global, currentUserId, newGifts, oldGifts.nextOffset);
+    setGlobal(global);
+  }
 
   const result = await callApi('saveStarGift', {
-    user,
     messageId,
     shouldUnsave,
   });
+  global = getGlobal();
 
   if (!result) {
+    global = replaceUserGifts(global, currentUserId, oldGifts.gifts, oldGifts.nextOffset);
+    setGlobal(global);
     return;
   }
 
-  actions.loadUserGifts({ userId: global.currentUserId!, shouldRefresh: true });
+  // Reload gift list to avoid issues with pagination
+  actions.loadUserGifts({ userId: currentUserId, shouldRefresh: true });
 });
 
 addActionHandler('convertGiftToStars', async (global, actions, payload): Promise<void> => {
-  const { userId, messageId, tabId = getCurrentTabId() } = payload;
-
-  const user = selectUser(global, userId);
-  if (!user) return;
+  const { messageId, tabId = getCurrentTabId() } = payload;
 
   const result = await callApi('convertStarGift', {
-    user,
     messageId,
   });
 
@@ -265,4 +264,28 @@ addActionHandler('convertGiftToStars', async (global, actions, payload): Promise
 
   actions.loadUserGifts({ userId: global.currentUserId!, shouldRefresh: true });
   actions.openStarsBalanceModal({ tabId });
+});
+
+addActionHandler('openGiftUpgradeModal', async (global, actions, payload): Promise<void> => {
+  const {
+    giftId, gift, peerId, tabId = getCurrentTabId(),
+  } = payload;
+
+  const samples = await callApi('fetchStarGiftUpgradePreview', {
+    giftId,
+  });
+
+  if (!samples) return;
+
+  global = getGlobal();
+
+  global = updateTabState(global, {
+    giftUpgradeModal: {
+      recipientId: peerId,
+      gift,
+      sampleAttributes: samples,
+    },
+  }, tabId);
+
+  setGlobal(global);
 });

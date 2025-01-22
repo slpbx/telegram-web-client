@@ -3,11 +3,12 @@ import React, {
 } from '../../lib/teact/teact';
 import { getActions, withGlobal } from '../../global';
 
-import type { ApiStory, ApiUser } from '../../api/types';
-import type { ApiPrivacySettings, PrivacyVisibility } from '../../types';
+import type {
+  ApiPrivacySettings, ApiStory, ApiUser, PrivacyVisibility,
+} from '../../api/types';
 import type { IconName } from '../../types/icons';
 
-import { getSenderTitle, getUserFullName } from '../../global/helpers';
+import { getPeerTitle, getUserFullName } from '../../global/helpers';
 import { selectPeerStory, selectTabState } from '../../global/selectors';
 import buildClassName from '../../util/buildClassName';
 import stopEvent from '../../util/stopEvent';
@@ -16,6 +17,7 @@ import useFlag from '../../hooks/useFlag';
 import useLastCallback from '../../hooks/useLastCallback';
 import useOldLang from '../../hooks/useOldLang';
 
+import Icon from '../common/icons/Icon';
 import Button from '../ui/Button';
 import ListItem from '../ui/ListItem';
 import Modal from '../ui/Modal';
@@ -208,7 +210,7 @@ function StorySettings({
       }
 
       if (closeFriendIds.length === 1) {
-        return getSenderTitle(lang, usersById[closeFriendIds[0]]);
+        return getPeerTitle(lang, usersById[closeFriendIds[0]]);
       }
 
       return lang('StoryPrivacyOptionPeople', closeFriendIds.length, 'i');
@@ -322,7 +324,7 @@ function StorySettings({
                   className={styles.icon}
                   style={`--color-from: ${option.color[0]}; --color-to: ${option.color[1]}`}
                 >
-                  <i className={`icon icon-${option.icon}`} />
+                  <Icon name={option.icon} />
                 </span>
                 <div className={styles.optionContent}>
                   <span className={buildClassName(styles.option_name)}>{lang(option.name)}</span>
@@ -335,7 +337,7 @@ function StorySettings({
                       onClick={(e) => { handleActionClick(e, option.actions!); }}
                     >
                       <span className={styles.actionInner}>{renderActionName(option.actions)}</span>
-                      <i className="icon icon-next" aria-hidden />
+                      <Icon name="next" />
                     </div>
                   )}
                 </div>

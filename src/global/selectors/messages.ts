@@ -8,15 +8,21 @@ import type {
   ApiPeer, ApiSponsoredMessage,
   ApiStickerSetInfo,
 } from '../../api/types';
-import type { ThreadId } from '../../types';
+import type {
+  ChatTranslatedMessages,
+  MessageListType,
+  TabThread,
+  Thread,
+  ThreadId,
+} from '../../types';
 import type { IAllowedAttachmentOptions } from '../helpers';
 import type {
-  ChatTranslatedMessages, GlobalState, MessageListType, TabArgs, TabThread, Thread,
+  GlobalState, TabArgs,
 } from '../types';
 import { ApiMessageEntityTypes, MAIN_THREAD_ID } from '../../api/types';
 
 import {
-  ANONYMOUS_USER_ID, GENERAL_TOPIC_ID, SERVICE_NOTIFICATIONS_USER_ID,
+  ANONYMOUS_USER_ID, API_GENERAL_ID_LIMIT, GENERAL_TOPIC_ID, SERVICE_NOTIFICATIONS_USER_ID,
 } from '../../config';
 import { getCurrentTabId } from '../../util/establishMultitabRole';
 import { findLast } from '../../util/iteratees';
@@ -74,8 +80,6 @@ import { selectTopic } from './topics';
 import {
   selectBot, selectIsCurrentUserPremium, selectUser, selectUserStatus,
 } from './users';
-
-const MESSAGE_EDIT_ALLOWED_TIME = 172800; // 48 hours
 
 export function selectCurrentMessageList<T extends GlobalState>(
   global: T,
@@ -601,6 +605,28 @@ export function selectCanReplyToMessage<T extends GlobalState>(global: T, messag
   return !messageTopic || !messageTopic.isClosed || messageTopic.isOwner || getHasAdminRight(chat, 'manageTopics');
 }
 
+export function selectCanForwardMessage<T extends GlobalState>(global: T, message: ApiMessage) {
+  const isLocal = isMessageLocal(message);
+  const isServiceNotification = isServiceNotificationMessage(message);
+  const isAction = isActionMessage(message);
+  const hasTtl = hasMessageTtl(message);
+  const { content } = message;
+  const story = content.storyData
+    ? selectPeerStory(global, content.storyData.peerId, content.storyData.id)
+    : (content.webPage?.story
+      ? selectPeerStory(global, content.webPage.story.peerId, content.webPage.story.id)
+      : undefined
+    );
+  const isChatProtected = selectIsChatProtected(global, message.chatId);
+  const isStoryForwardForbidden = story && ('isDeleted' in story || ('noForwards' in story && story.noForwards));
+  const canForward = (
+    !isLocal && !isAction && !isChatProtected && !isStoryForwardForbidden
+    && (message.isForwardingAllowed || isServiceNotification) && !hasTtl
+  );
+
+  return canForward;
+}
+
 // This selector is slow and not to be used within lists (e.g. Message component)
 export function selectAllowedMessageActionsSlow<T extends GlobalState>(
   global: T, message: ApiMessage, threadId: ThreadId,
@@ -645,7 +671,7 @@ export function selectAllowedMessageActionsSlow<T extends GlobalState>(
   const isMessageEditable = (
     (
       canEditMessagesIndefinitely
-      || getServerTime() - message.date < MESSAGE_EDIT_ALLOWED_TIME
+      || getServerTime() - message.date < (global.config?.editTimeLimit || Infinity)
     ) && !(
       content.sticker || content.contact || content.pollId || content.action
       || (content.video?.isRound) || content.location || content.invoice || content.giveaway || content.giveawayResults
@@ -696,20 +722,6 @@ export function selectAllowedMessageActionsSlow<T extends GlobalState>(
 
   const canEdit = !isLocal && !isAction && isMessageEditable && hasMessageEditRight;
 
-  const story = content.storyData
-    ? selectPeerStory(global, content.storyData.peerId, content.storyData.id)
-    : (content.webPage?.story
-      ? selectPeerStory(global, content.webPage.story.peerId, content.webPage.story.id)
-      : undefined
-    );
-
-  const isChatProtected = selectIsChatProtected(global, message.chatId);
-  const isStoryForwardForbidden = story && ('isDeleted' in story || ('noForwards' in story && story.noForwards));
-  const canForward = (
-    !isLocal && !isAction && !isChatProtected && !isStoryForwardForbidden
-    && (message.isForwardingAllowed || isServiceNotification) && !hasTtl
-  );
-
   const hasSticker = Boolean(message.content.sticker);
   const hasFavoriteSticker = hasSticker && selectIsStickerFavorite(global, message.content.sticker!);
   const canFaveSticker = !isAction && hasSticker && !hasFavoriteSticker;
@@ -737,7 +749,6 @@ export function selectAllowedMessageActionsSlow<T extends GlobalState>(
     canReport,
     canDelete,
     canDeleteForAll,
-    canForward,
     canFaveSticker,
     canUnfaveSticker,
     canCopy,
@@ -759,7 +770,6 @@ export function selectAllowedMessageActionsSlow<T extends GlobalState>(
     canReport,
     canDelete,
     canDeleteForAll,
-    canForward,
     canFaveSticker,
     canUnfaveSticker,
     canCopy,
@@ -783,6 +793,8 @@ export function selectCanDeleteSelectedMessages<T extends GlobalState>(
   if (!chatMessages || !selectedMessageIds || !threadId) {
     return {};
   }
+
+  if (selectedMessageIds.length > API_GENERAL_ID_LIMIT) return {};
 
   const messageActions = selectedMessageIds
     .map((id) => chatMessages[id] && selectAllowedMessageActionsSlow(global, chatMessages[id], threadId))

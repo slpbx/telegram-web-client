@@ -2,12 +2,21 @@ import BigInt from 'big-integer';
 import { Api as GramJs } from '../../../lib/gramjs';
 
 import type {
-  ApiChat, ApiInputStorePaymentPurpose, ApiPeer, ApiRequestInputInvoice,
-  ApiSticker, ApiThemeParameters,
+  ApiChat,
+  ApiInputStorePaymentPurpose,
+  ApiPeer,
+  ApiRequestInputInvoice,
+  ApiStarGiftRegular,
+  ApiThemeParameters,
   ApiUser,
 } from '../../types';
 
 import { DEBUG } from '../../../config';
+import {
+  buildApiStarGift,
+  buildApiStarGiftAttribute,
+  buildApiUserStarGift,
+} from '../apiBuilders/gifts';
 import {
   buildApiBoost,
   buildApiBoostsStatus,
@@ -18,17 +27,15 @@ import {
   buildApiPremiumGiftCodeOption,
   buildApiPremiumPromo,
   buildApiReceipt,
-  buildApiStarGift,
+  buildApiStarsAmount,
   buildApiStarsGiftOptions,
   buildApiStarsGiveawayOptions,
   buildApiStarsSubscription,
   buildApiStarsTransaction,
   buildApiStarTopupOption,
-  buildApiUserStarGift,
   buildShippingOptions,
 } from '../apiBuilders/payments';
 import { buildApiPeerId } from '../apiBuilders/peers';
-import { buildStickerFromDocument } from '../apiBuilders/symbols';
 import {
   buildInputInvoice, buildInputPeer, buildInputStorePaymentPurpose, buildInputThemeParams, buildShippingInfo,
 } from '../gramjsBuilders';
@@ -429,21 +436,8 @@ export async function fetchStarGifts() {
     return undefined;
   }
 
-  const gifts = result.gifts.map(buildApiStarGift);
-  const stickers : Record<string, ApiSticker> = {};
-
-  result.gifts.forEach((gift) => {
-    if (gift.sticker instanceof GramJs.Document) {
-      localDb.documents[String(gift.sticker.id)] = gift.sticker;
-    }
-
-    const sticker = buildStickerFromDocument(gift.sticker);
-    if (sticker) {
-      stickers[sticker.id] = sticker;
-    }
-  });
-
-  return { gifts, stickers };
+  // Right now, only regular star gifts can be bought, but API are not specific
+  return result.gifts.map(buildApiStarGift).filter((gift): gift is ApiStarGiftRegular => gift.type === 'starGift');
 }
 
 export async function fetchUserStarGifts({
@@ -474,30 +468,24 @@ export async function fetchUserStarGifts({
 }
 
 export function saveStarGift({
-  user,
   messageId,
   shouldUnsave,
 }: {
-  user: ApiUser;
   messageId: number;
   shouldUnsave?: boolean;
 }) {
   return invokeRequest(new GramJs.payments.SaveStarGift({
-    userId: buildInputPeer(user.id, user.accessHash),
     msgId: messageId,
     unsave: shouldUnsave || undefined,
   }));
 }
 
 export function convertStarGift({
-  user,
   messageId,
 }: {
-  user: ApiUser;
   messageId: number;
 }) {
   return invokeRequest(new GramJs.payments.ConvertStarGift({
-    userId: buildInputPeer(user.id, user.accessHash),
     msgId: messageId,
   }));
 }
@@ -534,7 +522,7 @@ export async function fetchStarsStatus() {
     history: result.history?.map(buildApiStarsTransaction),
     nextSubscriptionOffset: result.subscriptionsNextOffset,
     subscriptions: result.subscriptions?.map(buildApiStarsSubscription),
-    balance: result.balance.toJSNumber(),
+    balance: buildApiStarsAmount(result.balance),
   };
 }
 
@@ -564,7 +552,7 @@ export async function fetchStarsTransactions({
   return {
     nextOffset: result.nextOffset,
     history: result.history?.map(buildApiStarsTransaction),
-    balance: result.balance.toJSNumber(),
+    balance: buildApiStarsAmount(result.balance),
   };
 }
 
@@ -587,7 +575,7 @@ export async function fetchStarsTransactionById({
   }
 
   return {
-    transaction: buildApiStarsTransaction(result.history[0]),
+    transaction: buildApiStarsTransaction(result?.history[0]),
   };
 }
 
@@ -610,7 +598,7 @@ export async function fetchStarsSubscriptions({
   return {
     nextOffset: result.subscriptionsNextOffset,
     subscriptions: result.subscriptions.map(buildApiStarsSubscription),
-    balance: result.balance.toJSNumber(),
+    balance: buildApiStarsAmount(result.balance),
   };
 }
 
@@ -652,4 +640,47 @@ export async function fetchStarsTopupOptions() {
   }
 
   return result.map(buildApiStarTopupOption);
+}
+
+export async function fetchUniqueStarGift({ slug }: {
+  slug: string;
+}) {
+  const result = await invokeRequest(new GramJs.payments.GetUniqueStarGift({ slug }));
+
+  if (!result) return undefined;
+
+  const gift = buildApiStarGift(result.gift);
+  if (gift.type !== 'starGiftUnique') return undefined;
+  return gift;
+}
+
+export async function fetchStarGiftUpgradePreview({
+  giftId,
+}: {
+  giftId: string;
+}) {
+  const result = await invokeRequest(new GramJs.payments.GetStarGiftUpgradePreview({
+    giftId: BigInt(giftId),
+  }));
+
+  if (!result) {
+    return undefined;
+  }
+
+  return result.sampleAttributes.map(buildApiStarGiftAttribute).filter(Boolean);
+}
+
+export function upgradeGift({
+  messageId,
+  shouldKeepOriginalDetails,
+}: {
+  messageId: number;
+  shouldKeepOriginalDetails?: true;
+}) {
+  return invokeRequest(new GramJs.payments.UpgradeStarGift({
+    msgId: messageId,
+    keepOriginalDetails: shouldKeepOriginalDetails,
+  }), {
+    shouldReturnTrue: true,
+  });
 }

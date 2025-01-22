@@ -41,11 +41,11 @@
   .section-heading {
     position: relative;
     padding-top: 0.625rem;
-    padding-left: 1.75rem;
-    margin: 0 0 1rem -1.25rem !important;
+    padding-left: 0.5rem;
+    margin-bottom: 1rem;
 
-    font-weight: 500;
-    font-size: 0.9375rem;
+    font-weight: var(--font-weight-medium);
+    font-size: 1rem;
     color: var(--color-text-secondary);
 
     &-first {
@@ -73,10 +73,6 @@
 
   .LeftSearch .search-section .section-heading,
   .RecentContacts .search-section .section-heading {
-    margin-left: -0.5rem !important;
-    padding-left: 1.125rem;
-    width: calc(100% + 0.625rem);
-
     &::before {
       display: none;
     }
@@ -84,10 +80,6 @@
     &.without-border {
       box-shadow: none;
     }
-  }
-
-  .RecentContacts .search-section {
-    padding-inline: 0.5rem;
   }
 
   .WebLink {
@@ -175,7 +167,7 @@
       align-items: center;
       font-size: 1rem;
       line-height: 1.6875rem;
-      font-weight: 500;
+      font-weight: var(--font-weight-medium);
       overflow: hidden;
 
       .topic-icon {
@@ -194,21 +186,18 @@
   }
 
   .search-section {
-    padding-inline: 0.5rem;
+    padding: 0.5rem;
 
     @include mixins.adapt-padding-to-scrollbar(0.5rem);
 
     .section-heading {
-      color: var(--color-text-secondary);
-      font-size: 0.9375rem;
-      font-weight: 500;
       margin-bottom: 0.625rem !important;
 
       .Link {
         float: right;
         color: var(--color-links);
-        font-weight: 500;
-        margin-right: 1.5rem;
+        font-weight: var(--font-weight-medium);
+        margin-right: 0.5rem;
         transition: opacity 0.15s ease-in;
 
         &:active,
@@ -241,7 +230,8 @@
     justify-content: space-between;
     align-items: flex-end;
 
-    margin-bottom: 0.5rem;
+    padding-bottom: 0.5rem;
+    padding-inline: 0.25rem;
 
     box-shadow: inset 0 -1px 0 0 var(--color-borders);
     background-color: var(--color-background);
@@ -249,7 +239,7 @@
     overflow-x: auto;
     overflow-y: hidden;
 
-    > .PickerSelectedItem {
+    .left-search-local-suggestion {
       flex-shrink: 0;
     }
 

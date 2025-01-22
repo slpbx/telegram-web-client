@@ -1,8 +1,8 @@
 import type { ApiBotCommand } from './bots';
 import type {
-  ApiChatReactions, ApiFormattedText, ApiPhoto, ApiStickerSet,
+  ApiChatReactions, ApiFormattedText, ApiInputMessageReplyInfo, ApiPhoto, ApiStickerSet,
 } from './messages';
-import type { ApiChatInviteImporter } from './misc';
+import type { ApiBotVerification, ApiChatInviteImporter } from './misc';
 import type {
   ApiEmojiStatus, ApiFakeType, ApiUser, ApiUsername,
 } from './users';
@@ -48,6 +48,7 @@ export interface ApiChat {
   isForum?: boolean;
   isForumAsMessages?: true;
   boostLevel?: number;
+  botVerificationIconId?: string;
 
   // Calls
   isCallActive?: boolean;
@@ -143,6 +144,7 @@ export interface ApiChatFullInfo {
 
   boostsApplied?: number;
   boostsToUnrestrict?: number;
+  botVerification?: ApiBotVerification;
 }
 
 export interface ApiChatMember {
@@ -207,7 +209,8 @@ export interface ApiRestrictionReason {
 
 export interface ApiChatFolder {
   id: number;
-  title: string;
+  title: ApiFormattedText;
+  noTitleAnimations?: true;
   description?: string;
   emoticon?: string;
   contacts?: true;
@@ -260,7 +263,8 @@ export interface ApiTopic {
 }
 
 export interface ApiChatlistInviteNew {
-  title: string;
+  title: ApiFormattedText;
+  noTitleAnimations?: true;
   emoticon?: string;
   peerIds: string[];
   slug: string;
@@ -296,3 +300,11 @@ export interface ApiChatLink {
   chatId: string;
   text: ApiFormattedText;
 }
+
+export type ApiDraft = {
+  text?: ApiFormattedText;
+  replyInfo?: ApiInputMessageReplyInfo;
+  date?: number;
+  effectId?: string;
+  isLocal?: boolean;
+};

@@ -3,6 +3,11 @@
 .root {
   height: 100%;
   width: 100%;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  z-index: 0;
 }
 
 .multi-tab {
@@ -13,13 +18,48 @@
   z-index: 0;
 }
 
-.loading-spinner {
+.loadingPlaceholder {
+  width: 4rem;
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
 
   transition: opacity 0.25s ease-in-out;
+}
+
+@keyframes fadeOpacityBreath {
+  0% {
+    opacity: 0.4;
+  }
+
+  50% {
+    opacity: 0.2;
+  }
+
+  100% {
+    opacity: 0.4;
+  }
+}
+
+.placeholderPath {
+  animation: 2s linear -0.8s infinite fadeOpacityBreath;
+}
+
+.defaultPlaceholderGrid {
+  width: 4.5rem;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.25rem;
+  margin: 0 auto;
+  animation: 2s linear -0.8s infinite fadeOpacityBreath;
+}
+
+.placeholderSquare {
+  width: 100%;
+  aspect-ratio: 1;
+  background-color: black;
+  border-radius: 0.375rem;
 }
 
 .hide {
@@ -49,13 +89,21 @@
 
 .secondary-button,
 .main-button {
+  --color-transition: 0.15s;
+  --transform-transition: 0.25s ease-in-out;
+
   flex-grow: 1;
   margin: 0.5rem;
   transform: translateY(100%);
   opacity: 0;
-  transition-property: background-color, color, transform, margin-inline, flex-grow, opacity;
-  transition-duration: 0.25s;
-  transition-timing-function: ease-in-out;
+  transition:
+  background-color var(--color-transition),
+  color var(--color-transition),
+  opacity var(--color-transition),
+  filter var(--color-transition),
+  transform var(--transform-transition),
+  margin-inline var(--transform-transition),
+  flex-grow var(--transform-transition);
 
   &.visible {
     transform: translateY(0);
@@ -92,18 +140,40 @@
   &.one-row {
     align-items: center;
     height: 4rem;
+
+    @media (max-width: 600px) {
+      height: 3.5rem;
+    }
   }
 
   &.two-rows {
-    height: 8rem;
+    height: 7.75rem;
+
+    @media (max-width: 600px) {
+      height: 6.9375rem;
+    }
   }
 
   &.left-to-right {
     flex-direction: row;
+
+    .secondary-button {
+      margin-right: 0.25rem !important;
+    }
+    .main-button {
+      margin-left: 0.25rem !important;
+    }
   }
 
   &.right-to-left {
     flex-direction: row-reverse;
+
+    .secondary-button {
+      margin-left: 0.25rem !important;
+    }
+    .main-button {
+      margin-right: 0.25rem !important;
+    }
   }
 
   &.top-to-bottom,
@@ -119,9 +189,11 @@
   &.top-to-bottom {
     .secondary-button {
       top: 0rem;
+      margin-bottom: 0.25rem !important;
     }
     .main-button {
       bottom: 0rem;
+      margin-top: 0.25rem !important;
     }
   }
   &.bottom-to-top {
@@ -245,7 +317,7 @@
   height: 1.75rem;
   width: fit-content;
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: var(--font-weight-medium);
   position: relative;
   cursor: var(--custom-cursor, pointer);
   flex-shrink: 0;

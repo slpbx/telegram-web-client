@@ -3,10 +3,9 @@ import React, { memo } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
 import type {
-  ApiChat, ApiMessage, ApiMessageOutgoingStatus,
+  ApiChat, ApiDraft, ApiMessage, ApiMessageOutgoingStatus,
   ApiPeer, ApiTopic, ApiTypeStory, ApiTypingStatus,
 } from '../../../api/types';
-import type { ApiDraft } from '../../../global/types';
 import type { ObserveFn } from '../../../hooks/useIntersectionObserver';
 import type { ChatAnimationTypes } from './hooks';
 
@@ -21,10 +20,10 @@ import {
   selectDraft,
   selectOutgoingStatus,
   selectPeerStory,
+  selectSender,
   selectThreadInfo,
   selectThreadParam,
   selectTopics,
-  selectUser,
 } from '../../../global/selectors';
 import buildClassName from '../../../util/buildClassName';
 import { createLocationHash } from '../../../util/routing';
@@ -37,6 +36,7 @@ import useOldLang from '../../../hooks/useOldLang';
 import useChatListEntry from './hooks/useChatListEntry';
 import useTopicContextActions from './hooks/useTopicContextActions';
 
+import Icon from '../../common/icons/Icon';
 import LastMessageMeta from '../../common/LastMessageMeta';
 import TopicIcon from '../../common/TopicIcon';
 import ConfirmDialog from '../../ui/ConfirmDialog';
@@ -191,15 +191,10 @@ const Topic: FC<OwnProps & StateProps> = ({
             <TopicIcon topic={topic} className={styles.topicIcon} observeIntersection={observeIntersection} />
             <h3 dir="auto" className="fullName">{renderText(topic.title)}</h3>
           </div>
-          {topic.isMuted && <i className="icon icon-muted" />}
+          {topic.isMuted && <Icon name="muted" />}
           <div className="separator" />
           {isClosed && (
-            <i className={buildClassName(
-              'icon',
-              'icon-lock-badge',
-              styles.closedIcon,
-            )}
-            />
+            <Icon name="lock-badge" className={styles.closedIcon} />
           )}
           {lastMessage && (
             <LastMessageMeta
@@ -249,10 +244,9 @@ export default memo(withGlobal<OwnProps>(
     const chat = selectChat(global, chatId);
 
     const lastMessage = selectChatMessage(global, chatId, topic.lastMessageId);
-    const { senderId, isOutgoing } = lastMessage || {};
+    const { isOutgoing } = lastMessage || {};
     const replyToMessageId = lastMessage && getMessageReplyInfo(lastMessage)?.replyToMsgId;
-    const lastMessageSender = senderId
-      ? (selectUser(global, senderId) || selectChat(global, senderId)) : undefined;
+    const lastMessageSender = lastMessage && selectSender(global, lastMessage);
     const lastMessageAction = lastMessage ? getMessageAction(lastMessage) : undefined;
     const actionTargetMessage = lastMessageAction && replyToMessageId
       ? selectChatMessage(global, chatId, replyToMessageId)

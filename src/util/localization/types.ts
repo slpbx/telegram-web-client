@@ -1,6 +1,7 @@
 import type { TeactNode } from '../../lib/teact/teact';
 
 import type {
+  ApiLanguage,
   LangPackStringValue,
   LangPackStringValueDeleted,
   LangPackStringValuePlural,
@@ -73,7 +74,7 @@ type RegularLangFnPluralParametersWithVariables<T = LangPairPluralWithVariables>
   }
 }[keyof T];
 
-type RegularLangFnParameters =
+export type RegularLangFnParameters =
 | RegularLangFnParametersWithoutVariables
 | RegularLangFnParametersWithVariables
 | RegularLangFnPluralParameters
@@ -107,7 +108,7 @@ type AdvancedLangFnPluralParametersWithVariables<T = LangPairPluralWithNodes> = 
   }
 }[keyof T];
 
-type AdvancedLangFnParameters =
+export type AdvancedLangFnParameters =
 | AdvancedLangFnParametersWithoutVariables
 | AdvancedLangFnParametersWithVariables
 | AdvancedLangFnPluralParameters
@@ -122,11 +123,11 @@ export type LangFn = {
   <K extends PluralLangKey = PluralLangKey>(
     key: K, variables: undefined, options: LangFnOptionsWithPlural,
   ): string;
-  <K extends RegularLangKeyWithVariables = RegularLangKeyWithVariables, V = LangPairWithVariables[K]>(
-    key: K, variables: V, options?: LangFnOptions,
+  <K extends RegularLangKeyWithVariables = RegularLangKeyWithVariables>(
+    key: K, variables: LangPairWithVariables[K], options?: LangFnOptions,
   ): string;
-  <K extends PluralLangKeyWithVariables = PluralLangKeyWithVariables, V = LangPairPluralWithVariables[K]>(
-    key: K, variables: V, options: LangFnOptionsWithPlural,
+  <K extends PluralLangKeyWithVariables = PluralLangKeyWithVariables>(
+    key: K, variables: LangPairPluralWithVariables[K], options: LangFnOptionsWithPlural,
   ): string;
 
   <K extends RegularLangKey = RegularLangKey>(
@@ -135,14 +136,16 @@ export type LangFn = {
   <K extends PluralLangKey = PluralLangKey>(
     key: K, variables: undefined, options: AdvancedLangFnOptionsWithPlural,
   ): TeactNode;
-  <K extends RegularLangKeyWithVariables = RegularLangKeyWithVariables, V = LangPairWithVariables[K]>(
-    key: K, variables: V, options: AdvancedLangFnOptions,
+  <K extends RegularLangKeyWithVariables = RegularLangKeyWithVariables>(
+    key: K, variables: LangPairWithVariables<TeactNode | undefined>[K], options: AdvancedLangFnOptions,
   ): TeactNode;
-  <K extends PluralLangKeyWithVariables = PluralLangKeyWithVariables, V = LangPairPluralWithVariables[K]>(
-    key: K, variables: V, options: AdvancedLangFnOptionsWithPlural,
+  <K extends PluralLangKeyWithVariables = PluralLangKeyWithVariables>(
+    key: K, variables: LangPairPluralWithVariables<TeactNode | undefined>[K], options: AdvancedLangFnOptionsWithPlural,
   ): TeactNode;
 
   with: (params: LangFnParameters) => TeactNode;
+  withRegular: (params: RegularLangFnParameters) => string;
+  withAdvanced: (params: AdvancedLangFnParameters) => TeactNode;
   region: (code: string) => string | undefined;
   conjunction: (list: string[]) => string;
   disjunction: (list: string[]) => string;
@@ -150,6 +153,7 @@ export type LangFn = {
   isRtl?: boolean;
   code: string;
   pluralCode: string;
+  languageInfo: ApiLanguage;
 };
 
 type ListFormat = Pick<Intl.ListFormat, 'format'>;

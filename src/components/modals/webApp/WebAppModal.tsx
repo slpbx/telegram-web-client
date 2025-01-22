@@ -8,10 +8,11 @@ import React, {
 import { getActions, getGlobal, withGlobal } from '../../../global';
 
 import type { ApiAttachBot, ApiChat, ApiUser } from '../../../api/types';
-import type { TabState, WebApp } from '../../../global/types';
-import type { ThemeKey } from '../../../types';
-import type { WebAppOutboundEvent } from '../../../types/webapp';
+import type { TabState } from '../../../global/types';
+import type { Point, Size, ThemeKey } from '../../../types';
+import type { WebApp, WebAppOutboundEvent } from '../../../types/webapp';
 
+import { RESIZE_HANDLE_CLASS_NAME } from '../../../config';
 import { getWebAppKey } from '../../../global/helpers/bots';
 import {
   selectCurrentChat, selectTheme, selectUser,
@@ -60,10 +61,16 @@ type StateProps = {
   bot?: ApiUser;
   attachBot?: ApiAttachBot;
   theme?: ThemeKey;
+  cachedSize?: Size;
+  cachedPosition?: Point;
 };
 
 const PROLONG_INTERVAL = 45000; // 45s
 const LUMA_THRESHOLD = 128;
+
+const MINIMIZED_STATE_SIZE = { width: 300, height: 40 };
+const DEFAULT_MAXIMIZED_STATE_SIZE = { width: 420, height: 730 };
+const MAXIMIZED_STATE_MINIMUM_SIZE = { width: 300, height: 300 };
 
 const WebAppModal: FC<OwnProps & StateProps> = ({
   modal,
@@ -71,6 +78,8 @@ const WebAppModal: FC<OwnProps & StateProps> = ({
   bot,
   attachBot,
   theme,
+  cachedSize,
+  cachedPosition,
 }) => {
   const {
     closeActiveWebApp,
@@ -83,24 +92,20 @@ const WebAppModal: FC<OwnProps & StateProps> = ({
     updateWebApp,
     openMoreAppsTab,
     closeMoreAppsTab,
+    updateMiniAppCachedPosition,
+    updateMiniAppCachedSize,
   } = getActions();
 
-  const maximizedStateSize = useMemo(() => {
-    return { width: 420, height: 730 };
-  }, []);
-  const minimizedStateSize = useMemo(() => {
-    return { width: 300, height: 40 };
-  }, []);
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [getFrameSize, setFrameSize] = useSignal(
-    { width: maximizedStateSize.width, height: maximizedStateSize.height - minimizedStateSize.height },
-  );
+  const [getMaximizedStateSize, setMaximizedStateSize] = useSignal(cachedSize || DEFAULT_MAXIMIZED_STATE_SIZE);
 
   function getSize() {
     if (modal?.modalState === 'fullScreen') return windowSize.get();
-    if (modal?.modalState === 'maximized') return maximizedStateSize;
-    return minimizedStateSize;
+    if (modal?.modalState === 'maximized') return getMaximizedStateSize();
+    return MINIMIZED_STATE_SIZE;
+  }
+  function getMinimumSize() {
+    if (modal?.modalState === 'maximized') return MAXIMIZED_STATE_MINIMUM_SIZE;
+    return undefined;
   }
 
   const {
@@ -169,36 +174,42 @@ const WebAppModal: FC<OwnProps & StateProps> = ({
 
   const {
     isDragging,
+    isResizing,
     style: draggableStyle,
     size,
+    position,
   } = useDraggable(
     ref,
     headerRef,
     isDraggingEnabled,
     getSize(),
     isFullScreen,
+    getMinimumSize(),
+    cachedPosition,
   );
+
+  const x = position?.x;
+  const y = position?.y;
+  useEffect(() => {
+    if (!isDragging && x !== undefined && y !== undefined) {
+      updateMiniAppCachedPosition({ position: { x, y } });
+    }
+  }, [isDragging, x, y]);
+
+  useEffect(() => {
+    if (!isDragging && size && isMaximizedState) { updateMiniAppCachedSize({ size }); }
+  }, [isDragging, isMaximizedState, size]);
 
   const currentSize = size || getSize();
 
   const currentWidth = currentSize.width;
   const currentHeight = currentSize.height;
+
   useEffect(() => {
-    if (currentHeight === minimizedStateSize.height && currentWidth === minimizedStateSize.width) return;
-    if (isMaximizedState) {
-      const height = currentHeight - minimizedStateSize.height;
-      setFrameSize({ width: currentWidth, height });
+    if (isResizing) {
+      setMaximizedStateSize({ width: currentWidth, height: currentHeight });
     }
-    if (isFullScreen) {
-      setFrameSize({ width: window.innerWidth, height: window.innerHeight });
-    }
-  }, [currentWidth,
-    currentHeight,
-    isMaximizedState,
-    minimizedStateSize,
-    setFrameSize,
-    isFullScreen,
-    isMinimizedState]);
+  }, [currentHeight, currentWidth, isResizing, setMaximizedStateSize]);
 
   const oldLang = useOldLang();
   const lang = useLang();
@@ -304,6 +315,10 @@ const WebAppModal: FC<OwnProps & StateProps> = ({
 
   const handleCollapseClick = useLastCallback(() => {
     changeWebAppModalState({ state: 'minimized' });
+  });
+
+  const handleFullscreenClick = useLastCallback(() => {
+    changeWebAppModalState({ state: 'fullScreen' });
   });
 
   const handleOpenMoreAppsTabClick = useLastCallback(() => {
@@ -547,7 +562,6 @@ const WebAppModal: FC<OwnProps & StateProps> = ({
           )
         ))}
         {isMoreAppsTabActive && renderMoreAppsTab()}
-        {!isMoreAppsTabActive && renderMoreAppsButton()}
       </div>
     );
   }
@@ -588,18 +602,38 @@ const WebAppModal: FC<OwnProps & StateProps> = ({
         {renderTabs()}
         {renderMoreMenu()}
 
-        <Button
-          className={buildClassName(
-            styles.windowStateButton,
-            'no-drag',
+        <div className={styles.toolBar}>
+          {!isMoreAppsTabActive && renderMoreAppsButton()}
+
+          {!isMoreAppsTabActive && (
+            <Button
+              className={buildClassName(
+                styles.windowStateButton,
+                styles.fullscreenButton,
+                'no-drag',
+              )}
+              round
+              color="translucent"
+              size="tiny"
+              onClick={handleFullscreenClick}
+            >
+              <Icon className={styles.stateIcon} name="expand-modal" />
+            </Button>
           )}
-          round
-          color="translucent"
-          size="tiny"
-          onClick={handleCollapseClick}
-        >
-          <Icon className={styles.stateIcon} name="collapse-modal" />
-        </Button>
+
+          <Button
+            className={buildClassName(
+              styles.windowStateButton,
+              'no-drag',
+            )}
+            round
+            color="translucent"
+            size="tiny"
+            onClick={handleCollapseClick}
+          >
+            <Icon className={styles.stateIcon} name="collapse-modal" />
+          </Button>
+        </div>
       </div>
     );
   }
@@ -628,6 +662,25 @@ const WebAppModal: FC<OwnProps & StateProps> = ({
     );
   }
 
+  function buildResizeHandleClass(handleClassName: string) {
+    return buildClassName(RESIZE_HANDLE_CLASS_NAME, handleClassName);
+  }
+
+  function renderResizeHandles() {
+    return (
+      <>
+        <div className={buildResizeHandleClass('top')} />
+        <div className={buildResizeHandleClass('bottom')} />
+        <div className={buildResizeHandleClass('left')} />
+        <div className={buildResizeHandleClass('right')} />
+        <div className={buildResizeHandleClass('topLeft')} />
+        <div className={buildResizeHandleClass('topRight')} />
+        <div className={buildResizeHandleClass('bottomLeft')} />
+        <div className={buildResizeHandleClass('bottomRight')} />
+      </>
+    );
+  }
+
   return (
     <Modal
       dialogRef={ref}
@@ -638,6 +691,7 @@ const WebAppModal: FC<OwnProps & StateProps> = ({
         isFullScreen && styles.fullScreen,
       )}
       dialogStyle={supportMultiTabMode ? draggableStyle : undefined}
+      dialogContent={isDraggingEnabled ? renderResizeHandles() : undefined}
       isOpen={isOpen}
       isLowStackPriority
       onClose={handleModalClose}
@@ -654,9 +708,10 @@ const WebAppModal: FC<OwnProps & StateProps> = ({
           registerSendEventCallback={registerSendEventCallback}
           registerReloadFrameCallback={registerReloadFrameCallback}
           webApp={openedWebApps[key]}
-          isDragging={isDragging}
+          isTransforming={isDragging || isResizing}
           onContextMenuButtonClick={handleContextMenu}
           isMultiTabSupported={supportMultiTabMode}
+          modalHeight={currentHeight}
         />
       ))}
       { isMoreAppsTabActive && (<MoreAppsTabContent />)}
@@ -673,12 +728,16 @@ export default memo(withGlobal<OwnProps>(
     const bot = activeBotId ? selectUser(global, activeBotId) : undefined;
     const chat = selectCurrentChat(global);
     const theme = selectTheme(global);
+    const cachedPosition = global.settings.miniAppsCachedPosition;
+    const cachedSize = global.settings.miniAppsCachedSize;
 
     return {
       attachBot,
       bot,
       chat,
       theme,
+      cachedPosition,
+      cachedSize,
     };
   },
 )(WebAppModal));

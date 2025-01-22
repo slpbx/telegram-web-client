@@ -122,6 +122,7 @@ const Checkbox: FC<OwnProps> = ({
     Boolean(leftElement) && 'avatar',
     onlyInput && 'onlyInput',
     isRound && 'round',
+    Boolean(rightIcon) && 'withNestedList',
     className,
   );
 
@@ -145,14 +146,18 @@ const Checkbox: FC<OwnProps> = ({
           onChange={handleChange}
           onClick={onClickLabel ? handleInputClick : undefined}
         />
-        <div className={buildClassName('Checkbox-main', Boolean(leftElement) && 'Nested-avatar-list')}>
+        <div className={buildClassName(
+          'Checkbox-main',
+          Boolean(leftElement) && 'Nested-avatar-list',
+        )}
+        >
           <span className="label" dir="auto">
             {leftElement}
             {typeof label === 'string' ? renderText(label) : label}
             {labelText && <span className="ml-1">{renderText(labelText)}</span>}
-            {rightIcon && <i className={`icon icon-${rightIcon} right-icon`} />}
           </span>
           {subLabel && <span className="subLabel" dir="auto">{renderText(subLabel)}</span>}
+          {rightIcon && <Icon name={rightIcon} className="right-icon" />}
         </div>
         {nestedCheckbox && (
           <span className="nestedButton" dir="auto">

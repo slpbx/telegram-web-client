@@ -1,3 +1,30 @@
+import type { ApiInputMessageReplyInfo } from '../api/types';
+
+export type WebAppModalStateType = 'fullScreen' | 'maximized' | 'minimized';
+
+export type WebApp = {
+  url: string;
+  requestUrl?: string;
+  botId: string;
+  appName?: string;
+  buttonText: string;
+  peerId?: string;
+  queryId?: string;
+  slug?: string;
+  replyInfo?: ApiInputMessageReplyInfo;
+  canSendMessages?: boolean;
+  isRemoveModalOpen?: boolean;
+  isCloseModalOpen?: boolean;
+  shouldConfirmClosing?: boolean;
+  headerColor?: string;
+  backgroundColor?: string;
+  isBackButtonVisible?: boolean;
+  isSettingsButtonVisible?: boolean;
+  plannedEvents?: WebAppOutboundEvent[];
+  sendEvent?: (event: WebAppOutboundEvent) => void;
+  reloadFrame?: (url: string) => void;
+};
+
 export type PopupOptions = {
   title: string;
   message: string;
@@ -112,8 +139,9 @@ export type WebAppInboundEvent =
   }> |
   WebAppEvent<'web_app_request_viewport' | 'web_app_request_theme' | 'web_app_ready' | 'web_app_expand'
   | 'web_app_request_phone' | 'web_app_close' | 'web_app_close_scan_qr_popup'
-  | 'web_app_request_write_access' | 'web_app_request_phone' | 'iframe_will_reload'
-  | 'web_app_biometry_get_info' | 'web_app_biometry_open_settings'
+  | 'web_app_request_write_access' | 'iframe_will_reload'
+  | 'web_app_biometry_get_info' | 'web_app_biometry_open_settings' | 'web_app_request_emoji_status_access'
+  | 'web_app_check_location' | 'web_app_request_location' | 'web_app_open_location_settings'
   | 'web_app_request_fullscreen' | 'web_app_exit_fullscreen'
   | 'web_app_request_safe_area' | 'web_app_request_content_safe_area',
   null>;
@@ -151,6 +179,9 @@ export type WebAppOutboundEvent =
   }> |
   WebAppEvent<'fullscreen_changed', {
     is_fullscreen: boolean;
+  }> |
+  WebAppEvent<'visibility_changed', {
+    is_visible: boolean;
   }> |
   WebAppEvent<'fullscreen_failed', {
     error: 'UNSUPPORTED' | string;
@@ -193,6 +224,33 @@ export type WebAppOutboundEvent =
   }> |
   WebAppEvent<'biometry_token_updated', {
     status: 'updated' | 'removed' | 'failed';
+  }> |
+  WebAppEvent<'location_checked', {
+    available: false;
+  } | {
+    available: boolean;
+    access_requested: boolean;
+    access_granted?: boolean;
+  }> |
+  WebAppEvent<'location_requested', {
+    available: boolean;
+  } | {
+    available: boolean;
+    latitude: number;
+    longitude: number;
+    altitude: number | null;
+    course: number | null;
+    speed: number | null;
+    horizontal_accuracy: number | null;
+    vertical_accuracy: number | null;
+    course_accuracy: number | null;
+    speed_accuracy: number | null;
+  }> |
+  WebAppEvent<'emoji_status_access_requested', {
+    status: 'allowed' | 'cancelled';
+  }> |
+  WebAppEvent<'access_requested', {
+    available: true;
   }> |
   WebAppEvent<'emoji_status_failed', {
     error: 'UNSUPPORTED' | 'USER_DECLINED' | 'SUGGESTED_EMOJI_INVALID'

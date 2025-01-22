@@ -1,32 +1,45 @@
 import type { FC } from '../../../lib/teact/teact';
 import React, {
   memo, useEffect,
+  useMemo,
   useRef, useState,
 } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
-import type { ApiAttachBot, ApiChat, ApiUser } from '../../../api/types';
-import type { TabState, WebApp, WebAppModalStateType } from '../../../global/types';
-import type { ThemeKey } from '../../../types';
-import type { PopupOptions, WebAppInboundEvent, WebAppOutboundEvent } from '../../../types/webapp';
+import type {
+  ApiAttachBot, ApiBotAppSettings, ApiUser,
+} from '../../../api/types';
+import type { TabState } from '../../../global/types';
+import type { BotAppPermissions, ThemeKey } from '../../../types';
+import type {
+  PopupOptions,
+  WebApp,
+  WebAppInboundEvent,
+  WebAppModalStateType,
+  WebAppOutboundEvent,
+} from '../../../types/webapp';
 
 import { TME_LINK_PREFIX } from '../../../config';
 import { convertToApiChatType } from '../../../global/helpers';
 import { getWebAppKey } from '../../../global/helpers/bots';
 import {
-  selectCurrentChat, selectTabState, selectTheme, selectUser,
+  selectBotAppPermissions,
+  selectTabState,
+  selectTheme,
+  selectUser,
+  selectUserFullInfo,
   selectWebApp,
 } from '../../../global/selectors';
 import buildClassName from '../../../util/buildClassName';
-import buildStyle from '../../../util/buildStyle';
 import download from '../../../util/download';
 import { extractCurrentThemeParams, validateHexColor } from '../../../util/themeStyle';
+import { getGeolocationStatus, IS_GEOLOCATION_SUPPORTED } from '../../../util/windowEnvironment';
 import { callApi } from '../../../api/gramjs';
-import { REM } from '../../common/helpers/mediaDimensions';
 import renderText from '../../common/helpers/renderText';
 
 import { getIsWebAppsFullscreenSupported } from '../../../hooks/useAppLayout';
 import useCurrentOrPrev from '../../../hooks/useCurrentOrPrev';
+import useEffectWithPrevDeps from '../../../hooks/useEffectWithPrevDeps';
 import useFlag from '../../../hooks/useFlag';
 import useLang from '../../../hooks/useLang';
 import useLastCallback from '../../../hooks/useLastCallback';
@@ -61,19 +74,22 @@ export type OwnProps = {
   registerSendEventCallback: (callback: (event: WebAppOutboundEvent) => void) => void;
   registerReloadFrameCallback: (callback: (url: string) => void) => void;
   onContextMenuButtonClick: (e: React.MouseEvent) => void;
-  isDragging?: boolean;
-  frameSize?: { width: number; height: number };
+  isTransforming?: boolean;
   isMultiTabSupported? : boolean;
+  modalHeight: number;
 };
 
 type StateProps = {
-  chat?: ApiChat;
   bot?: ApiUser;
+  currentUser?: ApiUser;
+  botAppSettings?: ApiBotAppSettings;
   attachBot?: ApiAttachBot;
   theme?: ThemeKey;
   isPaymentModalOpen?: boolean;
   paymentStatus?: TabState['payment']['status'];
+  isPremium?: boolean;
   modalState?: WebAppModalStateType;
+  botAppPermissions?: BotAppPermissions;
 };
 
 const NBSP = '\u00A0';
@@ -108,11 +124,13 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
   paymentStatus,
   registerSendEventCallback,
   registerReloadFrameCallback,
-  isDragging,
+  isTransforming,
   modalState,
-  frameSize,
   isMultiTabSupported,
   onContextMenuButtonClick,
+  botAppPermissions,
+  botAppSettings,
+  modalHeight,
 }) => {
   const {
     closeActiveWebApp,
@@ -124,6 +142,10 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
     sharePhoneWithBot,
     updateWebApp,
     resetPaymentStatus,
+    openChatWithInfo,
+    showNotification,
+    openEmojiStatusAccessModal,
+    openLocationAccessModal,
     changeWebAppModalState,
     closeWebAppModal,
   } = getActions();
@@ -169,8 +191,13 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
   const activeWebApp = modal?.activeWebAppKey ? modal.openedWebApps[modal.activeWebAppKey] : undefined;
   const activeWebAppName = activeWebApp?.appName;
   const {
-    url, buttonText, headerColor, serverHeaderColorKey, serverHeaderColor, isBackButtonVisible,
+    url, buttonText, isBackButtonVisible,
   } = webApp || {};
+
+  const {
+    placeholderPath,
+  } = botAppSettings || {};
+
   const isCloseModalOpen = Boolean(webApp?.isCloseModalOpen);
   const isRemoveModalOpen = Boolean(webApp?.isRemoveModalOpen);
 
@@ -179,16 +206,45 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
 
   const isActive = (activeWebApp && webApp) && activeWebAppKey === webAppKey;
 
+  const isAvailable = IS_GEOLOCATION_SUPPORTED;
+  const isAccessRequested = botAppPermissions?.geolocation !== undefined;
+  const isAccessGranted = Boolean(botAppPermissions?.geolocation);
+
   const updateCurrentWebApp = useLastCallback((updatedPartialWebApp: Partial<WebApp>) => {
     if (!webAppKey) return;
     updateWebApp({ key: webAppKey, update: updatedPartialWebApp });
   });
 
+  const themeParams = useMemo(() => {
+    return extractCurrentThemeParams();
+    // eslint-disable-next-line react-hooks-static-deps/exhaustive-deps
+  }, [theme]);
+
   useEffect(() => {
-    const themeParams = extractCurrentThemeParams();
     setBottomBarColor(themeParams.secondary_bg_color);
-    updateCurrentWebApp({ headerColor: themeParams.bg_color, backgroundColor: themeParams.bg_color });
-  }, []);
+  }, [themeParams]);
+
+  const themeBackgroundColor = themeParams.bg_color;
+  const [backgroundColorFromEvent, setBackgroundColorFromEvent] = useState<string | undefined>();
+  const backgroundColorFromSettings = theme === 'light' ? botAppSettings?.backgroundColor
+    : botAppSettings?.backgroundDarkColor;
+
+  useEffect(() => {
+    const color = backgroundColorFromEvent || backgroundColorFromSettings || themeBackgroundColor;
+
+    updateCurrentWebApp({ backgroundColor: color });
+  }, [themeBackgroundColor, backgroundColorFromEvent, backgroundColorFromSettings]);
+
+  const themeHeaderColor = themeParams.bg_color;
+  const [headerColorFromEvent, setHeaderColorFromEvent] = useState<string | undefined>();
+  const headerColorFromSettings = theme === 'light' ? botAppSettings?.headerColor
+    : botAppSettings?.headerDarkColor;
+
+  useEffect(() => {
+    const color = headerColorFromEvent || headerColorFromSettings || themeHeaderColor;
+
+    updateCurrentWebApp({ headerColor: color });
+  }, [themeHeaderColor, headerColorFromEvent, headerColorFromSettings]);
 
   // eslint-disable-next-line no-null/no-null
   const frameRef = useRef<HTMLIFrameElement>(null);
@@ -210,8 +266,8 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
     if (isActive) registerReloadFrameCallback(reloadFrame);
   }, [reloadFrame, registerReloadFrameCallback, isActive]);
 
-  const isMainButtonVisible = mainButton?.isVisible && mainButton.text.trim().length > 0;
-  const isSecondaryButtonVisible = secondaryButton?.isVisible && secondaryButton.text.trim().length > 0;
+  const isMainButtonVisible = isLoaded && mainButton?.isVisible && mainButton.text.trim().length > 0;
+  const isSecondaryButtonVisible = isLoaded && secondaryButton?.isVisible && secondaryButton.text.trim().length > 0;
 
   const handleHideCloseModal = useLastCallback(() => {
     updateCurrentWebApp({ isCloseModalOpen: false });
@@ -254,32 +310,8 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
     handleAppPopupClose();
   });
 
-  const calculateHeaderColor = useLastCallback(
-    (serverColorKey? : 'bg_color' | 'secondary_bg_color', serverColor? : string) => {
-      if (serverColorKey) {
-        const themeParams = extractCurrentThemeParams();
-        const key = serverColorKey;
-        const newColor = themeParams[key];
-        const color = validateHexColor(newColor) ? newColor : headerColor;
-        updateCurrentWebApp({ headerColor: color, serverHeaderColorKey: key });
-      }
-
-      if (serverColor) {
-        const color = validateHexColor(serverColor) ? serverColor : headerColor;
-        updateCurrentWebApp({ headerColor: color, serverHeaderColor: serverColor });
-      }
-    },
-  );
-
-  const updateHeaderColor = useLastCallback(
-    () => {
-      calculateHeaderColor(serverHeaderColorKey, serverHeaderColor);
-    },
-  );
-
   const sendThemeCallback = useLastCallback(() => {
     sendTheme();
-    updateHeaderColor();
   });
 
   // Notify view that theme changed
@@ -314,6 +346,30 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
       sendFullScreenChangedCallback(false);
     }
   }, [isFullscreen]);
+
+  const visibilityChangedCallBack = useLastCallback((visibility: boolean) => {
+    sendEvent({
+      eventType: 'visibility_changed',
+      eventData: {
+        is_visible: visibility,
+      },
+    });
+  });
+
+  useEffect(() => {
+    if (isLoaded) {
+      visibilityChangedCallBack(Boolean(isActive));
+    }
+  }, [isActive, isLoaded]);
+
+  useEffectWithPrevDeps(([prevModalState]) => {
+    if (modalState === 'minimized') {
+      visibilityChangedCallBack(false);
+    }
+    if (modalState && prevModalState === 'minimized') {
+      visibilityChangedCallBack(true);
+    }
+  }, [modalState]);
 
   useSyncEffect(([prevIsPaymentModalOpen]) => {
     if (isPaymentModalOpen === prevIsPaymentModalOpen) return;
@@ -389,7 +445,8 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
   });
 
   const handleAcceptWriteAccess = useLastCallback(async () => {
-    const result = await callApi('allowBotSendMessages', { bot: bot! });
+    if (!bot) return;
+    const result = await callApi('allowBotSendMessages', { bot });
     if (!result) {
       handleRejectWriteAccess();
       return;
@@ -406,8 +463,9 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
   });
 
   async function handleRequestWriteAccess() {
+    if (!bot) return;
     const canWrite = await callApi('fetchBotCanSendMessage', {
-      bot: bot!,
+      bot,
     });
 
     if (canWrite) {
@@ -418,7 +476,6 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
         },
       });
     }
-
     setIsRequestingWriteAccess(!canWrite);
   }
 
@@ -491,6 +548,10 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
     }
   }, [isOpen]);
 
+  const handleOpenChat = useLastCallback(() => {
+    openChatWithInfo({ id: bot!.id });
+  });
+
   function handleEvent(event: WebAppInboundEvent) {
     const { eventType, eventData } = event;
 
@@ -526,13 +587,12 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
     }
 
     if (eventType === 'web_app_set_background_color') {
-      const themeParams = extractCurrentThemeParams();
-      const color = validateHexColor(eventData.color) ? eventData.color : themeParams.bg_color;
-      updateCurrentWebApp({ backgroundColor: color });
+      setBackgroundColorFromEvent(validateHexColor(eventData.color) ? eventData.color : undefined);
     }
 
     if (eventType === 'web_app_set_header_color') {
-      calculateHeaderColor(eventData.color_key, eventData.color);
+      const key = eventData.color_key;
+      setHeaderColorFromEvent(eventData.color || (key ? themeParams[key] : undefined));
     }
 
     if (eventType === 'web_app_set_bottom_bar_color') {
@@ -581,8 +641,8 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
 
     if (eventType === 'web_app_open_popup') {
       if (popupParameters || !eventData.message.trim().length || !eventData.buttons?.length
-      || eventData.buttons.length > 3 || isRequestingPhone || isRequestingWriteAccess
-      || unlockPopupsAt > Date.now()) {
+        || eventData.buttons.length > 3 || isRequestingPhone || isRequestingWriteAccess
+        || unlockPopupsAt > Date.now()) {
         handleAppPopupClose(undefined);
         return;
       }
@@ -637,6 +697,74 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
       }
       handleCheckDownloadFile(eventData.url, eventData.file_name);
     }
+
+    if (eventType === 'web_app_request_emoji_status_access') {
+      if (!bot) return;
+      openEmojiStatusAccessModal({ bot, webAppKey });
+    }
+
+    if (eventType === 'web_app_check_location') {
+      const handleGeolocationCheck = () => {
+        sendEvent({
+          eventType: 'location_checked',
+          eventData: {
+            available: isAvailable,
+            access_requested: isAccessRequested,
+            access_granted: isAccessGranted,
+          },
+        });
+      };
+
+      handleGeolocationCheck();
+    }
+
+    if (eventType === 'web_app_request_location') {
+      const handleRequestLocation = async () => {
+        const geolocationData = await getGeolocationStatus();
+        const { accessRequested, accessGranted, geolocation } = geolocationData;
+
+        if (!accessGranted || !accessRequested) {
+          sendEvent({
+            eventType: 'location_requested',
+            eventData: {
+              available: false,
+            },
+          });
+          showNotification({ message: oldLang('PermissionNoLocationPosition') });
+          handleAppPopupClose(undefined);
+          return;
+        }
+
+        if (isAvailable) {
+          if (isAccessRequested) {
+            sendEvent({
+              eventType: 'location_requested',
+              eventData: {
+                available: botAppPermissions?.geolocation!,
+                latitude: geolocation?.latitude,
+                longitude: geolocation?.longitude,
+                altitude: geolocation?.altitude,
+                course: geolocation?.heading,
+                speed: geolocation?.speed,
+                horizontal_accuracy: geolocation?.accuracy,
+                vertical_accuracy: geolocation?.accuracy,
+              },
+            });
+          } else {
+            openLocationAccessModal({ bot, webAppKey });
+          }
+        } else {
+          showNotification({ message: oldLang('PermissionNoLocationPosition') });
+          handleAppPopupClose(undefined);
+        }
+      };
+
+      handleRequestLocation();
+    }
+
+    if (eventType === 'web_app_open_location_settings') {
+      handleOpenChat();
+    }
   }
 
   const mainButtonCurrentColor = useCurrentOrPrev(mainButton?.color, true);
@@ -665,10 +793,11 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
     setTimeout(() => {
       sendViewport();
       sendSafeArea();
-    }, ANIMATION_WAIT);
+    }, isTransforming ? 0 : ANIMATION_WAIT);
   }, [shouldShowSecondaryButton, shouldHideSecondaryButton,
     shouldShowMainButton, shouldShowMainButton,
-    secondaryButton?.position, sendViewport, sendSafeArea]);
+    secondaryButton?.position, sendViewport, isTransforming, modalHeight,
+    sendSafeArea]);
 
   const isVerticalLayout = secondaryButtonCurrentPosition === 'top' || secondaryButtonCurrentPosition === 'bottom';
   const isHorizontalLayout = !isVerticalLayout;
@@ -763,16 +892,7 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
     }
   }, [setShouldDecreaseWebFrameSize, shouldShowSecondaryButton, shouldShowMainButton]);
 
-  const frameWidth = frameSize?.width || 0;
-  let frameHeight = frameSize?.height || 0;
-  if (shouldDecreaseWebFrameSize) { frameHeight -= 4 * REM; }
-  const frameStyle = frameSize ? buildStyle(
-    `left: ${0}px;`,
-    `top: ${0}px;`,
-    `width: ${frameWidth}px;`,
-    `height: ${frameHeight}px;`,
-    isDragging ? 'pointer-events: none;' : '',
-  ) : isDragging ? 'pointer-events: none;' : '';
+  const frameStyle = isTransforming ? 'pointer-events: none;' : '';
 
   const handleBackClick = useLastCallback(() => {
     if (isBackButtonVisible) {
@@ -882,6 +1002,32 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
     );
   }
 
+  function renderDefaultPlaceholder() {
+    const className = buildClassName(styles.loadingPlaceholder, styles.defaultPlaceholderGrid, isLoaded && styles.hide);
+    return (
+      <div className={className}>
+        <div className={styles.placeholderSquare} />
+        <div className={styles.placeholderSquare} />
+        <div className={styles.placeholderSquare} />
+        <div className={styles.placeholderSquare} />
+      </div>
+    );
+  }
+
+  function renderPlaceholder() {
+    if (!placeholderPath) {
+      return renderDefaultPlaceholder();
+    }
+    return (
+      <svg
+        className={buildClassName(styles.loadingPlaceholder, isLoaded && styles.hide)}
+        viewBox="0 0 512 512"
+      >
+        <path className={styles.placeholderPath} d={placeholderPath} />
+      </svg>
+    );
+  }
+
   return (
     <div
       ref={containerRef}
@@ -892,7 +1038,7 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
       )}
     >
       {isFullscreen && getIsWebAppsFullscreenSupported() && renderFullscreenHeaderPanel()}
-      {!isMinimizedState && <Spinner className={buildClassName(styles.loadingSpinner, isLoaded && styles.hide)} />}
+      {!isMinimizedState && renderPlaceholder()}
       <iframe
         className={buildClassName(
           styles.frame,
@@ -936,7 +1082,7 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
           >
             {!secondaryButton?.isProgressVisible && secondaryButtonCurrentText}
             {secondaryButton?.isProgressVisible
-            && <Spinner className={styles.mainButtonSpinner} color="blue" />}
+              && <Spinner className={styles.mainButtonSpinner} color="blue" />}
           </Button>
           <Button
             className={buildClassName(
@@ -1003,7 +1149,7 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
       />
       <ConfirmDialog
         isOpen={Boolean(requestedFileDownload)}
-        title={lang('BotDownloadFileTitle')}
+        title={oldLang('BotDownloadFileTitle')}
         textParts={lang('BotDownloadFileDescription', {
           bot: bot?.firstName,
           filename: requestedFileDownload?.fileName,
@@ -1011,7 +1157,7 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
           withNodes: true,
           withMarkdown: true,
         })}
-        confirmLabel={lang('BotDownloadFileButton')}
+        confirmLabel={oldLang('BotDownloadFileButton')}
         onClose={handleRejectFileDownload}
         confirmHandler={handleDownloadFile}
       />
@@ -1045,21 +1191,26 @@ export default memo(withGlobal<OwnProps>(
 
     const attachBot = activeBotId ? global.attachMenu.bots[activeBotId] : undefined;
     const bot = activeBotId ? selectUser(global, activeBotId) : undefined;
-    const chat = selectCurrentChat(global);
+    const userFullInfo = activeBotId ? selectUserFullInfo(global, activeBotId) : undefined;
+    const botAppSettings = userFullInfo?.botInfo?.appSettings;
+    const currentUser = global.currentUserId ? selectUser(global, global.currentUserId) : undefined;
     const theme = selectTheme(global);
     const { isPaymentModalOpen, status: regularPaymentStatus } = selectTabState(global).payment;
     const { status: starsPaymentStatus, inputInvoice: starsInputInvoice } = selectTabState(global).starsPayment;
+    const botAppPermissions = bot ? selectBotAppPermissions(global, bot.id) : undefined;
 
     const paymentStatus = starsPaymentStatus || regularPaymentStatus;
 
     return {
       attachBot,
       bot,
-      chat,
+      currentUser,
       theme,
       isPaymentModalOpen: isPaymentModalOpen || Boolean(starsInputInvoice),
       paymentStatus,
       modalState,
+      botAppPermissions,
+      botAppSettings,
     };
   },
 )(WebAppModalTabContent));

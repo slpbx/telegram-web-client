@@ -18,6 +18,7 @@ import { selectChat, selectChatFullInfo } from '../../../global/selectors';
 import useHistoryBack from '../../../hooks/useHistoryBack';
 import useOldLang from '../../../hooks/useOldLang';
 
+import Icon from '../../common/icons/Icon';
 import ReactionStaticEmoji from '../../common/reactions/ReactionStaticEmoji';
 import Checkbox from '../../ui/Checkbox';
 import FloatingActionButton from '../../ui/FloatingActionButton';
@@ -204,7 +205,7 @@ const ManageReactions: FC<OwnProps & StateProps> = ({
               renderValue={renderReactionsMaxCountValue}
               isCenteredLayout
             />
-            <p className="section-info mt-4">
+            <p className="section-info section-info_push">
               {lang('ChannelReactions.MaxCount.Info')}
             </p>
           </div>
@@ -219,7 +220,7 @@ const ManageReactions: FC<OwnProps & StateProps> = ({
             options={reactionsOptions}
             onChange={handleReactionsOptionChange}
           />
-          <p className="section-info mt-4">
+          <p className="section-info section-info_push">
             {localEnabledReactions?.type === 'all' && lang('EnableAllReactionsInfo')}
             {localEnabledReactions?.type === 'some' && lang('EnableSomeReactionsInfo')}
             {!localEnabledReactions && lang('DisableReactionsInfo')}
@@ -259,7 +260,7 @@ const ManageReactions: FC<OwnProps & StateProps> = ({
         {isLoading ? (
           <Spinner color="white" />
         ) : (
-          <i className="icon icon-check" />
+          <Icon name="check" />
         )}
       </FloatingActionButton>
     </div>

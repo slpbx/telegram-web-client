@@ -26,6 +26,7 @@ import usePreviousDeprecated from '../../../hooks/usePreviousDeprecated';
 import useShowTransition from '../../../hooks/useShowTransition';
 import useBlurredMediaThumbRef from './hooks/useBlurredMediaThumbRef';
 
+import Icon from '../../common/icons/Icon';
 import MediaSpoiler from '../../common/MediaSpoiler';
 import OptimizedVideo from '../../ui/OptimizedVideo';
 import ProgressSpinner from '../../ui/ProgressSpinner';
@@ -123,20 +124,22 @@ const Video = <T,>({
   const hasThumb = Boolean(thumbDataUri);
   const withBlurredBackground = Boolean(forcedWidth);
 
+  const isInline = fullMediaData && wasIntersectedRef.current;
+
+  const isUnsupported = useUnsupportedMedia(videoRef, true, !isInline);
+
   const previewMediaHash = !isPaidPreview ? getVideoMediaHash(video, 'preview') : undefined;
   const [isPreviewPreloaded] = useState(Boolean(previewMediaHash && mediaLoader.getFromMemory(previewMediaHash)));
   const canLoadPreview = isIntersectingForLoading;
   const previewBlobUrl = useMedia(previewMediaHash, !canLoadPreview);
-  const previewRef = useMediaTransition<HTMLImageElement>((hasThumb || previewBlobUrl) && !isPlayerReady);
+  const shouldHidePreview = isPlayerReady && !isUnsupported;
+  const previewRef = useMediaTransition<HTMLImageElement>((hasThumb || previewBlobUrl) && !shouldHidePreview);
 
   const noThumb = Boolean(!hasThumb || previewBlobUrl || isPlayerReady);
   const thumbRef = useBlurredMediaThumbRef(video, noThumb);
   useMediaTransition(!noThumb, { ref: thumbRef });
   const blurredBackgroundRef = useBlurredMediaThumbRef(video, !withBlurredBackground);
 
-  const isInline = fullMediaData && wasIntersectedRef.current;
-
-  const isUnsupported = useUnsupportedMedia(videoRef, true, !isInline);
   const { loadProgress: downloadProgress } = useMediaWithLoadProgress(
     !isPaidPreview ? getVideoMediaHash(video, 'download') : undefined,
     !isDownloading,
@@ -169,7 +172,8 @@ const Video = <T,>({
     setPlayProgress(Math.max(0, e.currentTarget.currentTime - 1));
   });
 
-  const duration = (Number.isFinite(videoRef.current?.duration) ? videoRef.current?.duration : video.duration) || 0;
+  const duration = (Number.isFinite(videoRef.current?.duration) && !isUnsupported
+    ? videoRef.current?.duration : video.duration) || 0;
 
   const {
     width, height,
@@ -268,7 +272,7 @@ const Video = <T,>({
         <canvas ref={thumbRef} className="thumbnail" />
       )}
       {isProtected && <span className="protector" />}
-      <i ref={playButtonRef} className="icon icon-large-play" />
+      <Icon ref={playButtonRef} name="large-play" />
       <MediaSpoiler
         isVisible={isSpoilerShown}
         withAnimation
@@ -286,7 +290,7 @@ const Video = <T,>({
         </div>
       )}
       {!isLoadAllowed && !fullMediaData && (
-        <i className="icon icon-download" />
+        <Icon name="download" />
       )}
       {isTransferring && (!isUnsupported || isDownloading) ? (
         <span className="message-transfer-progress">
@@ -295,7 +299,7 @@ const Video = <T,>({
       ) : (
         <div className="message-media-duration">
           {!isPaidPreview && video.isGif ? 'GIF' : formatMediaDuration(Math.max(duration - playProgress, 0))}
-          {isUnsupported && <i className="icon icon-message-failed playback-failed" />}
+          {isUnsupported && <Icon name="message-failed" className="playback-failed" />}
         </div>
       )}
     </div>

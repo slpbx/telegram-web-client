@@ -36,7 +36,6 @@ type OwnProps = {
   isCurrentUserPremium?: boolean;
   observeIntersection?: ObserveFn;
   noRecentReactors?: boolean;
-  availableStars?: number;
 };
 
 const MAX_RECENT_AVATARS = 3;
@@ -52,7 +51,6 @@ const Reactions: FC<OwnProps> = ({
   noRecentReactors,
   isCurrentUserPremium,
   tags,
-  availableStars,
 }) => {
   const {
     toggleReaction,
@@ -66,6 +64,7 @@ const Reactions: FC<OwnProps> = ({
   const lang = useOldLang();
 
   const { results, areTags, recentReactions } = message.reactions!;
+  const withServiceReactions = Boolean(message.areReactionsPossible && message.reactions);
 
   const totalCount = useMemo(() => (
     results.reduce((acc, reaction) => acc + reaction.count, 0)
@@ -180,7 +179,11 @@ const Reactions: FC<OwnProps> = ({
 
   return (
     <div
-      className={buildClassName('Reactions', isOutside && 'is-outside')}
+      className={buildClassName(
+        'Reactions',
+        isOutside && 'is-outside',
+        withServiceReactions && 'is-service',
+      )}
       style={maxWidth ? `max-width: ${maxWidth}px` : undefined}
       dir={lang.isRtl ? 'rtl' : 'ltr'}
     >
@@ -216,7 +219,6 @@ const Reactions: FC<OwnProps> = ({
             onClick={handleClick}
             onPaidClick={handlePaidClick}
             observeIntersection={observeIntersection}
-            availableStars={availableStars}
           />
         )
       ))}

@@ -1,8 +1,8 @@
 import BigInt from 'big-integer';
 import { Api as GramJs } from '../../../lib/gramjs';
+import { RPCError } from '../../../lib/gramjs/errors';
 
-import type { WebPageMediaSize } from '../../../global/types';
-import type { ThreadId } from '../../../types';
+import type { ThreadId, WebPageMediaSize } from '../../../types';
 import type {
   ApiAttachment,
   ApiChat,
@@ -13,6 +13,7 @@ import type {
   ApiInputReplyInfo,
   ApiMessage,
   ApiMessageEntity,
+  ApiMessageSearchContext,
   ApiMessageSearchType,
   ApiNewPoll,
   ApiOnProgress,
@@ -41,7 +42,6 @@ import {
   SUPPORTED_PHOTO_CONTENT_TYPES,
   SUPPORTED_VIDEO_CONTENT_TYPES,
 } from '../../../config';
-import { getEmojiOnlyCountForMessage } from '../../../global/helpers/getEmojiOnlyCountForMessage';
 import { fetchFile } from '../../../util/files';
 import { compact, split } from '../../../util/iteratees';
 import { getMessageKey } from '../../../util/keys/messageKey';
@@ -153,7 +153,7 @@ export async function fetchMessages({
       abortControllerThreadId: threadId,
     });
   } catch (err: any) {
-    if (err.message === 'CHANNEL_PRIVATE') {
+    if (err.errorMessage === 'CHANNEL_PRIVATE') {
       sendApiUpdate({
         '@type': 'updateChat',
         id: chat.id,
@@ -421,7 +421,7 @@ export function sendMessage(
       });
       if (update) handleLocalMessageUpdate(localMessage, update);
     } catch (error: any) {
-      if (error.message === 'PRIVACY_PREMIUM_REQUIRED') {
+      if (error.errorMessage === 'PRIVACY_PREMIUM_REQUIRED') {
         sendApiUpdate({ '@type': 'updateRequestUserUpdate', id: chat.id });
       }
 
@@ -623,7 +623,6 @@ export async function editMessage({
   const messageUpdate: Partial<ApiMessage> = {
     ...message,
     content: newContent,
-    emojiOnlyCount: getEmojiOnlyCountForMessage(newContent, message.groupedId),
     isInvertedMedia,
   };
 
@@ -1121,6 +1120,18 @@ export function fetchPaidReactionPrivacy() {
   return invokeRequest(new GramJs.messages.GetPaidReactionPrivacy(), { shouldReturnTrue: true });
 }
 
+export function reportMessagesDelivery({
+  chat, messageIds,
+}: {
+  chat: ApiChat;
+  messageIds: number[];
+}) {
+  return invokeRequest(new GramJs.messages.ReportMessagesDelivery({
+    peer: buildInputPeer(chat.id, chat.accessHash),
+    id: messageIds,
+  }));
+}
+
 export async function fetchDiscussionMessage({
   chat, messageId,
 }: {
@@ -1257,7 +1268,7 @@ export async function searchMessagesInChat({
 }
 
 export async function searchMessagesGlobal({
-  query, offsetRate = 0, offsetPeer, offsetId, limit, type = 'text', minDate, maxDate,
+  query, offsetRate = 0, offsetPeer, offsetId, limit, type = 'text', minDate, maxDate, context = 'all',
 }: {
   query: string;
   offsetRate?: number;
@@ -1265,6 +1276,7 @@ export async function searchMessagesGlobal({
   offsetId?: number;
   limit: number;
   type?: ApiGlobalMessageSearchType;
+  context?: ApiMessageSearchContext;
   minDate?: number;
   maxDate?: number;
 }): Promise<SearchResults | undefined> {
@@ -1302,7 +1314,9 @@ export async function searchMessagesGlobal({
     offsetRate,
     offsetPeer: peer,
     offsetId,
-    broadcastsOnly: type === 'channels' || undefined,
+    broadcastsOnly: type === 'channels' || context === 'channels' || undefined,
+    groupsOnly: context === 'groups' || undefined,
+    usersOnly: context === 'users' || undefined,
     limit,
     filter,
     minDate,
@@ -1400,7 +1414,7 @@ export async function fetchWebPagePreview({
     entities: textWithEntities.entities,
   }));
 
-  return preview && buildWebPage(preview);
+  return preview && buildWebPage(preview.media);
 }
 
 export async function sendPollVote({
@@ -1771,8 +1785,8 @@ export async function reportSponsoredMessage({
     }
 
     return buildApiSponsoredMessageReportResult(result);
-  } catch (err) {
-    if (err instanceof Error && err.message === 'PREMIUM_ACCOUNT_REQUIRED') {
+  } catch (err: unknown) {
+    if (err instanceof RPCError && err.errorMessage === 'PREMIUM_ACCOUNT_REQUIRED') {
       return {
         type: 'premiumRequired' as const,
       };
@@ -1964,7 +1978,10 @@ function handleMultipleLocalMessagesUpdate(
     return true;
   });
 
-  handleGramJsUpdate(otherUpdates);
+  // Illegal monkey patching. Easier than creating mock update object
+  update.updates = otherUpdates;
+
+  handleGramJsUpdate(update);
 }
 
 function handleLocalMessageUpdate(

@@ -22,6 +22,7 @@ import useMedia from '../../../hooks/useMedia';
 import useOldLang from '../../../hooks/useOldLang';
 import usePreviousDeprecated from '../../../hooks/usePreviousDeprecated';
 
+import Icon from '../../common/icons/Icon';
 import ManageUsernames from '../../common/ManageUsernames';
 import SafeLink from '../../common/SafeLink';
 import UsernameInput from '../../common/UsernameInput';
@@ -247,13 +248,15 @@ const SettingsEditProfile: FC<OwnProps & StateProps> = ({
         <div className="settings-item">
           <h4 className="settings-item-header" dir={lang.isRtl ? 'rtl' : undefined}>{lang('Username')}</h4>
 
-          <UsernameInput
-            currentUsername={currentUsername}
-            isLoading={isLoading}
-            isUsernameAvailable={isUsernameAvailable}
-            checkedUsername={checkedUsername}
-            onChange={handleUsernameChange}
-          />
+          <div className="settings-input">
+            <UsernameInput
+              currentUsername={currentUsername}
+              isLoading={isLoading}
+              isUsernameAvailable={isUsernameAvailable}
+              checkedUsername={checkedUsername}
+              onChange={handleUsernameChange}
+            />
+          </div>
 
           {editUsernameError === USERNAME_PURCHASE_ERROR && renderPurchaseLink()}
           <p className="settings-item-description" dir={lang.isRtl ? 'rtl' : undefined}>
@@ -284,7 +287,7 @@ const SettingsEditProfile: FC<OwnProps & StateProps> = ({
         {isLoading ? (
           <Spinner color="white" />
         ) : (
-          <i className="icon icon-check" />
+          <Icon name="check" />
         )}
       </FloatingActionButton>
     </div>

@@ -1,7 +1,6 @@
 import bigInt from 'big-integer';
 import { Api as GramJs } from '../../../lib/gramjs';
 
-import type { ApiPremiumSection } from '../../../global/types';
 import type {
   ApiBoost,
   ApiBoostsStatus,
@@ -15,24 +14,25 @@ import type {
   ApiPaymentSavedInfo,
   ApiPremiumGiftCodeOption,
   ApiPremiumPromo,
+  ApiPremiumSection,
   ApiPremiumSubscriptionOption,
   ApiPrepaidGiveaway,
   ApiPrepaidStarsGiveaway,
   ApiReceipt,
-  ApiStarGift,
   ApiStarGiveawayOption,
+  ApiStarsAmount,
   ApiStarsGiveawayWinnerOption,
   ApiStarsSubscription,
   ApiStarsTransaction,
   ApiStarsTransactionPeer,
   ApiStarTopupOption,
-  ApiUserStarGift,
   BoughtPaidMedia,
 } from '../../types';
 
 import { addWebDocumentToLocalDb } from '../helpers';
 import { buildApiStarsSubscriptionPricing } from './chats';
-import { buildApiFormattedText, buildApiMessageEntity } from './common';
+import { buildApiMessageEntity } from './common';
+import { buildApiStarGift } from './gifts';
 import { omitVirtualClassFields } from './helpers';
 import { buildApiDocument, buildApiWebDocument, buildMessageMediaContent } from './messageContent';
 import { buildApiPeerId, getApiChatIdFromMtpPeer } from './peers';
@@ -461,6 +461,13 @@ export function buildApiStarsGiftOptions(option: GramJs.StarsGiftOption): ApiSta
   };
 }
 
+export function buildApiStarsAmount(amount: GramJs.StarsAmount): ApiStarsAmount {
+  return {
+    amount: amount.amount.toJSNumber(),
+    nanos: amount.nanos,
+  };
+}
+
 export function buildApiStarsGiveawayWinnersOption(
   option: GramJs.StarsGiveawayWinnersOption,
 ): ApiStarsGiveawayWinnerOption {
@@ -528,7 +535,7 @@ export function buildApiStarsTransactionPeer(peer: GramJs.TypeStarsTransactionPe
 export function buildApiStarsTransaction(transaction: GramJs.StarsTransaction): ApiStarsTransaction {
   const {
     date, id, peer, stars, description, photo, title, refund, extendedMedia, failed, msgId, pending, gift, reaction,
-    subscriptionPeriod, stargift, giveawayPostId,
+    subscriptionPeriod, stargift, giveawayPostId, starrefCommissionPermille, stargiftUpgrade,
   } = transaction;
 
   if (photo) {
@@ -538,11 +545,13 @@ export function buildApiStarsTransaction(transaction: GramJs.StarsTransaction): 
   const boughtExtendedMedia = extendedMedia?.map((m) => buildMessageMediaContent(m))
     .filter(Boolean) as BoughtPaidMedia[];
 
+  const starRefCommision = starrefCommissionPermille ? starrefCommissionPermille / 10 : undefined;
+
   return {
     id,
     date,
     peer: buildApiStarsTransactionPeer(peer),
-    stars: stars.toJSNumber(),
+    stars: buildApiStarsAmount(stars),
     title,
     description,
     photo: photo && buildApiWebDocument(photo),
@@ -556,6 +565,8 @@ export function buildApiStarsTransaction(transaction: GramJs.StarsTransaction): 
     isReaction: reaction,
     starGift: stargift && buildApiStarGift(stargift),
     giveawayPostId,
+    starRefCommision,
+    isGiftUpgrade: stargiftUpgrade,
   };
 }
 
@@ -595,42 +606,5 @@ export function buildApiStarTopupOption(option: GramJs.TypeStarsTopupOption): Ap
     currency,
     stars: stars.toJSNumber(),
     isExtended: extended,
-  };
-}
-
-export function buildApiStarGift(startGift: GramJs.StarGift): ApiStarGift {
-  const {
-    id, limited, sticker, stars, availabilityRemains, availabilityTotal, convertStars, firstSaleDate, lastSaleDate,
-    soldOut,
-  } = startGift;
-
-  return {
-    id: id.toString(),
-    isLimited: limited,
-    stickerId: sticker.id.toString(),
-    stars: stars.toJSNumber(),
-    availabilityRemains,
-    availabilityTotal,
-    starsToConvert: convertStars.toJSNumber(),
-    firstSaleDate,
-    lastSaleDate,
-    isSoldOut: soldOut,
-  };
-}
-
-export function buildApiUserStarGift(userStarGift: GramJs.UserStarGift): ApiUserStarGift {
-  const {
-    gift, date, convertStars, fromId, message, msgId, nameHidden, unsaved,
-  } = userStarGift;
-
-  return {
-    gift: buildApiStarGift(gift),
-    date,
-    starsToConvert: convertStars?.toJSNumber(),
-    fromId: fromId && buildApiPeerId(fromId, 'user'),
-    message: message && buildApiFormattedText(message),
-    messageId: msgId,
-    isNameHidden: nameHidden,
-    isUnsaved: unsaved,
   };
 }

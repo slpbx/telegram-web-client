@@ -11,6 +11,7 @@ import useLang from '../../../hooks/useLang';
 import useMultiClick from '../../../hooks/useMultiClick';
 import useOldLang from '../../../hooks/useOldLang';
 
+import Icon from '../../common/icons/Icon';
 import Button from '../../ui/Button';
 import ConfirmDialog from '../../ui/ConfirmDialog';
 import DropdownMenu from '../../ui/DropdownMenu';
@@ -71,7 +72,7 @@ const SettingsHeader: FC<OwnProps> = ({
         onClick={onTrigger}
         ariaLabel="More actions"
       >
-        <i className="icon icon-more" />
+        <Icon name="more" />
       </Button>
     );
   }, [isMobile]);
@@ -132,33 +133,38 @@ const SettingsHeader: FC<OwnProps> = ({
       case SettingsScreens.PrivacyPhoneCall:
         return <h3>{oldLang('Calls')}</h3>;
 
-      case SettingsScreens.PrivacyPhoneNumberAllowedContacts:
       case SettingsScreens.PrivacyLastSeenAllowedContacts:
       case SettingsScreens.PrivacyProfilePhotoAllowedContacts:
       case SettingsScreens.PrivacyBioAllowedContacts:
+      case SettingsScreens.PrivacyGroupChatsAllowedContacts:
+        return <h3>{oldLang('AlwaysShareWith')}</h3>;
+
+      case SettingsScreens.PrivacyLastSeenDeniedContacts:
+      case SettingsScreens.PrivacyProfilePhotoDeniedContacts:
+      case SettingsScreens.PrivacyBioDeniedContacts:
+      case SettingsScreens.PrivacyGroupChatsDeniedContacts:
+        return <h3>{oldLang('NeverShareWith')}</h3>;
+
+      case SettingsScreens.PrivacyPhoneNumberAllowedContacts:
       case SettingsScreens.PrivacyBirthdayAllowedContacts:
       case SettingsScreens.PrivacyGiftsAllowedContacts:
       case SettingsScreens.PrivacyForwardingAllowedContacts:
       case SettingsScreens.PrivacyVoiceMessagesAllowedContacts:
-      case SettingsScreens.PrivacyGroupChatsAllowedContacts:
       case SettingsScreens.PrivacyPhoneCallAllowedContacts:
       case SettingsScreens.PrivacyPhoneP2PAllowedContacts:
-        return <h3>{oldLang('AlwaysShareWith')}</h3>;
+        return <h3>{oldLang('AlwaysAllow')}</h3>;
+
       case SettingsScreens.PrivacyPhoneNumberDeniedContacts:
-      case SettingsScreens.PrivacyLastSeenDeniedContacts:
-      case SettingsScreens.PrivacyProfilePhotoDeniedContacts:
-      case SettingsScreens.PrivacyBioDeniedContacts:
       case SettingsScreens.PrivacyBirthdayDeniedContacts:
       case SettingsScreens.PrivacyGiftsDeniedContacts:
       case SettingsScreens.PrivacyForwardingDeniedContacts:
       case SettingsScreens.PrivacyVoiceMessagesDeniedContacts:
-      case SettingsScreens.PrivacyGroupChatsDeniedContacts:
       case SettingsScreens.PrivacyPhoneCallDeniedContacts:
       case SettingsScreens.PrivacyPhoneP2PDeniedContacts:
-        return <h3>{oldLang('NeverShareWith')}</h3>;
+        return <h3>{oldLang('NeverAllow')}</h3>;
 
       case SettingsScreens.Performance:
-        return <h3>{oldLang('Animations and Performance')}</h3>;
+        return <h3>{lang('MenuAnimations')}</h3>;
 
       case SettingsScreens.ActiveSessions:
         return <h3>{oldLang('SessionsTitle')}</h3>;
@@ -264,7 +270,7 @@ const SettingsHeader: FC<OwnProps> = ({
               onClick={() => onScreenSelect(SettingsScreens.EditProfile)}
               ariaLabel={oldLang('lng_settings_information')}
             >
-              <i className="icon icon-edit" />
+              <Icon name="edit" />
             </Button>
             <DropdownMenu
               className="settings-more-menu"
@@ -287,7 +293,7 @@ const SettingsHeader: FC<OwnProps> = ({
         onClick={onReset}
         ariaLabel={oldLang('AccDescrGoBack')}
       >
-        <i className="icon icon-arrow-left" />
+        <Icon name="arrow-left" />
       </Button>
       {renderHeaderContent()}
       <ConfirmDialog

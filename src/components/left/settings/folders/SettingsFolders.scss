@@ -33,7 +33,7 @@
 
       h3 {
         font-size: 1rem;
-        font-weight: 500;
+        font-weight: var(--font-weight-medium);
         line-height: 1.3125;
         margin: 0;
         overflow: hidden;
@@ -97,6 +97,14 @@
 
 .settings-sortable-item .multiline-item {
   padding-inline-end: 3rem;
+}
+
+.settings-sortable-item .Button {
+  margin-right: -1rem;
+  &:hover,
+  &:active {
+    background-color: transparent !important;
+  }
 }
 
 .picker-category-title {

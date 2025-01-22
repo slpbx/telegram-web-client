@@ -2,7 +2,7 @@ import type { FC } from '../../lib/teact/teact';
 import React, { memo, useEffect, useRef } from '../../lib/teact/teact';
 import { getActions, withGlobal } from '../../global';
 
-import type { MessageListType } from '../../global/types';
+import type { MessageListType } from '../../types';
 import { MAIN_THREAD_ID } from '../../api/types';
 
 import { selectChat, selectCurrentMessageList, selectCurrentMiddleSearch } from '../../global/selectors';
@@ -97,7 +97,12 @@ const FloatingActionButtons: FC<OwnProps & StateProps> = ({
         return;
       }
 
-      animateScroll(messagesContainer, lastMessageElement, 'end', FOCUS_MARGIN);
+      animateScroll({
+        container: messagesContainer,
+        element: lastMessageElement,
+        position: 'end',
+        margin: FOCUS_MARGIN,
+      });
     }
   });
 

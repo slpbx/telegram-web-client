@@ -1,11 +1,17 @@
 import type {
-  ApiMissingInvitedUser, ApiUser, ApiUserCommonChats, ApiUserFullInfo, ApiUserStatus,
+  ApiMissingInvitedUser,
+  ApiUser,
+  ApiUserCommonChats,
+  ApiUserFullInfo,
+  ApiUserStarGift,
+  ApiUserStatus,
 } from '../../api/types';
+import type { BotAppPermissions } from '../../types';
 import type { GlobalState, TabArgs, TabState } from '../types';
 
 import { areDeepEqual } from '../../util/areDeepEqual';
 import { getCurrentTabId } from '../../util/establishMultitabRole';
-import { omit, unique } from '../../util/iteratees';
+import { omit, omitUndefined, unique } from '../../util/iteratees';
 import { MEMO_EMPTY_ARRAY } from '../../util/memo';
 import { selectTabState } from '../selectors';
 import { updateChat } from './chats';
@@ -140,7 +146,7 @@ function getUpdatedUser(global: GlobalState, userId: string, userUpdate: Partial
     return undefined;
   }
 
-  return updatedUser;
+  return omitUndefined(updatedUser);
 }
 
 export function deleteContact<T extends GlobalState>(global: T, userId: string): T {
@@ -294,4 +300,49 @@ export function updateMissingInvitedUsers<T extends GlobalState>(
       chatId,
     },
   }, tabId);
+}
+
+export function updateBotAppPermissions<T extends GlobalState>(
+  global: T,
+  botId: string,
+  permissions: BotAppPermissions,
+): T {
+  const { botAppPermissionsById } = global.users;
+
+  return {
+    ...global,
+    users: {
+      ...global.users,
+      botAppPermissionsById: {
+        ...botAppPermissionsById,
+        [botId]: {
+          ...botAppPermissionsById[botId],
+          ...permissions,
+        },
+      },
+    },
+  };
+}
+
+export function replaceUserGifts<T extends GlobalState>(
+  global: T,
+  userId: string,
+  gifts: ApiUserStarGift[],
+  nextOffset?: string,
+): T {
+  global = {
+    ...global,
+    users: {
+      ...global.users,
+      giftsById: {
+        ...global.users.giftsById,
+        [userId]: {
+          gifts,
+          nextOffset,
+        },
+      },
+    },
+  };
+
+  return global;
 }

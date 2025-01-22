@@ -4,8 +4,13 @@ import React, {
 } from '../../../lib/teact/teact';
 import { toggleExtraClass } from '../../../lib/teact/teact-dom';
 
-import type { ApiPremiumPromo, ApiPremiumSubscriptionOption } from '../../../api/types';
-import type { ApiLimitTypeForPromo, ApiPremiumSection, GlobalState } from '../../../global/types';
+import type {
+  ApiLimitTypeForPromo,
+  ApiPremiumPromo,
+  ApiPremiumSection,
+  ApiPremiumSubscriptionOption,
+} from '../../../api/types';
+import type { GlobalState } from '../../../global/types';
 
 import { PREMIUM_BOTTOM_VIDEOS, PREMIUM_FEATURE_SECTIONS, PREMIUM_LIMITS_ORDER } from '../../../config';
 import { requestMutation } from '../../../lib/fasterdom/fasterdom';
@@ -19,6 +24,7 @@ import useLastCallback from '../../../hooks/useLastCallback';
 import useOldLang from '../../../hooks/useOldLang';
 import usePreviousDeprecated from '../../../hooks/usePreviousDeprecated';
 
+import Icon from '../../common/icons/Icon';
 import SliderDots from '../../common/SliderDots';
 import Button from '../../ui/Button';
 import PremiumLimitPreview from './common/PremiumLimitPreview';
@@ -216,7 +222,7 @@ const PremiumFeatureModal: FC<OwnProps> = ({
         onClick={onBack}
         ariaLabel={lang('Back')}
       >
-        <i className="icon icon-arrow-left" />
+        <Icon name="arrow-left" />
       </Button>
 
       <div className={styles.preview} />

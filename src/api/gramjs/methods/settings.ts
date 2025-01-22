@@ -1,23 +1,24 @@
 import BigInt from 'big-integer';
 import { Api as GramJs } from '../../../lib/gramjs';
+import { RPCError } from '../../../lib/gramjs/errors';
 
 import type { LANG_PACKS } from '../../../config';
-import type { ApiInputPrivacyRules, ApiPrivacyKey } from '../../../types';
 import type {
   ApiAppConfig,
   ApiConfig,
-  ApiError,
+  ApiInputPrivacyRules,
   ApiLanguage,
   ApiNotifyException,
   ApiPhoto,
+  ApiPrivacyKey,
   ApiUser,
 } from '../../types';
 
 import {
   ACCEPTABLE_USERNAME_ERRORS,
   BLOCKED_LIST_LIMIT,
+  LANG_PACK,
   MAX_INT_32,
-  OLD_DEFAULT_LANG_PACK,
 } from '../../../config';
 import { buildCollectionByKey } from '../../../util/iteratees';
 import { getServerTime } from '../../../util/serverTime';
@@ -35,7 +36,6 @@ import {
   buildApiWebSession,
   buildLangStrings,
   oldBuildLangPack,
-  oldBuildLangPackString,
 } from '../apiBuilders/misc';
 import { getApiChatIdFromMtpPeer } from '../apiBuilders/peers';
 import {
@@ -76,17 +76,15 @@ export async function checkUsername(username: string) {
     });
 
     return { result, error: undefined };
-  } catch (error) {
-    const errorMessage = (error as ApiError).message;
-
-    if (ACCEPTABLE_USERNAME_ERRORS.has(errorMessage)) {
+  } catch (err: unknown) {
+    if (err instanceof RPCError && ACCEPTABLE_USERNAME_ERRORS.has(err.errorMessage)) {
       return {
         result: false,
-        error: errorMessage,
+        error: err.errorMessage,
       };
     }
 
-    throw error;
+    throw err;
   }
 }
 
@@ -469,7 +467,7 @@ export async function fetchLangDifference({
 
 export async function fetchLanguages(): Promise<ApiLanguage[] | undefined> {
   const result = await invokeRequest(new GramJs.langpack.GetLanguages({
-    langPack: OLD_DEFAULT_LANG_PACK,
+    langPack: LANG_PACK,
   }));
   if (!result) {
     return undefined;
@@ -496,6 +494,27 @@ export async function fetchLanguage({
   return buildApiLanguage(result);
 }
 
+export async function fetchLangStrings({
+  langPack,
+  langCode,
+  keys,
+}: {
+  langPack: string;
+  langCode: string;
+  keys: string[];
+}) {
+  const result = await invokeRequest(new GramJs.langpack.GetStrings({
+    langPack,
+    langCode,
+    keys,
+  }));
+  if (!result) {
+    return undefined;
+  }
+
+  return buildLangStrings(result);
+}
+
 export async function oldFetchLangPack({ sourceLangPacks, langCode }: {
   sourceLangPacks: typeof LANG_PACKS;
   langCode: string;
@@ -513,22 +532,6 @@ export async function oldFetchLangPack({ sourceLangPacks, langCode }: {
   }
 
   return { langPack: Object.assign({}, ...collections.reverse()) as typeof collections[0] };
-}
-
-export async function oldFetchLangStrings({ langPack, langCode, keys }: {
-  langPack: string; langCode: string; keys: string[];
-}) {
-  const result = await invokeRequest(new GramJs.langpack.GetStrings({
-    langPack,
-    langCode: BETA_LANG_CODES.includes(langCode) ? `${langCode}-raw` : langCode,
-    keys,
-  }));
-
-  if (!result) {
-    return undefined;
-  }
-
-  return result.map(oldBuildLangPackString);
 }
 
 export async function fetchPrivacySettings(privacyKey: ApiPrivacyKey) {

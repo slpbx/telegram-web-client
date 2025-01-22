@@ -20,7 +20,7 @@ body {
   padding: 0;
   font-size: 16px;
   color: var(--color-text);
-  font-weight: 400;
+  font-weight: var(--font-weight-normal);
   line-height: 1.5;
   text-align: left;
   overflow: hidden;
@@ -35,6 +35,7 @@ body {
   "Consolas", monospace;
   --font-family-rounded: -ui-rounded, "Numbers Rounded", "Roboto", "Helvetica Neue", sans-serif;
   --font-family-condensed: "Roboto Condensed", "Roboto", "Helvetica Neue", sans-serif;
+  --font-weight-semibold: 500; // Note: Roboto is naturally quite bold, so 500 works well as default
 
   @media (max-width: 600px) {
     height: calc(var(--vh, 1vh) * 100);
@@ -80,6 +81,10 @@ html[lang="fa"] body {
 body.is-ios {
   --border-radius-messages: 1rem;
   --border-radius-messages-small: 0.5rem;
+}
+
+body.is-macos {
+  --font-weight-semibold: 600;
 }
 
 body.is-electron {
@@ -296,6 +301,7 @@ body:not(.is-ios) {
 .star-amount-icon.star-amount-icon {
   line-height: inherit; // Vertical centring
   margin-inline-start: 0.375em; // Prevent sticking to the text without using `white-space: pre`
+  margin-inline-end: 0.2em; // Prevent sticking to the text without using `white-space: pre`
 }
 
 .shared-canvas-container {

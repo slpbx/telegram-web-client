@@ -1,4 +1,4 @@
-import type { ApiUserStarGift } from '../../../api/types';
+import type { ApiMessageActionStarGift, ApiUserStarGift } from '../../../api/types';
 import type { ActionReturnType } from '../../types';
 
 import { getCurrentTabId } from '../../../util/establishMultitabRole';
@@ -119,7 +119,7 @@ addActionHandler('openStarsBalanceModal', (global, actions, payload): ActionRetu
 
   const starBalance = global.stars?.balance;
 
-  if (!shouldIgnoreBalance && starBalance && topup && topup.balanceNeeded <= starBalance) {
+  if (!shouldIgnoreBalance && starBalance && topup && topup.balanceNeeded <= starBalance.amount) {
     actions.showNotification({
       message: langProvider.oldTranslate('StarsTopupLinkEnough'),
       actionText: langProvider.oldTranslate('StarsTopupLinkTopupAnyway'),
@@ -242,8 +242,14 @@ addActionHandler('openGiftInfoModalFromMessage', (global, actions, payload): Act
   if (!message || !message.content.action) return;
 
   const action = message.content.action;
+  if (action.type === 'starGiftUnique') {
+    actions.openGiftInfoModal({ gift: action.starGift?.gift!, tabId });
+    return;
+  }
+
   if (action.type !== 'starGift') return;
-  const starGift = action.starGift!;
+
+  const starGift = action.starGift! as ApiMessageActionStarGift;
 
   const giftReceiverId = message.isOutgoing ? message.chatId : global.currentUserId!;
 
@@ -257,6 +263,9 @@ addActionHandler('openGiftInfoModalFromMessage', (global, actions, payload): Act
     fromId: message.isOutgoing ? global.currentUserId : message.chatId,
     messageId: (!message.isOutgoing || chatId === global.currentUserId) ? message.id : undefined,
     isConverted: starGift.isConverted,
+    upgradeMsgId: starGift.upgradeMsgId,
+    canUpgrade: starGift.canUpgrade,
+    alreadyPaidUpgradeStars: starGift.alreadyPaidUpgradeStars,
   } satisfies ApiUserStarGift;
 
   actions.openGiftInfoModal({ userId: giftReceiverId, gift, tabId });
@@ -282,5 +291,13 @@ addActionHandler('closeGiftInfoModal', (global, actions, payload): ActionReturnT
 
   return updateTabState(global, {
     giftInfoModal: undefined,
+  }, tabId);
+});
+
+addActionHandler('closeGiftUpgradeModal', (global, actions, payload): ActionReturnType => {
+  const { tabId = getCurrentTabId() } = payload || {};
+
+  return updateTabState(global, {
+    giftUpgradeModal: undefined,
   }, tabId);
 });

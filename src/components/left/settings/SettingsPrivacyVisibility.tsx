@@ -2,8 +2,7 @@ import type { FC } from '../../../lib/teact/teact';
 import React, { memo, useCallback, useMemo } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
-import type { ApiPhoto } from '../../../api/types';
-import type { ApiPrivacySettings, BotsPrivacyType } from '../../../types';
+import type { ApiPhoto, ApiPrivacySettings, BotsPrivacyType } from '../../../api/types';
 import { SettingsScreens } from '../../../types';
 
 import { selectIsCurrentUserPremium, selectUserFullInfo } from '../../../global/selectors';
@@ -327,7 +326,7 @@ function PrivacySubsection({
                 onScreenSelect(allowedContactsScreen);
               }}
             >
-              <div className="multiline-menu-item full-size">
+              <div className="multiline-item full-size">
                 <span className="title">{oldLang('AlwaysAllow')}</span>
                 <span className="subtitle">{allowedString}</span>
               </div>
@@ -342,7 +341,7 @@ function PrivacySubsection({
                 onScreenSelect(deniedContactsScreen);
               }}
             >
-              <div className="multiline-menu-item full-size">
+              <div className="multiline-item full-size">
                 <span className="title">{oldLang('NeverAllow')}</span>
                 <span className="subtitle">{blockString}</span>
               </div>

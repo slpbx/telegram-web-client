@@ -7,7 +7,7 @@ import type { ObserveFn } from '../../../hooks/useIntersectionObserver';
 import type { OldLangFn } from '../../../hooks/useOldLang';
 import type { TextPart } from '../../../types';
 
-import { SERVICE_NOTIFICATIONS_USER_ID } from '../../../config';
+import { SERVICE_NOTIFICATIONS_USER_ID, STARS_CURRENCY_CODE } from '../../../config';
 import {
   getChatTitle,
   getExpiredMessageDescription,
@@ -93,6 +93,15 @@ export function renderActionMessageText(
       .replace('un2', '%action_origin%')
       .replace(/\*\*/g, '');
   }
+  if (translationKey.startsWith('Notification.StarsGift.Upgrade')) {
+    unprocessed = unprocessed
+      .replace('%@', '%action_origin_chat%');
+  }
+  if (translationKey.startsWith('ActionUniqueGiftTransfer')) {
+    unprocessed = unprocessed
+      .replace('un1', '%action_origin%')
+      .replace(/\*\*/g, '');
+  }
   if (translationKey === 'BoostingReceivedPrizeFrom') {
     unprocessed = unprocessed
       .replace('**%s**', '%target_chat%')
@@ -123,6 +132,18 @@ export function renderActionMessageText(
     ) : actionOriginChat ? (
       renderChatContent(oldLang, actionOriginChat, noLinks) || NBSP
     ) : 'User',
+    '',
+  );
+
+  unprocessed = processed.pop() as string;
+  content.push(...processed);
+
+  processed = processPlaceholder(
+    unprocessed,
+    '%action_origin_chat%',
+    actionOriginChat ? (
+      renderChatContent(oldLang, actionOriginChat, noLinks) || NBSP
+    ) : 'Chat',
     '',
   );
 
@@ -168,12 +189,19 @@ export function renderActionMessageText(
   }
 
   if (unprocessed.includes('%gift_payment_amount%')) {
-    const price = formatCurrencyAsString(amount!, currency!, oldLang.code);
-    let priceText = price;
+    let priceText;
 
-    if (giftCryptoInfo) {
-      const cryptoPrice = formatCurrencyAsString(giftCryptoInfo.amount, giftCryptoInfo.currency, oldLang.code);
-      priceText = `${cryptoPrice} (${price})`;
+    if (currency && currency === STARS_CURRENCY_CODE) {
+      priceText = oldLang('ActionGiftStarsTitle', amount!);
+    } else {
+      const price = formatCurrencyAsString(amount!, currency!, oldLang.code);
+
+      if (giftCryptoInfo) {
+        const cryptoPrice = formatCurrencyAsString(giftCryptoInfo.amount, giftCryptoInfo.currency, oldLang.code);
+        priceText = `${cryptoPrice} (${price})`;
+      } else {
+        priceText = price;
+      }
     }
 
     processed = processPlaceholder(

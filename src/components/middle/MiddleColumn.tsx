@@ -10,8 +10,9 @@ import type {
 import type {
   ActiveEmojiInteraction,
   MessageListType,
-} from '../../global/types';
-import type { ThemeKey, ThreadId } from '../../types';
+  ThemeKey,
+  ThreadId,
+} from '../../types';
 import { MAIN_THREAD_ID } from '../../api/types';
 
 import {
@@ -21,6 +22,7 @@ import {
   EDITABLE_INPUT_ID,
   GENERAL_TOPIC_ID,
   SUPPORTED_PHOTO_CONTENT_TYPES,
+  SUPPORTED_VIDEO_CONTENT_TYPES,
   TMP_CHAT_ID,
 } from '../../config';
 import { requestMeasure, requestMutation } from '../../lib/fasterdom/fasterdom';
@@ -78,6 +80,7 @@ import useWindowSize from '../../hooks/window/useWindowSize';
 import usePinnedMessage from './hooks/usePinnedMessage';
 
 import Composer from '../common/Composer';
+import Icon from '../common/icons/Icon';
 import PrivacySettingsNoticeModal from '../common/PrivacySettingsNoticeModal.async';
 import SeenByModal from '../common/SeenByModal.async';
 import UnpinAllMessagesModal from '../common/UnpinAllMessagesModal.async';
@@ -153,6 +156,10 @@ type StateProps = {
 
 function isImage(item: DataTransferItem) {
   return item.kind === 'file' && item.type && SUPPORTED_PHOTO_CONTENT_TYPES.has(item.type);
+}
+
+function isVideo(item: DataTransferItem) {
+  return item.kind === 'file' && item.type && SUPPORTED_VIDEO_CONTENT_TYPES.has(item.type);
 }
 
 const LAYER_ANIMATION_DURATION_MS = 450 + ANIMATION_END_DELAY;
@@ -354,8 +361,7 @@ function MiddleColumn({
       // Filter unnecessary element for drag and drop images in Firefox (https://github.com/Ajaxy/telegram-tt/issues/49)
       // https://developer.mozilla.org/en-US/docs/Web/API/HTML_Drag_and_Drop_API/Recommended_drag_types#image
       .filter((item) => item.type !== 'text/uri-list')
-      // As of September 2021, native clients suggest "send quick, but compressed" only for images
-      .every(isImage);
+      .every((item) => isImage(item) || isVideo(item));
 
     setDropAreaState(shouldDrawQuick ? DropAreaState.QuickFile : DropAreaState.Document);
   });
@@ -568,7 +574,7 @@ function MiddleColumn({
                       className="composer-button unpin-all-button"
                       onClick={handleOpenUnpinModal}
                     >
-                      <i className="icon icon-unpin" />
+                      <Icon name="unpin" />
                       <span>{lang('Chat.Pinned.UnpinAll', pinnedMessagesCount, 'i')}</span>
                     </Button>
                   </div>

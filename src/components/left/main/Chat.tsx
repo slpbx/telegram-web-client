@@ -4,6 +4,7 @@ import { getActions, withGlobal } from '../../../global';
 
 import type {
   ApiChat,
+  ApiDraft,
   ApiMessage,
   ApiMessageOutgoingStatus,
   ApiPeer,
@@ -13,7 +14,6 @@ import type {
   ApiUser,
   ApiUserStatus,
 } from '../../../api/types';
-import type { ApiDraft } from '../../../global/types';
 import type { ObserveFn } from '../../../hooks/useIntersectionObserver';
 import type { ChatAnimationTypes } from './hooks';
 import { MAIN_THREAD_ID } from '../../../api/types';
@@ -42,6 +42,7 @@ import {
   selectOutgoingStatus,
   selectPeer,
   selectPeerStory,
+  selectSender,
   selectTabState,
   selectThreadParam,
   selectTopicFromMessage,
@@ -66,6 +67,7 @@ import useChatListEntry from './hooks/useChatListEntry';
 import Avatar from '../../common/Avatar';
 import DeleteChatModal from '../../common/DeleteChatModal';
 import FullNameTitle from '../../common/FullNameTitle';
+import Icon from '../../common/icons/Icon';
 import StarIcon from '../../common/icons/StarIcon';
 import LastMessageMeta from '../../common/LastMessageMeta';
 import ListItem from '../../ui/ListItem';
@@ -382,7 +384,7 @@ const Chat: FC<OwnProps & StateProps> = ({
             isSavedDialog={isSavedDialog}
             observeIntersection={observeIntersection}
           />
-          {isMuted && !isSavedDialog && <i className="icon icon-muted" />}
+          {isMuted && !isSavedDialog && <Icon name="muted" />}
           <div className="separator" />
           {lastMessage && (
             <LastMessageMeta
@@ -452,10 +454,11 @@ export default memo(withGlobal<OwnProps>(
     const lastMessage = previewMessageId
       ? selectChatMessage(global, chatId, previewMessageId)
       : selectChatLastMessage(global, chatId, isSavedDialog ? 'saved' : 'all');
-    const { senderId, isOutgoing, forwardInfo } = lastMessage || {};
-    const actualSenderId = isSavedDialog ? forwardInfo?.fromId : senderId;
+    const { isOutgoing, forwardInfo } = lastMessage || {};
+    const savedDialogSender = isSavedDialog && forwardInfo?.fromId ? selectPeer(global, forwardInfo.fromId) : undefined;
+    const messageSender = lastMessage ? selectSender(global, lastMessage) : undefined;
+    const lastMessageSender = savedDialogSender || messageSender;
     const replyToMessageId = lastMessage && getMessageReplyInfo(lastMessage)?.replyToMsgId;
-    const lastMessageSender = actualSenderId ? selectPeer(global, actualSenderId) : undefined;
     const lastMessageAction = lastMessage ? getMessageAction(lastMessage) : undefined;
     const actionTargetMessage = lastMessageAction && replyToMessageId
       ? selectChatMessage(global, chat.id, replyToMessageId)

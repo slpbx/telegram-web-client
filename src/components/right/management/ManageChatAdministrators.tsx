@@ -13,6 +13,7 @@ import useHistoryBack from '../../../hooks/useHistoryBack';
 import useLastCallback from '../../../hooks/useLastCallback';
 import useOldLang from '../../../hooks/useOldLang';
 
+import Icon from '../../common/icons/Icon';
 import PrivateChatInfo from '../../common/PrivateChatInfo';
 import Checkbox from '../../ui/Checkbox';
 import FloatingActionButton from '../../ui/FloatingActionButton';
@@ -123,7 +124,7 @@ const ManageChatAdministrators: FC<OwnProps & StateProps> = ({
         </div>
 
         <div className="section" dir={lang.isRtl ? 'rtl' : undefined}>
-          <p className="text-muted" dir="auto">
+          <p className="section-help" dir="auto">
             {lang(isChannel
               ? 'Channel.Management.AddModeratorHelp'
               : 'Group.Management.AddModeratorHelp')}
@@ -149,7 +150,7 @@ const ManageChatAdministrators: FC<OwnProps & StateProps> = ({
             onClick={handleAddAdminClick}
             ariaLabel={lang('Channel.Management.AddModerator')}
           >
-            <i className="icon icon-add-user-filled" />
+            <Icon name="add-user-filled" />
           </FloatingActionButton>
         </div>
 
@@ -171,7 +172,7 @@ const ManageChatAdministrators: FC<OwnProps & StateProps> = ({
                     onChange={handleToggleProfiles}
                   />
                 </div>
-                <p className="section-info">
+                <p className="section-info section-info_push">
                   {lang('ChannelSignProfilesInfo')}
                 </p>
               </>

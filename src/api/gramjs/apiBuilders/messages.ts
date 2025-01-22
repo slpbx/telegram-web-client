@@ -1,11 +1,11 @@
 import { Api as GramJs } from '../../../lib/gramjs';
 
-import type { ApiDraft } from '../../../global/types';
 import type {
   ApiAction,
   ApiAttachment,
   ApiChat,
   ApiContact,
+  ApiDraft,
   ApiFactCheck,
   ApiFormattedText,
   ApiGroupCall,
@@ -14,6 +14,7 @@ import type {
   ApiKeyboardButton,
   ApiMessage,
   ApiMessageActionStarGift,
+  ApiMessageActionStarGiftUnique,
   ApiMessageEntity,
   ApiMessageForwardInfo,
   ApiMessageReportResult,
@@ -25,6 +26,8 @@ import type {
   ApiReplyInfo,
   ApiReplyKeyboard,
   ApiSponsoredMessage,
+  ApiStarGiftRegular,
+  ApiStarGiftUnique,
   ApiSticker,
   ApiStory,
   ApiStorySkipped,
@@ -62,8 +65,8 @@ import {
   buildApiFormattedText,
   buildApiPhoto,
 } from './common';
+import { buildApiStarGift } from './gifts';
 import { buildMessageContent, buildMessageMediaContent, buildMessageTextContent } from './messageContent';
-import { buildApiStarGift } from './payments';
 import { buildApiPeerColor, buildApiPeerId, getApiChatIdFromMtpPeer } from './peers';
 import { buildMessageReactions } from './reactions';
 
@@ -216,6 +219,7 @@ export function buildApiMessageWithChatId(
   const senderBoosts = mtpMessage.fromBoostsApplied;
   const factCheck = mtpMessage.factcheck && buildApiFactCheck(mtpMessage.factcheck);
   const isVideoProcessingPending = mtpMessage.videoProcessingPending;
+  const areReactionsPossible = mtpMessage.reactionsArePossible;
 
   const isInvertedMedia = mtpMessage.invertMedia;
 
@@ -242,6 +246,7 @@ export function buildApiMessageWithChatId(
     editDate: mtpMessage.editDate,
     isMediaUnread,
     hasUnreadMention: mtpMessage.mentioned && isMediaUnread,
+    areReactionsPossible,
     isMentioned: mtpMessage.mentioned,
     ...(groupedId && {
       groupedId,
@@ -264,6 +269,7 @@ export function buildApiMessageWithChatId(
     effectId: mtpMessage.effect?.toString(),
     isInvertedMedia,
     isVideoProcessingPending,
+    reportDeliveryUntilDate: mtpMessage.reportDeliveryUntilDate,
   });
 }
 
@@ -365,16 +371,40 @@ export function buildApiFactCheck(factCheck: GramJs.FactCheck): ApiFactCheck {
 
 function buildApiMessageActionStarGift(action: GramJs.MessageActionStarGift) : ApiMessageActionStarGift {
   const {
-    nameHidden, saved, converted, gift, message, convertStars,
+    nameHidden, saved, converted, gift, message, convertStars, canUpgrade, upgraded, upgradeMsgId, upgradeStars,
   } = action;
 
   return {
+    type: 'starGift',
     isNameHidden: Boolean(nameHidden),
     isSaved: Boolean(saved),
-    isConverted: Boolean(converted),
-    gift: buildApiStarGift(gift),
+    isConverted: converted,
+    gift: buildApiStarGift(gift) as ApiStarGiftRegular,
     message: message && buildApiFormattedText(message),
     starsToConvert: convertStars?.toJSNumber(),
+    canUpgrade,
+    isUpgraded: upgraded,
+    upgradeMsgId,
+    alreadyPaidUpgradeStars: upgradeStars?.toJSNumber(),
+  };
+}
+
+function buildApiMessageActionStarGiftUnique(
+  action: GramJs.MessageActionStarGiftUnique,
+): ApiMessageActionStarGiftUnique {
+  const {
+    gift, canExportAt, refunded, saved, transferStars, transferred, upgrade,
+  } = action;
+
+  return {
+    type: 'starGiftUnique',
+    gift: buildApiStarGift(gift) as ApiStarGiftUnique,
+    canExportAt,
+    isRefunded: refunded,
+    isSaved: saved,
+    transferStars: transferStars?.toJSNumber(),
+    isTransferred: transferred,
+    isUpgrade: upgrade,
   };
 }
 
@@ -393,7 +423,7 @@ function buildAction(
   let call: Partial<ApiGroupCall> | undefined;
   let amount: number | undefined;
   let stars: number | undefined;
-  let starGift: ApiMessageActionStarGift | undefined;
+  let starGift: ApiMessageActionStarGift | ApiMessageActionStarGiftUnique | undefined;
   let currency: string | undefined;
   let giftCryptoInfo: {
     currency: string;
@@ -438,6 +468,7 @@ function buildAction(
       text = 'Notification.ChangedGroupPhoto';
       translationValues.push('%action_origin%');
     }
+    type = 'updateProfilePhoto';
   } else if (action instanceof GramJs.MessageActionChatDeletePhoto) {
     if (isChannelPost) {
       text = 'Channel.MessagePhotoRemoved';
@@ -705,8 +736,9 @@ function buildAction(
     amount = action.amount.toJSNumber();
     stars = action.stars.toJSNumber();
     transactionId = action.transactionId;
-  } else if (action instanceof GramJs.MessageActionStarGift) {
+  } else if (action instanceof GramJs.MessageActionStarGift && action.gift instanceof GramJs.StarGift) {
     type = 'starGift';
+    starGift = buildApiMessageActionStarGift(action);
     if (isOutgoing) {
       text = 'ActionGiftOutbound';
       translationValues.push('%gift_payment_amount%');
@@ -722,7 +754,21 @@ function buildAction(
 
     amount = action.gift.stars.toJSNumber();
     currency = STARS_CURRENCY_CODE;
-    starGift = buildApiMessageActionStarGift(action);
+  } else if (action instanceof GramJs.MessageActionStarGiftUnique && action.gift instanceof GramJs.StarGiftUnique) {
+    type = 'starGiftUnique';
+    if (isOutgoing) {
+      text = action.upgrade ? 'Notification.StarsGift.UpgradeYou' : 'ActionUniqueGiftTransferOutbound';
+    } else {
+      text = action.upgrade ? 'Notification.StarsGift.Upgrade' : 'ActionUniqueGiftTransferInbound';
+      translationValues.push('%action_origin_chat%');
+    }
+
+    starGift = buildApiMessageActionStarGiftUnique(action);
+
+    if (targetPeerId) {
+      targetUserIds.push(targetPeerId);
+      targetChatId = targetPeerId;
+    }
   } else {
     text = 'ChatList.UnsupportedMessage';
   }
@@ -738,7 +784,7 @@ function buildAction(
     type,
     targetUserIds,
     targetChatId,
-    photo, // TODO Only used internally now, will be used for the UI in future
+    photo,
     amount,
     stars,
     starGift,

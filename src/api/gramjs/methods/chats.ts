@@ -1,7 +1,7 @@
 import BigInt from 'big-integer';
 import { Api as GramJs } from '../../../lib/gramjs';
+import { RPCError } from '../../../lib/gramjs/errors';
 
-import type { ApiDraft } from '../../../global/types';
 import type {
   ApiChat,
   ApiChatAdminRights,
@@ -9,6 +9,7 @@ import type {
   ApiChatFolder,
   ApiChatFullInfo,
   ApiChatReactions,
+  ApiDraft,
   ApiGroupCall,
   ApiMessage,
   ApiMissingInvitedUser,
@@ -49,7 +50,7 @@ import {
   buildChatMembers,
   getPeerKey,
 } from '../apiBuilders/chats';
-import { buildApiPhoto } from '../apiBuilders/common';
+import { buildApiBotVerification, buildApiPhoto } from '../apiBuilders/common';
 import { buildApiMessage, buildMessageDraft } from '../apiBuilders/messages';
 import { buildApiPeerId, getApiChatIdFromMtpPeer } from '../apiBuilders/peers';
 import { buildStickerSet } from '../apiBuilders/symbols';
@@ -124,6 +125,7 @@ export async function fetchChats({
     offsetId,
     limit,
     offsetDate,
+    folderId: archived ? ARCHIVED_FOLDER_ID : undefined,
     ...(withPinned && { excludePinned: true }),
   }));
   const resultPinned = withPinned
@@ -602,6 +604,7 @@ async function getFullChannelInfo(
     emojiset,
     boostsApplied,
     boostsUnrestrict,
+    botVerification,
     canViewRevenue: canViewMonetization,
     paidReactionsAvailable,
     hasScheduled,
@@ -694,6 +697,7 @@ async function getFullChannelInfo(
       hasPinnedStories: Boolean(storiesPinnedAvailable),
       boostsApplied,
       boostsToUnrestrict: boostsUnrestrict,
+      botVerification: botVerification && buildApiBotVerification(botVerification),
       isPaidReactionAvailable: paidReactionsAvailable,
       hasScheduledMessages: hasScheduled,
     },
@@ -1130,9 +1134,10 @@ export async function getChatByPhoneNumber(phoneNumber: string) {
   return processResolvedPeer(result);
 }
 
-export async function getChatByUsername(username: string) {
+export async function getChatByUsername(username: string, referrer?: string) {
   const result = await invokeRequest(new GramJs.contacts.ResolveUsername({
     username,
+    referer: referrer,
   }));
 
   return processResolvedPeer(result);
@@ -1456,11 +1461,12 @@ export async function addChatMembers(chat: ApiChat, users: ApiUser[]) {
     if (addChatUsersResult) {
       return addChatUsersResult.flat().filter(Boolean);
     }
-  } catch (err) {
+  } catch (err: unknown) {
+    const message = err instanceof RPCError ? err.errorMessage : (err as Error).message;
     sendApiUpdate({
       '@type': 'error',
       error: {
-        message: (err as Error).message,
+        message,
       },
     });
   }

@@ -11,6 +11,7 @@ import {
   addActionHandler, getGlobal, setGlobal,
 } from '../../index';
 import {
+  addChatListIds,
   addUnreadMentions,
   deleteChatMessages,
   deletePeerPhoto,
@@ -21,7 +22,6 @@ import {
   replaceThreadParam,
   updateChat,
   updateChatFullInfo,
-  updateChatListIds,
   updateChatListType,
   updatePeerStoriesHidden,
   updateTopic,
@@ -67,8 +67,8 @@ addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
       setGlobal(global);
 
       const updatedChat = selectChat(global, update.id);
-      if (!update.noTopChatsRequest && updatedChat && !selectIsChatListed(global, update.id)
-          && !updatedChat.isNotJoined) {
+      if (!update.noTopChatsRequest && !selectIsChatListed(global, update.id)
+          && !updatedChat?.isNotJoined) {
         // Reload top chats to update chat listing
         actions.loadTopChats();
       }
@@ -114,7 +114,7 @@ addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
       }
 
       global = getGlobal();
-      global = updateChatListIds(global, listType, [update.id]);
+      global = addChatListIds(global, listType, [update.id]);
       setGlobal(global);
 
       return undefined;
