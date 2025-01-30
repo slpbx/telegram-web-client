@@ -69,8 +69,8 @@ import {
 } from '../gramjsBuilders';
 import {
   addPhotoToLocalDb,
-  isChatFolder,
-} from '../helpers';
+} from '../helpers/localDb';
+import { isChatFolder } from '../helpers/misc';
 import { scheduleMutedChatUpdate } from '../scheduleUnmute';
 import { sendApiUpdate } from '../updates/apiUpdateEmitter';
 import {
@@ -608,6 +608,8 @@ async function getFullChannelInfo(
     canViewRevenue: canViewMonetization,
     paidReactionsAvailable,
     hasScheduled,
+    stargiftsCount,
+    stargiftsAvailable,
   } = result.fullChat;
 
   if (chatPhoto) {
@@ -700,6 +702,8 @@ async function getFullChannelInfo(
       botVerification: botVerification && buildApiBotVerification(botVerification),
       isPaidReactionAvailable: paidReactionsAvailable,
       hasScheduledMessages: hasScheduled,
+      starGiftCount: stargiftsCount,
+      areStarGiftsAvailable: Boolean(stargiftsAvailable),
     },
     chats,
     userStatusesById: statusesById,

@@ -17,6 +17,7 @@ import type {
   ApiInputInvoice,
   ApiInputInvoiceStarGift,
   ApiInputMessageReplyInfo,
+  ApiInputSavedStarGift,
   ApiKeyboardButton,
   ApiLimitTypeWithModal,
   ApiMessage,
@@ -32,6 +33,7 @@ import type {
   ApiReaction,
   ApiReactionWithPaid,
   ApiReportReason,
+  ApiSavedStarGift,
   ApiSendMessageAction,
   ApiSessionData,
   ApiStarGift,
@@ -44,7 +46,6 @@ import type {
   ApiTypePrepaidGiveaway,
   ApiUpdate,
   ApiUser,
-  ApiUserStarGift,
   ApiVideo,
   BotsPrivacyType,
   PrivacyVisibility,
@@ -172,7 +173,11 @@ export interface ActionPayloads {
   updatePerformanceSettings: Partial<PerformanceType>;
   loadPasswordInfo: undefined;
   clearTwoFaError: undefined;
-  clearMonetizationInfo: undefined;
+  openMonetizationVerificationModal: {
+    chatId: string;
+  } & WithTabId;
+  clearMonetizationVerificationError: WithTabId | undefined;
+  closeMonetizationVerificationModal: WithTabId | undefined;
   updatePassword: {
     currentPassword: string;
     password: string;
@@ -755,10 +760,9 @@ export interface ActionPayloads {
     peerId: string;
   } & WithTabId;
 
-  loadMonetizationRevenueWithdrawalUrl: {
+  processMonetizationRevenueWithdrawalUrl: {
     peerId: string;
     currentPassword: string;
-    onSuccess: VoidFunction;
   } & WithTabId;
 
   // ui
@@ -2305,8 +2309,8 @@ export interface ActionPayloads {
     messageId: number;
   } & WithTabId;
   openGiftInfoModal: ({
-    userId: string;
-    gift: ApiUserStarGift;
+    peerId: string;
+    gift: ApiSavedStarGift;
   } | {
     gift: ApiStarGift;
   }) & WithTabId;
@@ -2314,24 +2318,33 @@ export interface ActionPayloads {
   openGiftUpgradeModal: {
     giftId: string;
     peerId?: string;
-    gift?: ApiUserStarGift;
+    gift?: ApiSavedStarGift;
   } & WithTabId;
   closeGiftUpgradeModal: WithTabId | undefined;
   upgradeGift: {
-    messageId: number;
+    gift: ApiInputSavedStarGift;
     shouldKeepOriginalDetails?: boolean;
     upgradeStars?: number;
   } & WithTabId;
-  loadUserGifts: {
-    userId: string;
+  openGiftWithdrawModal: {
+    gift: ApiSavedStarGift;
+  } & WithTabId;
+  clearGiftWithdrawError: WithTabId | undefined;
+  closeGiftWithdrawModal: WithTabId | undefined;
+  processStarGiftWithdrawal: {
+    gift: ApiInputSavedStarGift;
+    password: string;
+  } & WithTabId;
+  loadPeerSavedGifts: {
+    peerId: string;
     shouldRefresh?: boolean;
   };
   changeGiftVisibility: {
-    messageId: number;
+    gift: ApiInputSavedStarGift;
     shouldUnsave?: boolean;
   };
   convertGiftToStars: {
-    messageId: number;
+    gift: ApiInputSavedStarGift;
   } & WithTabId;
 
   openStarsGiftModal: ({

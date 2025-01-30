@@ -1,4 +1,4 @@
-import type { ApiMessageActionStarGift, ApiUserStarGift } from '../../../api/types';
+import type { ApiMessageActionStarGift, ApiSavedStarGift } from '../../../api/types';
 import type { ActionReturnType } from '../../types';
 
 import { getCurrentTabId } from '../../../util/establishMultitabRole';
@@ -9,7 +9,7 @@ import {
   clearStarPayment, openStarsTransactionModal,
 } from '../../reducers';
 import { updateTabState } from '../../reducers/tabs';
-import { selectChatMessage, selectStarsPayment } from '../../selectors';
+import { selectChatMessage, selectStarsPayment, selectTabState } from '../../selectors';
 
 addActionHandler('processOriginStarsPayment', (global, actions, payload): ActionReturnType => {
   const { originData, status, tabId = getCurrentTabId() } = payload;
@@ -266,9 +266,10 @@ addActionHandler('openGiftInfoModalFromMessage', (global, actions, payload): Act
     upgradeMsgId: starGift.upgradeMsgId,
     canUpgrade: starGift.canUpgrade,
     alreadyPaidUpgradeStars: starGift.alreadyPaidUpgradeStars,
-  } satisfies ApiUserStarGift;
+    inputGift: starGift.inputSavedGift,
+  } satisfies ApiSavedStarGift;
 
-  actions.openGiftInfoModal({ userId: giftReceiverId, gift, tabId });
+  actions.openGiftInfoModal({ peerId: giftReceiverId, gift, tabId });
 });
 
 addActionHandler('openGiftInfoModal', (global, actions, payload): ActionReturnType => {
@@ -276,11 +277,11 @@ addActionHandler('openGiftInfoModal', (global, actions, payload): ActionReturnTy
     gift, tabId = getCurrentTabId(),
   } = payload;
 
-  const userId = 'userId' in payload ? payload.userId : undefined;
+  const peerId = 'peerId' in payload ? payload.peerId : undefined;
 
   return updateTabState(global, {
     giftInfoModal: {
-      userId,
+      peerId,
       gift,
     },
   }, tabId);
@@ -299,5 +300,37 @@ addActionHandler('closeGiftUpgradeModal', (global, actions, payload): ActionRetu
 
   return updateTabState(global, {
     giftUpgradeModal: undefined,
+  }, tabId);
+});
+
+addActionHandler('openGiftWithdrawModal', (global, actions, payload): ActionReturnType => {
+  const { gift, tabId = getCurrentTabId() } = payload || {};
+
+  return updateTabState(global, {
+    giftWithdrawModal: {
+      gift,
+    },
+  }, tabId);
+});
+
+addActionHandler('closeGiftWithdrawModal', (global, actions, payload): ActionReturnType => {
+  const { tabId = getCurrentTabId() } = payload || {};
+
+  return updateTabState(global, {
+    giftWithdrawModal: undefined,
+  }, tabId);
+});
+
+addActionHandler('clearGiftWithdrawError', (global, actions, payload): ActionReturnType => {
+  const { tabId = getCurrentTabId() } = payload || {};
+  const tabState = selectTabState(global, tabId);
+  const giftWithdrawModal = tabState?.giftWithdrawModal;
+  if (!giftWithdrawModal) return undefined;
+
+  return updateTabState(global, {
+    giftWithdrawModal: {
+      ...giftWithdrawModal,
+      errorKey: undefined,
+    },
   }, tabId);
 });

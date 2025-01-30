@@ -32,6 +32,7 @@ import type {
   ApiPremiumSection,
   ApiReactionWithPaid,
   ApiReceiptRegular,
+  ApiSavedStarGift,
   ApiStarGift,
   ApiStarGiftAttribute,
   ApiStarGiveawayOption,
@@ -42,7 +43,6 @@ import type {
   ApiTypePrepaidGiveaway,
   ApiTypeStoryView,
   ApiUser,
-  ApiUserStarGift,
   ApiVideo,
   ApiWebPage,
 } from '../../api/types';
@@ -82,6 +82,7 @@ import type {
 } from '../../types';
 import type { WebApp, WebAppModalStateType } from '../../types/webapp';
 import type { SearchResultKey } from '../../util/keys/searchResultKey';
+import type { RegularLangFnParameters } from '../../util/localization';
 import type { CallbackAction } from './actions';
 
 export type TabState = {
@@ -377,8 +378,8 @@ export type TabState = {
     receipt?: ApiReceiptRegular;
     error?: {
       field?: string;
-      message?: string;
-      description?: string;
+      messageKey?: RegularLangFnParameters;
+      descriptionKey?: RegularLangFnParameters;
     };
     isPaymentModalOpen?: boolean;
     isExtendedMedia?: boolean;
@@ -603,8 +604,8 @@ export type TabState = {
 
   giftModal?: {
     isCompleted?: boolean;
-    forUserId: string;
-    gifts: ApiPremiumGiftCodeOption[];
+    forPeerId: string;
+    gifts?: ApiPremiumGiftCodeOption[];
   };
 
   limitReachedModal?: {
@@ -710,14 +711,20 @@ export type TabState = {
   };
 
   giftInfoModal?: {
-    userId?: string;
-    gift: ApiUserStarGift | ApiStarGift;
+    peerId?: string;
+    gift: ApiSavedStarGift | ApiStarGift;
   };
 
   giftUpgradeModal?: {
     sampleAttributes: ApiStarGiftAttribute[];
     recipientId?: string;
-    gift?: ApiUserStarGift;
+    gift?: ApiSavedStarGift;
+  };
+
+  giftWithdrawModal?: {
+    gift: ApiSavedStarGift;
+    isLoading?: boolean;
+    errorKey?: RegularLangFnParameters;
   };
 
   suggestedStatusModal?: {
@@ -725,6 +732,12 @@ export type TabState = {
     webAppKey?: string;
     customEmojiId: string;
     duration?: number;
+  };
+
+  monetizationVerificationModal?: {
+    chatId: string;
+    isLoading?: boolean;
+    errorKey?: RegularLangFnParameters;
   };
 
   isWaitingForStarGiftUpgrade?: true;

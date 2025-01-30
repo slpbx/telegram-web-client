@@ -5,17 +5,19 @@ import React, {
 import { getActions, withGlobal } from '../../../global';
 
 import type {
+  ApiPeer,
   ApiPremiumGiftCodeOption,
   ApiStarGiftRegular,
   ApiStarsAmount,
-  ApiUser,
 } from '../../../api/types';
 import type { TabState } from '../../../global/types';
 import type { StarGiftCategory } from '../../../types';
 
-import { getUserFullName } from '../../../global/helpers';
-import { selectUser } from '../../../global/selectors';
+import { getPeerTitle, getUserFullName } from '../../../global/helpers';
+import { isApiPeerChat, isApiPeerUser } from '../../../global/helpers/peers';
+import { selectPeer } from '../../../global/selectors';
 import buildClassName from '../../../util/buildClassName';
+import { throttle } from '../../../util/schedulers';
 
 import useCurrentOrPrev from '../../../hooks/useCurrentOrPrev';
 import { useIntersectionObserver } from '../../../hooks/useIntersectionObserver';
@@ -49,19 +51,22 @@ type StateProps = {
   starGiftsById?: Record<string, ApiStarGiftRegular>;
   starGiftIdsByCategory?: Record<StarGiftCategory, string[]>;
   starBalance?: ApiStarsAmount;
-  user?: ApiUser;
+  peer?: ApiPeer;
   isSelf?: boolean;
 };
 
 const AVATAR_SIZE = 100;
 const INTERSECTION_THROTTLE = 200;
+const SCROLL_THROTTLE = 200;
+
+const runThrottledForScroll = throttle((cb) => cb(), SCROLL_THROTTLE, true);
 
 const PremiumGiftModal: FC<OwnProps & StateProps> = ({
   modal,
   starGiftsById,
   starGiftIdsByCategory,
   starBalance,
-  user,
+  peer,
   isSelf,
 }) => {
   const {
@@ -79,6 +84,9 @@ const PremiumGiftModal: FC<OwnProps & StateProps> = ({
 
   const isOpen = Boolean(modal);
   const renderingModal = useCurrentOrPrev(modal);
+
+  const user = peer && isApiPeerUser(peer) ? peer : undefined;
+  const chat = peer && isApiPeerChat(peer) ? peer : undefined;
 
   const [selectedGift, setSelectedGift] = useState<GiftOption | undefined>();
   const [isHeaderHidden, setIsHeaderHidden] = useState(true);
@@ -129,21 +137,25 @@ const PremiumGiftModal: FC<OwnProps & StateProps> = ({
     if (!isOpen) {
       setIsHeaderHidden(true);
       setSelectedGift(undefined);
+      setSelectedCategory('all');
     }
   }, [isOpen]);
 
   const handleScroll = useLastCallback((e: React.UIEvent<HTMLDivElement>) => {
     if (selectedGift) return;
+    const currentTarget = e.currentTarget;
 
-    const { scrollTop } = e.currentTarget;
+    runThrottledForScroll(() => {
+      const { scrollTop } = currentTarget;
 
-    setIsHeaderHidden(scrollTop <= 150);
+      setIsHeaderHidden(scrollTop <= 150);
 
-    if (transitionRef.current && giftHeaderRef.current) {
-      const { top: headerTop } = giftHeaderRef.current.getBoundingClientRect();
-      const { top: transitionTop } = transitionRef.current.getBoundingClientRect();
-      setIsHeaderForStarGifts(headerTop - transitionTop <= 0);
-    }
+      if (transitionRef.current && giftHeaderRef.current) {
+        const { top: headerTop } = giftHeaderRef.current.getBoundingClientRect();
+        const { top: transitionTop } = transitionRef.current.getBoundingClientRect();
+        setIsHeaderForStarGifts(headerTop - transitionTop <= 0);
+      }
+    });
   });
 
   const giftPremiumDescription = lang('GiftPremiumDescription', {
@@ -156,14 +168,19 @@ const PremiumGiftModal: FC<OwnProps & StateProps> = ({
     ),
   }, { withNodes: true });
 
-  const starGiftDescription = isSelf
-    ? lang('StarGiftDescriptionSelf', undefined, {
+  const starGiftDescription = chat
+    ? lang('StarGiftDescriptionChannel', { peer: getPeerTitle(lang, chat) }, {
       withNodes: true,
-      renderTextFilters: ['br'],
+      withMarkdown: true,
     })
-    : lang('StarGiftDescription', {
-      user: getUserFullName(user)!,
-    }, { withNodes: true, withMarkdown: true });
+    : isSelf
+      ? lang('StarGiftDescriptionSelf', undefined, {
+        withNodes: true,
+        renderTextFilters: ['br'],
+      })
+      : lang('StarGiftDescription', {
+        user: getUserFullName(user)!,
+      }, { withNodes: true, withMarkdown: true });
 
   function renderGiftPremiumHeader() {
     return (
@@ -254,13 +271,13 @@ const PremiumGiftModal: FC<OwnProps & StateProps> = ({
         <div className={styles.avatars}>
           <Avatar
             size={AVATAR_SIZE}
-            peer={user}
+            peer={peer}
           />
           <img className={styles.logoBackground} src={StarsBackground} alt="" draggable={false} />
         </div>
-        {!isSelf && renderGiftPremiumHeader()}
-        {!isSelf && renderGiftPremiumDescription()}
-        {!isSelf && renderPremiumGifts()}
+        {!isSelf && !chat && renderGiftPremiumHeader()}
+        {!isSelf && !chat && renderGiftPremiumDescription()}
+        {!isSelf && !chat && renderPremiumGifts()}
 
         {renderStarGiftsHeader()}
         {renderStarGiftsDescription()}
@@ -321,8 +338,8 @@ const PremiumGiftModal: FC<OwnProps & StateProps> = ({
         activeKey={selectedGift ? 1 : 0}
       >
         {!selectedGift && renderMainScreen()}
-        {selectedGift && renderingModal?.forUserId && (
-          <GiftSendingOptions gift={selectedGift} userId={renderingModal.forUserId} />
+        {selectedGift && renderingModal?.forPeerId && (
+          <GiftSendingOptions gift={selectedGift} peerId={renderingModal.forPeerId} />
         )}
       </Transition>
     </Modal>
@@ -336,22 +353,22 @@ export default memo(withGlobal<OwnProps>((global, { modal }): StateProps => {
     currentUserId,
   } = global;
 
-  const user = modal?.forUserId ? selectUser(global, modal.forUserId) : undefined;
-  const isSelf = Boolean(currentUserId && modal?.forUserId === currentUserId);
+  const peer = modal?.forPeerId ? selectPeer(global, modal.forPeerId) : undefined;
+  const isSelf = Boolean(currentUserId && modal?.forPeerId === currentUserId);
 
   return {
     boostPerSentGift: global.appConfig?.boostsPerSentGift,
     starGiftsById: starGifts?.byId,
     starGiftIdsByCategory: starGifts?.idsByCategory,
     starBalance: stars?.balance,
-    user,
+    peer,
     isSelf,
   };
 })(PremiumGiftModal));
 
 function getCategoryKey(category: StarGiftCategory) {
   if (category === 'all') return -2;
-  if (category === 'stock') return -1;
-  if (category === 'limited') return 0;
+  if (category === 'limited') return -1;
+  if (category === 'stock') return 0;
   return category;
 }
