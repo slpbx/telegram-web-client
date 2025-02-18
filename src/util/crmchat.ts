@@ -45,9 +45,12 @@ addCallback(() => {
 
   if (currentList !== current.messageList) {
     current.messageList = currentList;
+    const chat = currentList?.chatId ? global.chats.byId[currentList.chatId] : undefined;
     sendMessage({
       type: 'chatOpened',
       chat: currentList,
+      userId: chat?.id,
+      username: chat?.usernames?.[0]?.username,
     });
   }
 
