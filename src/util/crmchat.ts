@@ -53,15 +53,6 @@ addCallback(() => {
       username: chat?.usernames?.[0]?.username,
     });
   }
-
-  const unreadCount = Object.values(global.chats.byId).reduce((acc, chat) => {
-    return acc + (chat.unreadCount || 0);
-  }, 0);
-
-  sendMessage({
-    type: 'unreadCount',
-    count: unreadCount,
-  });
 });
 
 async function callActionWhenAvailable<Action extends keyof ActionPayloads>(
