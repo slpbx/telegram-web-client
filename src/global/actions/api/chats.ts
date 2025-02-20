@@ -61,7 +61,6 @@ import {
   addChats,
   addMessages,
   addSimilarBots,
-  addSimilarChannels,
   addUsers,
   addUserStatuses,
   deleteChatMessages,
@@ -73,6 +72,7 @@ import {
   replaceChatListIds,
   replaceChatListLoadingParameters,
   replaceMessages,
+  replaceSimilarChannels,
   replaceThreadParam,
   replaceUserStatuses,
   toggleSimilarChannels,
@@ -745,7 +745,9 @@ addActionHandler('joinChannel', async (global, actions, payload): Promise<void> 
 });
 
 addActionHandler('deleteChatUser', (global, actions, payload): ActionReturnType => {
-  const { chatId, userId, tabId = getCurrentTabId() } = payload;
+  const {
+    chatId, userId, shouldRevokeHistory, tabId = getCurrentTabId(),
+  } = payload;
   const chat = selectChat(global, chatId);
   const user = selectUser(global, userId);
   if (!chat || !user) {
@@ -759,7 +761,7 @@ addActionHandler('deleteChatUser', (global, actions, payload): ActionReturnType 
     actions.openChat({ id: undefined, tabId });
   }
 
-  void callApi('deleteChatUser', { chat, user });
+  void callApi('deleteChatUser', { chat, user, shouldRevokeHistory });
 });
 
 addActionHandler('deleteChat', (global, actions, payload): ActionReturnType => {
@@ -1577,6 +1579,43 @@ addActionHandler('openChatByUsername', async (global, actions, payload): Promise
   }
 });
 
+addActionHandler('openPrivateChannel', (global, actions, payload): ActionReturnType => {
+  const {
+    id, commentId, messageId, threadId, tabId = getCurrentTabId(),
+  } = payload;
+  const chat = selectChat(global, id);
+  if (!chat) {
+    actions.showNotification({
+      message: {
+        key: 'PrivateChannelInaccessible',
+      },
+      tabId,
+    });
+    return;
+  }
+
+  if (!commentId && !messageId && !threadId) {
+    actions.openChat({ id, tabId });
+    return;
+  }
+
+  if (commentId && messageId) {
+    actions.openThread({
+      isComments: true,
+      originChannelId: chat.id,
+      originMessageId: messageId,
+      tabId,
+      focusMessageId: commentId,
+    });
+    return;
+  }
+
+  openChatWithParams(global, actions, chat, {
+    messageId,
+    threadId,
+  }, tabId);
+});
+
 addActionHandler('togglePreHistoryHidden', async (global, actions, payload): Promise<void> => {
   const {
     chatId, isEnabled,
@@ -1904,7 +1943,7 @@ addActionHandler('loadMoreMembers', async (global, actions, payload): Promise<vo
   const offset = selectChatFullInfo(global, chat.id)?.members?.length;
   if (offset !== undefined && chat.membersCount !== undefined && offset >= chat.membersCount) return;
 
-  const result = await callApi('fetchMembers', chat.id, chat.accessHash!, 'recent', offset);
+  const result = await callApi('fetchMembers', { chat, offset });
   if (!result) {
     return;
   }
@@ -2691,7 +2730,7 @@ addActionHandler('loadChannelRecommendations', async (global, actions, payload):
   const chatsById = buildCollectionByKey(similarChannels, 'id');
 
   global = getGlobal();
-  global = addSimilarChannels(global, chatId || GLOBAL_SUGGESTED_CHANNELS_ID, Object.keys(chatsById), count);
+  global = replaceSimilarChannels(global, chatId || GLOBAL_SUGGESTED_CHANNELS_ID, Object.keys(chatsById), count);
   setGlobal(global);
 });
 
@@ -3075,7 +3114,6 @@ async function openChatByUsername<T extends GlobalState>(
   const {
     username, threadId, channelPostId, startParam, ref, startAttach, attach, text,
   } = params;
-  global = getGlobal();
   const currentChat = selectCurrentChat(global, tabId);
 
   // Attach in the current chat
@@ -3120,10 +3158,61 @@ async function openChatByUsername<T extends GlobalState>(
     return;
   }
 
-  if (channelPostId) {
-    actions.focusMessage({
-      chatId: chat.id, threadId, messageId: channelPostId, tabId,
-    });
+  openChatWithParams(global, actions, chat, {
+    isCurrentChat,
+    threadId,
+    messageId: channelPostId,
+    startParam,
+    referrer,
+    startAttach,
+    attach,
+    text,
+  }, tabId);
+}
+
+async function openChatWithParams<T extends GlobalState>(
+  global: T,
+  actions: RequiredGlobalActions,
+  chat: ApiChat,
+  params: {
+    isCurrentChat?: boolean;
+    threadId?: ThreadId;
+    messageId?: number;
+    startParam?: string;
+    referrer?: string;
+    startAttach?: string;
+    attach?: string;
+    text?: string;
+  },
+  ...[tabId = getCurrentTabId()]: TabArgs<T>
+) {
+  const {
+    isCurrentChat, threadId, messageId, startParam, referrer, startAttach, attach, text,
+  } = params;
+
+  if (messageId) {
+    let isTopicProcessed = false;
+    // In forums, link to a topic start message should open the topic
+    if (chat.isForum && !threadId) {
+      let topic = selectTopics(global, chat.id)?.[messageId];
+      if (!topic) {
+        const topicResult = await callApi('fetchTopicById', { chat, topicId: messageId });
+        topic = topicResult?.topic;
+      }
+
+      if (topic) {
+        actions.openThread({
+          chatId: chat.id, threadId: topic.id, tabId,
+        });
+        isTopicProcessed = true;
+      }
+    }
+
+    if (!isTopicProcessed) {
+      actions.focusMessage({
+        chatId: chat.id, threadId, messageId, tabId,
+      });
+    }
   } else if (!isCurrentChat) {
     actions.openThread({ chatId: chat.id, threadId: threadId ?? MAIN_THREAD_ID, tabId });
   }

@@ -1198,6 +1198,12 @@ export interface LangPair {
   'GiftInfoUpgradeBadge': undefined;
   'GiftInfoUpgradeForFree': undefined;
   'GiftInfoWithdraw': undefined;
+  'GiftInfoWear': undefined;
+  'GiftInfoTakeOff': undefined;
+  'GiftInfoTransfer': undefined;
+  'GiftTransferTitle': undefined;
+  'GiftTransferTON': undefined;
+  'GiftTransferConfirmButtonFree': undefined;
   'GiftUpgradeUniqueTitle': undefined;
   'GiftUpgradeUniqueDescription': undefined;
   'GiftUpgradeTransferableTitle': undefined;
@@ -1306,9 +1312,27 @@ export interface LangPair {
   'ViewButtonGiftUnique': undefined;
   'AuthContinueOnThisLanguage': undefined;
   'Share': undefined;
+  'GiftSortByDate': undefined;
+  'GiftSortByValue': undefined;
+  'GiftFilterUnlimited': undefined;
+  'GiftFilterLimited': undefined;
+  'GiftFilterUnique': undefined;
+  'GiftFilterDisplayed': undefined;
+  'GiftFilterHidden': undefined;
+  'GiftSearchEmpty': undefined;
+  'GiftSearchReset': undefined;
   'CheckPasswordTitle': undefined;
   'CheckPasswordPlaceholder': undefined;
   'CheckPasswordDescription': undefined;
+  'UniqueStatusBenefitsDescription': undefined;
+  'UniqueStatusBadgeBenefitTitle': undefined;
+  'UniqueStatusBadgeDescription': undefined;
+  'UniqueStatusProfileDesignBenefitTitle': undefined;
+  'UniqueStatusProfileDesignDescription': undefined;
+  'UniqueStatusProofOfOwnershipBenefitTitle': undefined;
+  'UniqueStatusProofOfOwnershipDescription': undefined;
+  'UniqueStatusWearButton': undefined;
+  'CollectibleStatusesCategory': undefined;
 }
 
 export interface LangPairWithVariables<V extends unknown = LangVariable> {
@@ -1663,6 +1687,10 @@ export interface LangPairWithVariables<V extends unknown = LangVariable> {
   'GiftSend': {
     'amount': V;
   };
+  'GiftUnique': {
+    'title': V;
+    'number': V;
+  };
   'GiftInfoPeerDescriptionFreeUpgradeOut': {
     'peer': V;
   };
@@ -1708,6 +1736,25 @@ export interface LangPairWithVariables<V extends unknown = LangVariable> {
     'peer': V;
     'date': V;
     'text': V;
+  };
+  'GiftTransferTONBlocked': {
+    'time': V;
+  };
+  'GiftTransferConfirmDescription': {
+    'gift': V;
+    'peer': V;
+    'amount': V;
+  };
+  'GiftTransferConfirmDescriptionFree': {
+    'gift': V;
+    'peer': V;
+  };
+  'GiftTransferConfirmButton': {
+    'amount': V;
+  };
+  'GiftTransferSuccessMessage': {
+    'gift': V;
+    'peer': V;
   };
   'GiftPeerUpgradeText': {
     'peer': V;
@@ -1799,6 +1846,9 @@ export interface LangPairWithVariables<V extends unknown = LangVariable> {
   };
   'MoreSimilarBotsText': {
     'count': V;
+  };
+  'UniqueStatusWearTitle': {
+    'gift': V;
   };
 }
 

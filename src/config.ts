@@ -1,6 +1,9 @@
 import type {
   ApiLimitType, ApiLimitTypeForPromo, ApiPremiumSection, ApiReactionEmoji,
 } from './api/types';
+import type {
+  GiftProfileFilterOptions,
+} from './types';
 
 // eslint-disable-next-line no-restricted-globals, max-len
 export const CRM_CHAT_ACCOUNT_ID = typeof location !== 'undefined' ? (new URLSearchParams(location?.search ?? '').get('accountId') ?? '') : '';
@@ -182,7 +185,12 @@ export const SCROLL_SHORT_TRANSITION_MAX_DISTANCE = 300; // px
 // Average duration of message sending animation
 export const API_UPDATE_THROTTLE = Math.round((SCROLL_MIN_DURATION + SCROLL_MAX_DURATION) / 2);
 export const API_THROTTLE_RESET_UPDATES = new Set([
-  'newMessage', 'newScheduledMessage', 'deleteMessages', 'deleteScheduledMessages', 'deleteHistory',
+  'newMessage',
+  'newScheduledMessage',
+  'deleteMessages',
+  'deleteScheduledMessages',
+  'deleteHistory',
+  'deleteParticipantHistory',
 ]);
 
 export const LOCK_SCREEN_ANIMATION_DURATION_MS = 200;
@@ -214,6 +222,7 @@ export const EMOJI_SIZES = 7;
 export const TOP_SYMBOL_SET_ID = 'top';
 export const POPULAR_SYMBOL_SET_ID = 'popular';
 export const RECENT_SYMBOL_SET_ID = 'recent';
+export const COLLECTIBLE_STATUS_SET_ID = 'collectibleStatus';
 export const FAVORITE_SYMBOL_SET_ID = 'favorite';
 export const EFFECT_STICKERS_SET_ID = 'effectStickers';
 export const EFFECT_EMOJIS_SET_ID = 'effectEmojis';
@@ -430,3 +439,12 @@ export const PREMIUM_LIMITS_ORDER: ApiLimitTypeForPromo[] = [
   'dialogFiltersChats',
   'recommendedChannels',
 ];
+
+export const DEFAULT_GIFT_PROFILE_FILTER_OPTIONS : GiftProfileFilterOptions = {
+  sortType: 'byDate',
+  shouldIncludeUnlimited: true,
+  shouldIncludeLimited: true,
+  shouldIncludeUnique: true,
+  shouldIncludeDisplayed: true,
+  shouldIncludeHidden: true,
+} as const;

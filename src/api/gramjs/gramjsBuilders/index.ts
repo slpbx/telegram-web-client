@@ -8,6 +8,7 @@ import type {
   ApiChatBannedRights,
   ApiChatFolder,
   ApiChatReactions,
+  ApiEmojiStatusType,
   ApiFormattedText,
   ApiGroupCall,
   ApiInputPrivacyRules,
@@ -682,6 +683,13 @@ export function buildInputInvoice(invoice: ApiRequestInputInvoice) {
       });
     }
 
+    case 'stargiftTransfer': {
+      return new GramJs.InputInvoiceStarGiftTransfer({
+        stargift: buildInputSavedStarGift(invoice.inputSavedGift),
+        toId: buildInputPeer(invoice.recipient.id, invoice.recipient.accessHash),
+      });
+    }
+
     case 'giveaway':
     default: {
       const purpose = buildInputStorePaymentPurpose(invoice.purpose);
@@ -728,14 +736,21 @@ export function buildInputChatReactions(chatReactions?: ApiChatReactions) {
   return new GramJs.ChatReactionsNone();
 }
 
-export function buildInputEmojiStatus(emojiStatusId: string, expires?: number) {
-  if (emojiStatusId === DEFAULT_STATUS_ICON_ID) {
+export function buildInputEmojiStatus(emojiStatus: ApiEmojiStatusType) {
+  if (emojiStatus.type === 'collectible') {
+    return new GramJs.InputEmojiStatusCollectible({
+      collectibleId: BigInt(emojiStatus.collectibleId),
+      until: emojiStatus.until,
+    });
+  }
+
+  if (emojiStatus.documentId === DEFAULT_STATUS_ICON_ID) {
     return new GramJs.EmojiStatusEmpty();
   }
 
   return new GramJs.EmojiStatus({
-    documentId: BigInt(emojiStatusId),
-    until: expires,
+    documentId: BigInt(emojiStatus.documentId),
+    until: emojiStatus.until,
   });
 }
 

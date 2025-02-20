@@ -1,5 +1,5 @@
 import type { FC } from '../../../lib/teact/teact';
-import React, { memo, useState } from '../../../lib/teact/teact';
+import React, { memo, useEffect, useState } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
 import type { ApiPeer } from '../../../api/types';
@@ -114,6 +114,12 @@ const ChatReportPane: FC<OwnProps & StateProps> = ({
 
   const isRendering = Boolean(hasAnyButton && peer);
 
+  useEffect(() => {
+    if (!isRendering) {
+      closeBlockUserModal();
+    }
+  }, [isRendering]);
+
   const { ref, shouldRender } = useHeaderPane({
     isOpen: isRendering,
     onStateChange: onPaneStateChange,
@@ -185,6 +191,7 @@ const ChatReportPane: FC<OwnProps & StateProps> = ({
       >
         {user && (
           <Checkbox
+            className="dialog-checkbox"
             label={lang('DeleteThisChat')}
             checked={shouldDeleteChat}
             onCheck={setShouldDeleteChat}
@@ -192,6 +199,7 @@ const ChatReportPane: FC<OwnProps & StateProps> = ({
         )}
         {user && canReportSpam && (
           <Checkbox
+            className="ChatReportPane--Checkbox dialog-checkbox"
             label={lang('ReportChat')}
             checked={shouldReportSpam}
             onCheck={setShouldReportSpam}

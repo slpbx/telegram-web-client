@@ -1,5 +1,5 @@
 import type {
-  ApiInputInvoice, ApiInputInvoiceStarGift, ApiInputInvoiceStarGiftUpgrade, ApiRequestInputInvoice,
+  ApiInputInvoice, ApiInputInvoiceStarGift, ApiRequestInputInvoice,
 } from '../../../api/types';
 import type { ApiCredentials } from '../../../components/payment/PaymentModal';
 import type { RegularLangFnParameters } from '../../../util/localization';
@@ -294,7 +294,6 @@ addActionHandler('sendStarPaymentForm', async (global, actions, payload): Promis
   global = updateStarsPayment(global, { status: 'paid' }, tabId);
   setGlobal(global);
   actions.closeStarsPaymentModal({ tabId });
-  actions.closeGiftModal({ tabId });
 
   if ('channelId' in result) {
     actions.openChat({ id: result.channelId, tabId });
@@ -977,7 +976,7 @@ addActionHandler('upgradeGift', (global, actions, payload): ActionReturnType => 
   actions.closeGiftInfoModal({ tabId });
 
   if (!upgradeStars) {
-    callApi('upgradeGift', {
+    callApi('upgradeStarGift', {
       inputSavedGift: requestSavedGift,
       shouldKeepOriginalDetails: shouldKeepOriginalDetails || undefined,
     });
@@ -985,13 +984,53 @@ addActionHandler('upgradeGift', (global, actions, payload): ActionReturnType => 
     return;
   }
 
-  const invoice: ApiInputInvoiceStarGiftUpgrade = {
+  const invoice: ApiInputInvoice = {
     type: 'stargiftUpgrade',
     inputSavedGift: gift,
     shouldKeepOriginalDetails: shouldKeepOriginalDetails || undefined,
   };
 
   payInputStarInvoice(global, invoice, upgradeStars, tabId);
+});
+
+addActionHandler('transferGift', (global, actions, payload): ActionReturnType => {
+  const {
+    gift, recipientId, transferStars, tabId = getCurrentTabId(),
+  } = payload;
+
+  const peer = selectChat(global, recipientId);
+
+  const requestSavedGift = getRequestInputSavedStarGift(global, gift);
+  if (!peer || !requestSavedGift) {
+    return;
+  }
+
+  global = updateTabState(global, {
+    isWaitingForStarGiftTransfer: true,
+  }, tabId);
+
+  setGlobal(global);
+  global = getGlobal();
+
+  actions.closeGiftTransferModal({ tabId });
+  actions.closeGiftInfoModal({ tabId });
+
+  if (!transferStars) {
+    callApi('transferStarGift', {
+      inputSavedGift: requestSavedGift,
+      toPeer: peer,
+    });
+
+    return;
+  }
+
+  const invoice: ApiInputInvoice = {
+    type: 'stargiftTransfer',
+    inputSavedGift: gift,
+    recipientId,
+  };
+
+  payInputStarInvoice(global, invoice, transferStars, tabId);
 });
 
 async function payInputStarInvoice<T extends GlobalState>(

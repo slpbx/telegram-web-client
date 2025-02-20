@@ -32,6 +32,7 @@ import type {
   ApiPremiumSection,
   ApiReactionWithPaid,
   ApiReceiptRegular,
+  ApiSavedGifts,
   ApiSavedStarGift,
   ApiStarGift,
   ApiStarGiftAttribute,
@@ -46,6 +47,7 @@ import type {
   ApiVideo,
   ApiWebPage,
 } from '../../api/types';
+import type { ApiEmojiStatusCollectible } from '../../api/types/users';
 import type { FoldersActions } from '../../hooks/reducers/useFoldersReducer';
 import type { ReducerAction } from '../../hooks/useReducer';
 import type {
@@ -57,8 +59,8 @@ import type {
   ChatRequestedTranslations,
   ConfettiStyle,
   FocusDirection,
+  GiftProfileFilterOptions,
   GlobalSearchContent,
-  IAlbum,
   IAnchorPosition,
   InlineBotSettings,
   ManagementProgress,
@@ -197,9 +199,17 @@ export type TabState = {
 
   shouldPlayEffectInComposer?: true;
 
+  recoveryEmail?: string;
+
   inlineBots: {
     isLoading: boolean;
     byUsername: Record<string, false | InlineBotSettings>;
+  };
+
+  savedGifts: {
+    giftsByPeerId: Record<string, ApiSavedGifts>;
+    filter: GiftProfileFilterOptions;
+    transitionKey?: number;
   };
 
   globalSearch: {
@@ -574,9 +584,9 @@ export type TabState = {
   };
 
   deleteMessageModal?: {
-    message?: ApiMessage;
+    chatId: string;
+    messageIds: number[];
     isSchedule?: boolean;
-    album?: IAlbum;
     onConfirm?: NoneToVoidFunction;
   };
 
@@ -603,7 +613,6 @@ export type TabState = {
   };
 
   giftModal?: {
-    isCompleted?: boolean;
     forPeerId: string;
     gifts?: ApiPremiumGiftCodeOption[];
   };
@@ -715,6 +724,10 @@ export type TabState = {
     gift: ApiSavedStarGift | ApiStarGift;
   };
 
+  giftTransferModal?: {
+    gift: ApiSavedStarGift;
+  };
+
   giftUpgradeModal?: {
     sampleAttributes: ApiStarGiftAttribute[];
     recipientId?: string;
@@ -725,6 +738,10 @@ export type TabState = {
     gift: ApiSavedStarGift;
     isLoading?: boolean;
     errorKey?: RegularLangFnParameters;
+  };
+
+  giftStatusInfoModal?: {
+    emojiStatus: ApiEmojiStatusCollectible;
   };
 
   suggestedStatusModal?: {
@@ -741,4 +758,5 @@ export type TabState = {
   };
 
   isWaitingForStarGiftUpgrade?: true;
+  isWaitingForStarGiftTransfer?: true;
 };
