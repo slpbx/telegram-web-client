@@ -3,10 +3,12 @@
 import { addCallback } from '../lib/teact/teactn';
 import { getActions, getGlobal } from '../global';
 
+import type { ApiChatFullInfo, ApiSessionData, ApiUserFullInfo } from '../api/types';
 import type { ActionPayloads, GlobalState } from '../global/types';
-import { type ApiSessionData } from '../api/types';
 
+import { getChatAvatarHash } from '../global/helpers';
 import { getCurrentTabId } from './establishMultitabRole';
+import * as mediaLoader from './mediaLoader';
 
 export function crmChatLog(...args: any[]) {
   console.info('\x1b[44m\x1b[37m[ TGWEB ]\x1b[0m ', ...args);
@@ -30,7 +32,7 @@ const current: CurrentState = {
   messageList: undefined,
 };
 
-addCallback(() => {
+addCallback(async () => {
   const global = getGlobal();
   if (global.authState !== current.authState) {
     current.authState = global.authState;
@@ -46,9 +48,42 @@ addCallback(() => {
   if (currentList !== current.messageList) {
     current.messageList = currentList;
     const chat = currentList?.chatId ? global.chats.byId[currentList.chatId] : undefined;
+    const fullInfo: ApiUserFullInfo | ApiChatFullInfo | undefined = global.users.fullInfoById[currentList?.chatId]
+      ?? global.chats.fullInfoById[currentList?.chatId];
+
+    let type: 'user' | 'group' | 'other' = 'other';
+    switch (chat?.type) {
+      case 'chatTypePrivate':
+        type = 'user';
+        break;
+      case 'chatTypeBasicGroup':
+      case 'chatTypeSuperGroup':
+        type = 'group';
+        break;
+    }
+
+    const avatarHash = chat ? getChatAvatarHash(chat) : undefined;
+    const avatarUrl = avatarHash ? mediaLoader.getFromMemory(avatarHash) : undefined;
+    const avatarDataUri = avatarUrl ? await blobUrlToDataURI(avatarUrl) : undefined;
+
+    const info = chat ? {
+      type,
+      peerId: chat.id,
+      username: chat.usernames?.[0]?.username,
+      avatar: avatarDataUri,
+      fullName: chat.title,
+      description: fullInfo && 'bio' in fullInfo
+        ? fullInfo.bio
+        : (fullInfo && 'about' in fullInfo
+          ? fullInfo.about
+          : undefined
+        ),
+    } : undefined;
+
     sendMessage({
       type: 'chatOpened',
-      chat: currentList,
+      chat,
+      info,
       userId: chat?.id,
       username: chat?.usernames?.[0]?.username,
     });
@@ -68,11 +103,17 @@ async function callActionWhenAvailable<Action extends keyof ActionPayloads>(
 }
 
 window.addEventListener('message', (event) => {
+  const isLocalOrigin = process.env.NODE_ENV === 'development'
+    && (
+      event.origin.startsWith('http://localhost')
+      || event.origin.startsWith('http://127.0.0.1')
+      || event.origin.startsWith('http://192.168.')
+    );
+
   if (![
-    'http://localhost:3000',
     'https://hints-crm.web.app',
     'https://app.crmchat.ai',
-  ].includes(event.origin)) {
+  ].includes(event.origin) && !isLocalOrigin) {
     return;
   }
 
@@ -134,3 +175,16 @@ window.Worker = class PatchedWorker extends OriginalWorker {
     super(newUrl, options);
   }
 } satisfies typeof Worker;
+
+async function blobUrlToDataURI(blobUrl: string) {
+  const resp = await fetch(blobUrl);
+  const blob = await resp.blob();
+
+  // Read it as a Data URI via FileReader
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onloadend = () => resolve(reader.result);
+    reader.readAsDataURL(blob);
+  });
+}
