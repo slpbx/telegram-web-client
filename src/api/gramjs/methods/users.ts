@@ -103,6 +103,22 @@ export async function fetchCommonChats(user: ApiUser, maxId?: string) {
   return { chatIds, count };
 }
 
+export async function fetchPaidMessagesStarsAmount(user: ApiUser) {
+  const result = await invokeRequest(new GramJs.users.GetRequirementsToContact({
+    id: [buildInputEntity(user.id, user.accessHash) as GramJs.InputUser],
+  }));
+
+  if (!result) {
+    return undefined;
+  }
+
+  if (result[0] instanceof GramJs.RequirementToContactPaidMessages) {
+    return result[0].starsAmount?.toJSNumber();
+  }
+
+  return undefined;
+}
+
 export async function fetchNearestCountry() {
   const dcInfo = await invokeRequest(new GramJs.help.GetNearestDc());
 
@@ -231,6 +247,28 @@ export async function deleteContact({
   });
 }
 
+export async function addNoPaidMessagesException({ user, shouldRefundCharged }: {
+  user: ApiUser;
+  shouldRefundCharged?: boolean;
+}) {
+  const result = await invokeRequest(new GramJs.account.AddNoPaidMessagesException({
+    refundCharged: shouldRefundCharged ? true : undefined,
+    userId: buildInputEntity(user.id, user.accessHash) as GramJs.InputUser,
+  }));
+  return result;
+}
+
+export async function fetchPaidMessagesRevenue({ user }: {
+  user: ApiUser;
+  shouldRefundCharged?: boolean;
+}) {
+  const result = await invokeRequest(new GramJs.account.GetPaidMessagesRevenue({
+    userId: buildInputEntity(user.id, user.accessHash) as GramJs.InputUser,
+  }));
+  if (!result) return undefined;
+  return result.starsAmount.toJSNumber();
+}
+
 export async function fetchProfilePhotos({
   peer,
   offset = 0,
@@ -289,7 +327,8 @@ export async function fetchProfilePhotos({
 
   return {
     count: totalCount,
-    photos: messages.map((message) => message.content.action!.photo).filter(Boolean),
+    photos: messages.map((message) => message.content.action?.type === 'chatEditPhoto' && message.content.action.photo)
+      .filter(Boolean),
     nextOffsetId,
   };
 }

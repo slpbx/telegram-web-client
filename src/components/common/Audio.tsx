@@ -242,10 +242,10 @@ const Audio: FC<OwnProps> = ({
   });
 
   useEffect(() => {
-    if (onReadMedia && isMediaUnread && (isPlaying || isDownloading)) {
+    if (onReadMedia && isMediaUnread && isPlaying) {
       onReadMedia();
     }
-  }, [isPlaying, isMediaUnread, onReadMedia, isDownloading]);
+  }, [isPlaying, isMediaUnread, onReadMedia]);
 
   const handleDownloadClick = useLastCallback(() => {
     if (isDownloading) {
@@ -412,7 +412,7 @@ const Audio: FC<OwnProps> = ({
   return (
     <div className={fullClassName} dir={lang.isRtl ? 'rtl' : 'ltr'}>
       {isSelectable && (
-        <div className="message-select-control">
+        <div className="message-select-control no-selection">
           {isSelected && <Icon name="select" />}
         </div>
       )}

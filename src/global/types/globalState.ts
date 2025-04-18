@@ -15,7 +15,10 @@ import type {
   ApiGroupCall,
   ApiLanguage,
   ApiMessage,
+  ApiNotifyPeerType,
+  ApiPaidReactionPrivacyType,
   ApiPeerColors,
+  ApiPeerNotifySettings,
   ApiPeerPhotos,
   ApiPeerStories,
   ApiPhoneCall,
@@ -53,7 +56,6 @@ import type {
   EmojiKeywords,
   ISettings,
   IThemeSettings,
-  NotifyException,
   PerformanceType,
   Point,
   ServiceNotification,
@@ -72,6 +74,7 @@ import type { RegularLangFnParameters } from '../../util/localization';
 import type { TabState } from './tabState';
 
 export type GlobalState = {
+  cacheVersion: number;
   isInited: boolean;
   config?: ApiConfig;
   appConfig?: ApiAppConfig;
@@ -219,6 +222,7 @@ export type GlobalState = {
       similarChannelIds?: string[];
       count?: number;
     }>>;
+    notifyExceptionById: Record<string, ApiPeerNotifySettings>;
 
     similarBotsById: Record<string, SimilarBotsInfo>;
   };
@@ -227,6 +231,9 @@ export type GlobalState = {
     byChatId: Record<string, {
       byId: Record<number, ApiMessage>;
       threadsById: Record<ThreadId, Thread>;
+    }>;
+    playbackByChatId: Record<string, {
+      byId: Record<number, number>;
     }>;
     sponsoredByChatId: Record<string, ApiSponsoredMessage>;
     pollById: Record<string, ApiPoll>;
@@ -406,9 +413,9 @@ export type GlobalState = {
     loadedWallpapers?: ApiWallpaper[];
     themes: Partial<Record<ThemeKey, IThemeSettings>>;
     privacy: Partial<Record<ApiPrivacyKey, ApiPrivacySettings>>;
-    notifyExceptions?: Record<number, NotifyException>;
+    notifyDefaults?: Record<ApiNotifyPeerType, ApiPeerNotifySettings>;
     lastPremiumBandwithNotificationDate?: number;
-    paidReactionPrivacy?: boolean;
+    paidReactionPrivacy?: ApiPaidReactionPrivacyType;
     languages?: ApiLanguage[];
     botVerificationShownPeerIds: string[];
     miniAppsCachedPosition?: Point;

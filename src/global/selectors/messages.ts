@@ -46,6 +46,7 @@ import {
   getMessageWebPagePhoto,
   getMessageWebPageVideo,
   getSendingState,
+  getTimestampableMedia,
   hasMessageTtl,
   isActionMessage,
   isChatBasicGroup,
@@ -72,7 +73,7 @@ import {
   selectIsChatWithSelf,
   selectRequestedChatTranslationLanguage,
 } from './chats';
-import { selectPeer } from './peers';
+import { selectPeer, selectPeerPaidMessagesStars } from './peers';
 import { selectPeerStory } from './stories';
 import { selectIsStickerFavorite } from './symbols';
 import { selectTabState } from './tabs';
@@ -399,8 +400,9 @@ export function selectOutgoingStatus<T extends GlobalState>(
 export function selectSender<T extends GlobalState>(global: T, message: ApiMessage): ApiPeer | undefined {
   const { senderId } = message;
   const chat = selectChat(global, message.chatId);
+  const currentUser = selectUser(global, global.currentUserId!);
   if (!senderId) {
-    return chat;
+    return message.isOutgoing ? currentUser : chat;
   }
 
   if (chat && isChatChannel(chat) && !chat.areProfilesShown) return chat;
@@ -646,7 +648,7 @@ export function selectAllowedMessageActionsSlow<T extends GlobalState>(
   const hasTtl = hasMessageTtl(message);
   const { content } = message;
   const isDocumentSticker = isMessageDocumentSticker(message);
-  const isBoostMessage = message.content.action?.type === 'chatBoost';
+  const isBoostMessage = message.content.action?.type === 'boostApply';
 
   const hasChatPinPermission = (chat.isCreator
     || (!isChannel && !isUserRightBanned(chat, 'pinMessages'))
@@ -935,9 +937,7 @@ export function selectFirstUnreadId<T extends GlobalState>(
       return (
         (!lastReadId || id > lastReadId)
         && byId[id]
-        // For some reason outgoing topic actions are not marked as read, thus we need to mark them as read
-        // when the edit message hits the viewport
-        && ((!byId[id].isOutgoing || byId[id].content.action?.isTopicAction) || byId[id].isFromScheduled)
+        && (!byId[id].isOutgoing || byId[id].isFromScheduled)
         && id > lastReadServiceNotificationId
       );
     });
@@ -1331,12 +1331,21 @@ export function selectShouldSchedule<T extends GlobalState>(
   return selectCurrentMessageList(global, tabId)?.type === 'scheduled';
 }
 
+export function selectCanSchedule<T extends GlobalState>(
+  global: T,
+  ...[tabId = getCurrentTabId()]: TabArgs<T>
+) {
+  const chatId = selectCurrentMessageList(global, tabId)?.chatId;
+  const paidMessagesStars = chatId ? selectPeerPaidMessagesStars(global, chatId) : undefined;
+  return !paidMessagesStars;
+}
+
 export function selectCanScheduleUntilOnline<T extends GlobalState>(global: T, id: string) {
   const isChatWithSelf = selectIsChatWithSelf(global, id);
   const chatBot = selectBot(global, id);
-  return Boolean(
-    !isChatWithSelf && !chatBot && isUserId(id) && selectUserStatus(global, id)?.wasOnline,
-  );
+  const paidMessagesStars = selectPeerPaidMessagesStars(global, id);
+  return Boolean(!paidMessagesStars
+    && !isChatWithSelf && !chatBot && isUserId(id) && selectUserStatus(global, id)?.wasOnline);
 }
 
 export function selectCustomEmojis(message: ApiMessage) {
@@ -1502,4 +1511,29 @@ export function selectMessageReplyInfo<T extends GlobalState>(
   };
 
   return replyInfo;
+}
+
+export function selectReplyMessage<T extends GlobalState>(global: T, message: ApiMessage) {
+  const { replyToMsgId, replyToPeerId } = getMessageReplyInfo(message) || {};
+  const replyMessage = replyToMsgId
+    ? selectChatMessage(global, replyToPeerId || message.chatId, replyToMsgId) : undefined;
+
+  return replyMessage;
+}
+
+export function selectMessageTimestampableDuration<T extends GlobalState>(
+  global: T, message: ApiMessage, noReplies?: boolean,
+) {
+  const replyMessage = !noReplies ? selectReplyMessage(global, message) : undefined;
+
+  const timestampableMedia = getTimestampableMedia(message);
+  const replyTimestampableMedia = replyMessage && getTimestampableMedia(replyMessage);
+
+  return timestampableMedia?.duration || replyTimestampableMedia?.duration;
+}
+
+export function selectMessageLastPlaybackTimestamp<T extends GlobalState>(
+  global: T, chatId: string, messageId: number,
+) {
+  return global.messages.playbackByChatId[chatId]?.byId[messageId];
 }

@@ -96,6 +96,22 @@ export function getRequestInputInvoice<T extends GlobalState>(
     };
   }
 
+  if (inputInvoice.type === 'premiumGiftStars') {
+    const {
+      months, userId, message,
+    } = inputInvoice;
+    const user = selectUser(global, userId);
+
+    if (!user) return undefined;
+
+    return {
+      type: 'premiumGiftStars',
+      months,
+      message,
+      user,
+    };
+  }
+
   if (inputInvoice.type === 'giftcode') {
     const {
       userIds, boostChannelId, amount, currency, option, message,
@@ -317,9 +333,9 @@ export function getStarsTransactionFromGift(message: ApiMessage): ApiStarsTransa
   const { transactionId, stars } = action;
 
   return {
-    id: transactionId!,
+    id: transactionId,
     stars: {
-      amount: stars!,
+      amount: stars,
       nanos: 0,
     },
     peer: {
@@ -337,17 +353,17 @@ export function getPrizeStarsTransactionFromGiveaway(message: ApiMessage): ApiSt
 
   if (action?.type !== 'prizeStars') return undefined;
 
-  const { transactionId, stars, targetChatId } = action;
+  const { transactionId, stars, boostPeerId } = action;
 
   return {
-    id: transactionId!,
+    id: transactionId,
     stars: {
-      amount: stars!,
+      amount: stars,
       nanos: 0,
     },
     peer: {
       type: 'peer',
-      id: targetChatId!,
+      id: boostPeerId,
     },
     date: message.date,
     giveawayPostId: message.id,

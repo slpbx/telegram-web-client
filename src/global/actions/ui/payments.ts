@@ -110,7 +110,7 @@ addActionHandler('updateGiftProfileFilter', (global, actions, payload): ActionRe
   setGlobal(global);
 
   actions.loadPeerSavedGifts({
-    peerId, shouldRefresh: true, withTransition: true, tabId: tabState.id,
+    peerId, shouldRefresh: true, tabId: tabState.id,
   });
 });
 
@@ -132,6 +132,22 @@ addActionHandler('resetGiftProfileFilter', (global, actions, payload): ActionRet
   setGlobal(global);
 
   actions.loadPeerSavedGifts({
-    peerId, shouldRefresh: true, withTransition: true, tabId: tabState.id,
+    peerId, shouldRefresh: true, tabId: tabState.id,
   });
+});
+
+addActionHandler('openPaymentMessageConfirmDialogOpen', (global, actions, payload): ActionReturnType => {
+  const { tabId = getCurrentTabId() } = payload || {};
+
+  return updateTabState(global, {
+    isPaymentMessageConfirmDialogOpen: true,
+  }, tabId);
+});
+
+addActionHandler('closePaymentMessageConfirmDialogOpen', (global, actions, payload): ActionReturnType => {
+  const { tabId = getCurrentTabId() } = payload || {};
+
+  return updateTabState(global, {
+    isPaymentMessageConfirmDialogOpen: false,
+  }, tabId);
 });

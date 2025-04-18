@@ -13,10 +13,15 @@
     margin-top: 0.25rem;
   }
 
+  .is-forwarded.is-inverted-media & {
+    margin-top: 0.5rem;
+    margin-bottom: 0.125rem;
+  }
+
   &.is-service {
     justify-content: center;
     max-width: 19rem;
-    margin: 0.3125rem auto;
+    margin-top: 0.3125rem;
   }
 
   .own &.is-outside {

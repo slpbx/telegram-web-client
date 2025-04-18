@@ -148,6 +148,7 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
     openLocationAccessModal,
     changeWebAppModalState,
     closeWebAppModal,
+    openPreparedInlineMessageModal,
   } = getActions();
   const [mainButton, setMainButton] = useState<WebAppButton | undefined>();
   const [secondaryButton, setSecondaryButton] = useState<WebAppButton | undefined>();
@@ -698,6 +699,12 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
       handleCheckDownloadFile(eventData.url, eventData.file_name);
     }
 
+    if (eventType === 'web_app_send_prepared_message') {
+      if (!bot || !webAppKey) return;
+      const { id } = eventData;
+      openPreparedInlineMessageModal({ botId: bot.id, messageId: id, webAppKey });
+    }
+
     if (eventType === 'web_app_request_emoji_status_access') {
       if (!bot) return;
       openEmojiStatusAccessModal({ bot, webAppKey });
@@ -747,7 +754,7 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
                 course: geolocation?.heading,
                 speed: geolocation?.speed,
                 horizontal_accuracy: geolocation?.accuracy,
-                vertical_accuracy: geolocation?.accuracy,
+                vertical_accuracy: geolocation?.altitudeAccuracy,
               },
             });
           } else {
@@ -972,14 +979,14 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
               styles.headerButton,
               styles.left,
             )}
+            tabIndex={0}
+            role="button"
+            aria-label={lang('WebAppCollapse')}
+            onClick={handleCollapseClick}
           >
             <Icon
               name="down"
-              className={buildClassName(
-                styles.icon,
-                styles.collapseIcon,
-              )}
-              onClick={handleCollapseClick}
+              className={styles.icon}
             />
           </div>
           <div
@@ -987,6 +994,11 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
               styles.headerButton,
               styles.right,
             )}
+            tabIndex={0}
+            role="button"
+            aria-haspopup="menu"
+            aria-label={lang('AriaMoreButton')}
+            onClick={handleShowContextMenu}
           >
             <Icon
               name="more"
@@ -994,7 +1006,6 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
                 styles.icon,
                 styles.moreIcon,
               )}
-              onClick={handleShowContextMenu}
             />
           </div>
         </div>

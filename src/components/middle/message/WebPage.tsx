@@ -1,5 +1,5 @@
 import type { FC } from '../../../lib/teact/teact';
-import React, { memo, useRef } from '../../../lib/teact/teact';
+import React, { memo, useMemo, useRef } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
 import type { ApiMessage, ApiTypeStory } from '../../../api/types';
@@ -9,8 +9,8 @@ import { AudioOrigin, type ISettings } from '../../../types';
 import { getMessageWebPage } from '../../../global/helpers';
 import { selectCanPlayAnimatedEmojis } from '../../../global/selectors';
 import buildClassName from '../../../util/buildClassName';
+import { tryParseDeepLink } from '../../../util/deepLinkParser';
 import trimText from '../../../util/trimText';
-import { getGiftAttributes, getStickerFromGift } from '../../common/helpers/gifts';
 import renderText from '../../common/helpers/renderText';
 import { calculateMediaDimensions } from './helpers/mediaDimensions';
 import { getWebpageButtonLangKey } from './helpers/webpageType';
@@ -26,13 +26,13 @@ import Audio from '../../common/Audio';
 import Document from '../../common/Document';
 import EmojiIconBackground from '../../common/embedded/EmojiIconBackground';
 import PeerColorWrapper from '../../common/PeerColorWrapper';
-import RadialPatternBackground from '../../common/profile/RadialPatternBackground';
 import SafeLink from '../../common/SafeLink';
 import StickerView from '../../common/StickerView';
 import Button from '../../ui/Button';
 import BaseStory from './BaseStory';
 import Photo from './Photo';
 import Video from './Video';
+import WebPageUniqueGift from './WebPageUniqueGift';
 
 import './WebPage.scss';
 
@@ -44,8 +44,6 @@ const EMOJI_SIZE = 38;
 
 type OwnProps = {
   message: ApiMessage;
-  observeIntersectionForLoading?: ObserveFn;
-  observeIntersectionForPlaying?: ObserveFn;
   noAvatars?: boolean;
   canAutoLoad?: boolean;
   canAutoPlay?: boolean;
@@ -59,21 +57,22 @@ type OwnProps = {
   story?: ApiTypeStory;
   shouldWarnAboutSvg?: boolean;
   autoLoadFileMaxSizeMb?: number;
+  lastPlaybackTimestamp?: number;
+  isEditing?: boolean;
+  observeIntersectionForLoading?: ObserveFn;
+  observeIntersectionForPlaying?: ObserveFn;
   onAudioPlay?: NoneToVoidFunction;
   onMediaClick?: NoneToVoidFunction;
+  onDocumentClick?: NoneToVoidFunction;
   onCancelMediaTransfer?: NoneToVoidFunction;
   onContainerClick?: ((e: React.MouseEvent) => void);
-  isEditing?: boolean;
 };
 type StateProps = {
   canPlayAnimatedEmojis: boolean;
 };
-const STAR_GIFT_STICKER_SIZE = 120;
 
 const WebPage: FC<OwnProps & StateProps> = ({
   message,
-  observeIntersectionForLoading,
-  observeIntersectionForPlaying,
   noAvatars,
   canAutoLoad,
   canAutoPlay,
@@ -87,19 +86,21 @@ const WebPage: FC<OwnProps & StateProps> = ({
   backgroundEmojiId,
   shouldWarnAboutSvg,
   autoLoadFileMaxSizeMb,
+  lastPlaybackTimestamp,
+  isEditing,
+  observeIntersectionForLoading,
+  observeIntersectionForPlaying,
   onMediaClick,
+  onDocumentClick,
   onContainerClick,
   onAudioPlay,
   onCancelMediaTransfer,
-  isEditing,
 }) => {
   const { openUrl, openTelegramLink } = getActions();
   const webPage = getMessageWebPage(message);
   const { isMobile } = useAppLayout();
   // eslint-disable-next-line no-null/no-null
   const stickersRef = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line no-null/no-null
-  const giftStickersRef = useRef<HTMLDivElement>(null);
 
   const oldLang = useOldLang();
   const lang = useLang();
@@ -125,7 +126,13 @@ const WebPage: FC<OwnProps & StateProps> = ({
   useEnsureStory(storyData?.peerId, storyData?.id, story);
 
   const hasCustomColor = stickers?.isWithTextColor || stickers?.documents?.[0]?.shouldUseTextColor;
-  const customColor = useDynamicColorListener(stickersRef, !hasCustomColor);
+  const customColor = useDynamicColorListener(stickersRef, undefined, !hasCustomColor);
+
+  const linkTimestamp = useMemo(() => {
+    const parsedLink = webPage?.url && tryParseDeepLink(webPage?.url);
+    if (!parsedLink || !('timestamp' in parsedLink)) return undefined;
+    return parsedLink.timestamp;
+  }, [webPage?.url]);
 
   if (!webPage) {
     return undefined;
@@ -148,7 +155,8 @@ const WebPage: FC<OwnProps & StateProps> = ({
   const isGift = type === WEBPAGE_GIFT_TYPE;
   const isExpiredStory = story && 'isDeleted' in story;
 
-  const quickButtonLangKey = !inPreview && !isExpiredStory ? getWebpageButtonLangKey(type) : undefined;
+  const resultType = stickers?.isEmoji ? 'telegram_emojiset' : type;
+  const quickButtonLangKey = !inPreview && !isExpiredStory ? getWebpageButtonLangKey(resultType) : undefined;
   const quickButtonTitle = quickButtonLangKey && lang(quickButtonLangKey);
 
   const truncatedDescription = trimText(description, MAX_TEXT_LENGTH);
@@ -195,44 +203,6 @@ const WebPage: FC<OwnProps & StateProps> = ({
     );
   }
 
-  function renderStarGiftUnique() {
-    const gift = webPage?.gift;
-    if (!gift || gift.type !== 'starGiftUnique') return undefined;
-
-    const sticker = getStickerFromGift(gift)!;
-    const attributes = getGiftAttributes(gift);
-    const { backdrop, pattern, model } = attributes || {};
-
-    if (!backdrop || !pattern || !model) return undefined;
-
-    const backgroundColors = [backdrop.centerColor, backdrop.edgeColor];
-
-    return (
-      <div
-        className="web-page-gift web-page-centered web-page-unique"
-        onClick={() => handleOpenTelegramLink()}
-      >
-        <div className="web-page-unique-background-wrapper">
-          <RadialPatternBackground
-            className="web-page-unique-background"
-            backgroundColors={backgroundColors}
-            patternColor={backdrop.patternColor}
-            patternIcon={pattern.sticker}
-          />
-        </div>
-        <div ref={giftStickersRef} key={sticker.id} className="WebPage--unique-sticker">
-          <StickerView
-            containerRef={giftStickersRef}
-            sticker={sticker}
-            size={STAR_GIFT_STICKER_SIZE}
-            observeIntersectionForPlaying={observeIntersectionForPlaying}
-            observeIntersectionForLoading={observeIntersectionForLoading}
-          />
-        </div>
-      </div>
-    );
-  }
-
   return (
     <PeerColorWrapper
       className={className}
@@ -256,7 +226,12 @@ const WebPage: FC<OwnProps & StateProps> = ({
           <BaseStory story={story} isProtected={isProtected} isConnected={isConnected} isPreview />
         )}
         {isGift && !inPreview && (
-          renderStarGiftUnique()
+          <WebPageUniqueGift
+            gift={webPage.gift!}
+            observeIntersectionForLoading={observeIntersectionForLoading}
+            observeIntersectionForPlaying={observeIntersectionForPlaying}
+            onClick={handleOpenTelegramLink}
+          />
         )}
         {isArticle && (
           <div
@@ -302,6 +277,7 @@ const WebPage: FC<OwnProps & StateProps> = ({
             asForwarded={asForwarded}
             isDownloading={isDownloading}
             isProtected={isProtected}
+            lastPlaybackTimestamp={lastPlaybackTimestamp || linkTimestamp}
             onClick={isMediaInteractive ? handleMediaClick : undefined}
             onCancelUpload={onCancelMediaTransfer}
           />
@@ -323,7 +299,7 @@ const WebPage: FC<OwnProps & StateProps> = ({
             message={message}
             observeIntersection={observeIntersectionForLoading}
             autoLoadFileMaxSizeMb={autoLoadFileMaxSizeMb}
-            onMediaClick={handleMediaClick}
+            onMediaClick={onDocumentClick}
             onCancelUpload={onCancelMediaTransfer}
             isDownloading={isDownloading}
             shouldWarnAboutSvg={shouldWarnAboutSvg}

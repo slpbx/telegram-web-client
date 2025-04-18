@@ -10,9 +10,9 @@ import type {
 import type { IconName } from '../../../types/icons';
 
 import {
-  getPeerTitle,
   isUserId,
 } from '../../../global/helpers';
+import { getPeerTitle } from '../../../global/helpers/peers';
 import { selectPeer, selectPeerStory } from '../../../global/selectors';
 import buildClassName from '../../../util/buildClassName';
 import { getPeerColorClass } from '../helpers/peerColor';
@@ -24,6 +24,7 @@ import useLastCallback from '../../../hooks/useLastCallback';
 import useOldLang from '../../../hooks/useOldLang';
 
 import Icon from '../icons/Icon';
+import PeerColorWrapper from '../PeerColorWrapper';
 import EmojiIconBackground from './EmojiIconBackground';
 
 import './EmbeddedMessage.scss';
@@ -108,7 +109,7 @@ const EmbeddedStoryForward: FC<OwnProps & StateProps> = ({
   }
 
   return (
-    <div
+    <PeerColorWrapper
       ref={ref}
       className={buildClassName(
         'EmbeddedMessage',
@@ -131,7 +132,7 @@ const EmbeddedStoryForward: FC<OwnProps & StateProps> = ({
           {renderSender()}
         </div>
       </div>
-    </div>
+    </PeerColorWrapper>
   );
 };
 

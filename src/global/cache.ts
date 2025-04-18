@@ -277,6 +277,33 @@ function unsafeMigrateCache(cached: GlobalState, initialState: GlobalState) {
   if (!cached.peers) {
     cached.peers = initialState.peers;
   }
+
+  if (!cached.cacheVersion) {
+    cached.cacheVersion = initialState.cacheVersion;
+    // Reset because of the new action message structure
+    cached.messages = initialState.messages;
+    cached.chats.listIds = initialState.chats.listIds;
+  }
+
+  if (!cached.messages.playbackByChatId) {
+    cached.messages.playbackByChatId = initialState.messages.playbackByChatId;
+  }
+
+  if (cached.cacheVersion < 2) {
+    if (cached.settings.themes.dark) {
+      cached.settings.themes.dark.patternColor = initialState.settings.themes.dark!.patternColor;
+    }
+
+    if (cached.settings.themes.light) {
+      cached.settings.themes.light.patternColor = initialState.settings.themes.light!.patternColor;
+    }
+
+    cached.cacheVersion = 2;
+  }
+
+  if (!cached.chats.notifyExceptionById) {
+    cached.chats.notifyExceptionById = initialState.chats.notifyExceptionById;
+  }
 }
 
 function updateCache(force?: boolean) {
@@ -471,6 +498,7 @@ function reduceChats<T extends GlobalState>(global: T): GlobalState['chats'] {
     similarChannelsById: {},
     similarBotsById: {},
     isFullyLoaded: {},
+    notifyExceptionById: pickTruthy(global.chats.notifyExceptionById, idsToSave),
     loadingParameters: INITIAL_GLOBAL_STATE.chats.loadingParameters,
     byId: pickTruthy(global.chats.byId, idsToSave),
     fullInfoById: pickTruthy(global.chats.fullInfoById, idsToSave),
@@ -575,6 +603,7 @@ function reduceMessages<T extends GlobalState>(global: T): GlobalState['messages
     byChatId,
     pollById: pickTruthy(global.messages.pollById, pollIdsToSave),
     sponsoredByChatId: {},
+    playbackByChatId: {},
   };
 }
 
@@ -630,7 +659,7 @@ function omitLocalMedia(message: ApiMessage): ApiMessage {
 
 function reduceSettings<T extends GlobalState>(global: T): GlobalState['settings'] {
   const {
-    byKey, themes, performance, botVerificationShownPeerIds, miniAppsCachedPosition, miniAppsCachedSize,
+    byKey, themes, performance, botVerificationShownPeerIds, miniAppsCachedPosition, miniAppsCachedSize, notifyDefaults,
   } = global.settings;
 
   return {
@@ -638,10 +667,10 @@ function reduceSettings<T extends GlobalState>(global: T): GlobalState['settings
     themes,
     performance,
     privacy: {},
-    notifyExceptions: {},
     botVerificationShownPeerIds,
     miniAppsCachedPosition,
     miniAppsCachedSize,
+    notifyDefaults,
   };
 }
 

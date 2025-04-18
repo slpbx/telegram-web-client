@@ -19,7 +19,7 @@ export function isAlbum(messageOrAlbum: ApiMessage | IAlbum): messageOrAlbum is 
 }
 
 export function groupMessages(
-  messages: ApiMessage[], firstUnreadId?: number, topMessageId?: number, isChatWithSelf?: boolean,
+  messages: ApiMessage[], firstUnreadId?: number, topMessageId?: number, isChatWithSelf?: boolean, withUsers?: boolean,
 ) {
   const initDateGroup: MessageDateGroup = {
     originalDate: messages[0].date,
@@ -90,10 +90,11 @@ export function groupMessages(
       } else if (
         nextMessage.id === firstUnreadId
         || message.senderId !== nextMessage.senderId
+        || (!withUsers && message.paidMessageStars)
         || message.isOutgoing !== nextMessage.isOutgoing
         || message.postAuthorTitle !== nextMessage.postAuthorTitle
-        || (isActionMessage(message) && !message.content.action?.phoneCall)
-        || (isActionMessage(nextMessage) && !nextMessage.content.action?.phoneCall)
+        || (isActionMessage(message) && message.content.action?.type !== 'phoneCall')
+        || (isActionMessage(nextMessage) && nextMessage.content.action?.type !== 'phoneCall')
         || message.inlineButtons
         || nextMessage.inlineButtons
         || (nextMessage.date - message.date) > GROUP_INTERVAL_SECONDS

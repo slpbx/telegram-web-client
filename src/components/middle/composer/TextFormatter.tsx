@@ -7,9 +7,9 @@ import type { IAnchorPosition } from '../../../types';
 import { ApiMessageEntityTypes } from '../../../api/types';
 
 import { EDITABLE_INPUT_ID } from '../../../config';
+import { ensureProtocol } from '../../../util/browser/url';
 import buildClassName from '../../../util/buildClassName';
 import captureEscKeyListener from '../../../util/captureEscKeyListener';
-import { ensureProtocol } from '../../../util/ensureProtocol';
 import getKeyFromEvent from '../../../util/getKeyFromEvent';
 import stopEvent from '../../../util/stopEvent';
 import { INPUT_CUSTOM_EMOJI_SELECTOR } from './helpers/customEmoji';
@@ -422,7 +422,7 @@ const TextFormatter: FC<OwnProps> = ({
           className={getFormatButtonClassName('spoiler')}
           onClick={handleSpoilerText}
         >
-          <Icon name="eye-closed" />
+          <Icon name="eye-crossed" />
         </Button>
         <div className="TextFormatter-divider" />
         <Button

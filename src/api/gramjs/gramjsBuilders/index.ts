@@ -93,6 +93,19 @@ export function buildInputPeer(chatOrUserId: string, accessHash?: string): GramJ
   }
 }
 
+export function buildInputPaidReactionPrivacy(isPrivate?: boolean, peerId?: string): GramJs.TypeInputPeer {
+  if (isPrivate) return new GramJs.PaidReactionPrivacyAnonymous();
+  if (peerId) {
+    const peer = buildInputPeerFromLocalDb(peerId);
+    if (peer) {
+      return new GramJs.PaidReactionPrivacyPeer({
+        peer,
+      });
+    }
+  }
+  return new GramJs.PaidReactionPrivacyDefault();
+}
+
 export function buildInputPeerFromLocalDb(chatOrUserId: string): GramJs.TypeInputPeer | undefined {
   const type = getEntityTypeById(chatOrUserId);
   let accessHash: BigInt.BigInteger | undefined;
@@ -475,6 +488,9 @@ export function buildInputPrivacyKey(privacyKey: ApiPrivacyKey) {
 
     case 'gifts':
       return new GramJs.InputPrivacyKeyStarGiftsAutoSave();
+
+    case 'noPaidMessages':
+      return new GramJs.InputPrivacyKeyNoPaidMessages();
   }
 
   return undefined;
@@ -660,6 +676,17 @@ export function buildInputInvoice(invoice: ApiRequestInputInvoice) {
       const purpose = buildInputStorePaymentPurpose(invoice.purpose);
       return new GramJs.InputInvoiceStars({
         purpose,
+      });
+    }
+
+    case 'premiumGiftStars': {
+      const {
+        user, message, months,
+      } = invoice;
+      return new GramJs.InputInvoicePremiumGiftStars({
+        months,
+        userId: buildInputEntity(user.id, user.accessHash) as GramJs.InputUser,
+        message: message && buildInputTextWithEntities(message),
       });
     }
 

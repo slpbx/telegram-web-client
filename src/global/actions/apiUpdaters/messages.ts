@@ -208,7 +208,7 @@ addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
         if (!message) return;
 
         // Workaround for a weird behavior when interaction is received after watching reaction
-        if (getMessageText(message) !== update.emoji) return;
+        if (getMessageText(message)?.text !== update.emoji) return;
 
         const tabState = selectTabState(global, tabId);
         global = updateTabState(global, {
@@ -544,8 +544,15 @@ addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
 
       const chat = selectChat(global, chatId);
       const currentThreadInfo = selectThreadInfo(global, chatId, threadId);
-      if (chat?.isForum && threadInfo.lastReadInboxMessageId !== currentThreadInfo?.lastReadInboxMessageId) {
-        actions.loadTopicById({ chatId, topicId: Number(threadId) });
+      const topic = selectTopic(global, chatId, threadId);
+      if (chat?.isForum) {
+        if (!topic || topic.lastMessageId !== currentThreadInfo?.lastReadInboxMessageId) {
+          actions.loadTopicById({ chatId, topicId: Number(threadId) });
+        } else {
+          global = updateTopic(global, chatId, Number(threadId), {
+            unreadCount: 0,
+          });
+        }
       }
 
       // Update reply thread last read message id if already read in main thread
@@ -857,7 +864,8 @@ function updateReactions<T extends GlobalState>(
   const localPaidReaction = currentReactions?.results.find((r) => r.localAmount);
   // Save local count on update, but reset if we sent reaction
   if (localPaidReaction?.localAmount) {
-    reactions.results = addPaidReaction(reactions.results, localPaidReaction.localAmount);
+    const { localIsPrivate: isPrivate, localAmount, localPeerId } = localPaidReaction;
+    reactions.results = addPaidReaction(reactions.results, localAmount, isPrivate, localPeerId);
   }
 
   global = updateChatMessage(global, chatId, id, { reactions });
@@ -1162,7 +1170,7 @@ export function deleteMessages<T extends GlobalState>(
         return;
       }
 
-      if (message.content.action?.photo) {
+      if (message.content.action?.type === 'chatEditPhoto' && message.content.action.photo) {
         global = deletePeerPhoto(global, chatId, message.content.action.photo.id, true);
       }
 
@@ -1250,7 +1258,7 @@ export function deleteMessages<T extends GlobalState>(
         }
       }
 
-      if (message?.content.action?.photo) {
+      if (message?.content.action?.type === 'chatEditPhoto' && message.content.action.photo) {
         global = deletePeerPhoto(global, commonBoxChatId, message.content.action.photo.id, true);
       }
 

@@ -1,26 +1,36 @@
 import type { TeactNode } from '../lib/teact/teact';
 
 import type {
+  ApiAttachment,
   ApiBotInlineMediaResult,
   ApiBotInlineResult,
   ApiBotInlineSwitchPm,
   ApiBotInlineSwitchWebview,
+  ApiChat,
   ApiChatInviteImporter,
+  ApiContact,
   ApiDocument,
   ApiDraft,
   ApiExportedInvite,
   ApiFakeType,
   ApiFormattedText,
+  ApiInputReplyInfo,
   ApiLabeledPrice,
   ApiMediaFormat,
   ApiMessage,
+  ApiMessageEntity,
+  ApiNewPoll,
+  ApiPeer,
   ApiPhoto,
   ApiReaction,
   ApiReactionWithPaid,
   ApiStarGiftRegular,
   ApiStarsSubscription,
   ApiStarsTransaction,
+  ApiSticker,
   ApiStickerSet,
+  ApiStory,
+  ApiStorySkipped,
   ApiThreadInfo,
   ApiTopic,
   ApiTypingStatus,
@@ -76,19 +86,6 @@ export interface IThemeSettings {
   isBlurred?: boolean;
 }
 
-export type NotifySettings = {
-  hasPrivateChatsNotifications?: boolean;
-  hasPrivateChatsMessagePreview?: boolean;
-  hasGroupNotifications?: boolean;
-  hasGroupMessagePreview?: boolean;
-  hasBroadcastNotifications?: boolean;
-  hasBroadcastMessagePreview?: boolean;
-  hasContactJoinedNotifications?: boolean;
-  hasWebNotifications: boolean;
-  hasPushNotifications: boolean;
-  notificationSoundVolume: number;
-};
-
 export type LangCode = (
   'en' | 'ar' | 'be' | 'ca' | 'nl' | 'fr' | 'de' | 'id' | 'it' | 'ko' | 'ms' | 'fa' | 'pl' | 'pt-br' | 'ru' | 'es'
   | 'tr' | 'uk' | 'uz'
@@ -96,7 +93,7 @@ export type LangCode = (
 
 export type TimeFormat = '24h' | '12h';
 
-export interface ISettings extends NotifySettings, Record<string, any> {
+export interface ISettings {
   theme: ThemeKey;
   shouldUseSystemTheme: boolean;
   messageTextSize: number;
@@ -127,6 +124,7 @@ export interface ISettings extends NotifySettings, Record<string, any> {
   isConnectionStatusMinimized: boolean;
   shouldArchiveAndMuteNewNonContact?: boolean;
   shouldNewNonContactPeersRequirePremium?: boolean;
+  nonContactPeersPaidStars?: number;
   shouldHideReadMarks?: boolean;
   canTranslate: boolean;
   canTranslateChats: boolean;
@@ -139,6 +137,11 @@ export interface ISettings extends NotifySettings, Record<string, any> {
   shouldDebugExportedSenders?: boolean;
   shouldWarnAboutSvg?: boolean;
   shouldSkipWebAppCloseConfirmation: boolean;
+  shouldPaidMessageAutoApprove: boolean;
+  hasContactJoinedNotifications?: boolean;
+  hasWebNotifications: boolean;
+  hasPushNotifications: boolean;
+  notificationSoundVolume: number;
 }
 
 export type IAnchorPosition = {
@@ -200,6 +203,7 @@ export enum SettingsScreens {
   PrivacyGroupChatsAllowedContacts,
   PrivacyGroupChatsDeniedContacts,
   PrivacyBlockedUsers,
+  PrivacyNoPaidMessages,
   Performance,
   Folders,
   FoldersCreateFolder,
@@ -300,6 +304,7 @@ export enum MediaViewerOrigin {
   Album,
   ScheduledAlbum,
   SearchResult,
+  ChannelAvatar,
   SuggestedAvatar,
   StarsTransaction,
   PreviewMedia,
@@ -459,12 +464,6 @@ export enum ManagementScreens {
 }
 
 export type ManagementType = 'user' | 'group' | 'channel' | 'bot';
-
-export type NotifyException = {
-  isMuted: boolean;
-  isSilent?: boolean;
-  shouldShowPreviews?: boolean;
-};
 
 export type EmojiKeywords = {
   isLoading?: boolean;
@@ -666,4 +665,64 @@ export type GiftProfileFilterOptions = {
   shouldIncludeUnique: boolean;
   shouldIncludeDisplayed: boolean;
   shouldIncludeHidden: boolean;
+};
+
+export type SendMessageParams = {
+  chat?: ApiChat;
+  attachments?: ApiAttachment[];
+  lastMessageId?: number;
+  text?: string;
+  entities?: ApiMessageEntity[];
+  replyInfo?: ApiInputReplyInfo;
+  attachment?: ApiAttachment;
+  sticker?: ApiSticker;
+  story?: ApiStory | ApiStorySkipped;
+  gif?: ApiVideo;
+  poll?: ApiNewPoll;
+  contact?: ApiContact;
+  isSilent?: boolean;
+  scheduledAt?: number;
+  groupedId?: string;
+  noWebPage?: boolean;
+  sendAs?: ApiPeer;
+  shouldGroupMessages?: boolean;
+  shouldUpdateStickerSetOrder?: boolean;
+  wasDrafted?: boolean;
+  isInvertedMedia?: true;
+  effectId?: string;
+  webPageMediaSize?: WebPageMediaSize;
+  webPageUrl?: string;
+  starsAmount?: number;
+  isPending?: true;
+  messageList?: MessageList;
+  isReaction?: true; // Reaction to the story are sent in the form of a message
+  messagePriceInStars?: number;
+  localMessage?: ApiMessage;
+  forwardedLocalMessagesSlice?: ForwardedLocalMessagesSlice;
+  isForwarding?: boolean;
+  forwardParams?: ForwardMessagesParams;
+  isStoryReply?: boolean;
+};
+
+export type ForwardedLocalMessagesSlice = {
+  messageIds: number[];
+  localMessages: ApiMessage[];
+};
+
+export type ForwardMessagesParams = {
+  fromChat: ApiChat;
+  toChat: ApiChat;
+  toThreadId?: ThreadId;
+  messages: ApiMessage[];
+  isSilent?: boolean;
+  scheduledAt?: number;
+  sendAs?: ApiPeer;
+  withMyScore?: boolean;
+  noAuthors?: boolean;
+  noCaptions?: boolean;
+  isCurrentUserPremium?: boolean;
+  wasDrafted?: boolean;
+  lastMessageId?: number;
+  forwardedLocalMessagesSlice?: ForwardedLocalMessagesSlice;
+  messagePriceInStars?: number;
 };

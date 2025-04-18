@@ -517,13 +517,13 @@ const RightHeader: FC<OwnProps & StateProps> = ({
                   autoClose={false}
                 >
                   <MenuItem
-                    icon={giftsSortType === 'byDate' ? 'calendar-filter' : 'cash-circle'}
+                    icon={giftsSortType === 'byDate' ? 'cash-circle' : 'calendar-filter'}
                     // eslint-disable-next-line react/jsx-no-bind
                     onClick={() => updateGiftProfileFilter(
                       { peerId: chatId, filter: { sortType: giftsSortType === 'byDate' ? 'byValue' : 'byDate' } },
                     )}
                   >
-                    {lang(giftsSortType === 'byDate' ? 'GiftSortByDate' : 'GiftSortByValue')}
+                    {lang(giftsSortType === 'byDate' ? 'GiftSortByValue' : 'GiftSortByDate')}
                   </MenuItem>
 
                   <MenuSeparator />

@@ -46,8 +46,11 @@ const FILTERED_ATTRIBUTES = new Set(['key', 'ref', 'teactFastList', 'teactOrderK
 const HTML_ATTRIBUTES = new Set(['dir', 'role', 'form']);
 const CONTROLLABLE_TAGS = ['INPUT', 'TEXTAREA', 'SELECT'];
 const MAPPED_ATTRIBUTES: { [k: string]: string } = {
-  autoPlay: 'autoplay',
+  autoCapitalize: 'autocapitalize',
   autoComplete: 'autocomplete',
+  autoCorrect: 'autocorrect',
+  autoPlay: 'autoplay',
+  spellCheck: 'spellcheck',
 };
 const INDEX_KEY_PREFIX = '__indexKey#';
 
@@ -253,7 +256,7 @@ function initComponent(
 
   $element.componentInstance.context = currentContext;
 
-  if (componentInstance.mountState === MountState.New) {
+  if (componentInstance.mountState === MountState.Unmounted) {
     $element = mountComponent(componentInstance);
     setupComponentUpdateListener(parentEl, $element, $parent, currentContext, index);
   }

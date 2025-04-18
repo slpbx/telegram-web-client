@@ -4,7 +4,8 @@ import type { CallbackAction } from '../../global/types';
 import type { IconName } from '../../types/icons';
 import type { RegularLangFnParameters } from '../../util/localization';
 import type { ApiDocument, ApiPhoto, ApiReaction } from './messages';
-import type { ApiPremiumSection, ApiStarsSubscriptionPricing } from './payments';
+import type { ApiPremiumSection } from './payments';
+import type { ApiStarsSubscriptionPricing } from './stars';
 import type { ApiUser } from './users';
 
 export interface ApiInitialArgs {
@@ -102,20 +103,13 @@ export interface ApiWebSession {
 export interface ApiSessionData {
   mainDcId: number;
   keys: Record<number, string | number[]>;
-  hashes: Record<number, string | number[]>;
   isTest?: true;
 }
-
-export type ApiNotifyException = {
-  chatId: string;
-  isMuted: boolean;
-  isSilent?: boolean;
-  shouldShowPreviews?: boolean;
-};
 
 export type ApiNotification = {
   localId: string;
   containerSelector?: string;
+  type?: 'paidMessage' | undefined;
   title?: string | RegularLangFnParameters;
   message: TeactNode | RegularLangFnParameters;
   cacheBreaker?: string;
@@ -127,6 +121,7 @@ export type ApiNotification = {
   shouldShowTimer?: boolean;
   icon?: IconName;
   customEmojiIconId?: string;
+  shouldUseCustomIcon?: boolean;
   dismissAction?: CallbackAction;
 };
 
@@ -231,6 +226,10 @@ export interface ApiAppConfig {
   maxPinnedStoriesCount?: number;
   groupTranscribeLevelMin?: number;
   canLimitNewMessagesWithoutPremium?: boolean;
+  starsPaidMessagesAvailable?: boolean;
+  starsPaidMessageCommissionPermille?: number;
+  starsPaidMessageAmountMax?: number;
+  starsUsdWithdrawRateX1000?: number;
   bandwidthPremiumNotifyPeriod?: number;
   bandwidthPremiumUploadSpeedup?: number;
   bandwidthPremiumDownloadSpeedup?: number;
@@ -241,6 +240,8 @@ export interface ApiAppConfig {
   starGiftMaxMessageLength?: number;
   starGiftMaxConvertPeriod?: number;
   starRefStartPrefixes?: string[];
+  tonExplorerUrl?: string;
+  savedGiftPinLimit?: number;
 }
 
 export interface ApiConfig {
@@ -351,3 +352,12 @@ export type ApiLimitTypeWithModal = Exclude<ApiLimitType, (
 export type ApiLimitTypeForPromo = Exclude<ApiLimitType,
 'uploadMaxFileparts' | 'chatlistInvites' | 'chatlistJoined' | 'savedDialogsPinned'
 >;
+
+export type ApiPeerNotifySettings = {
+  mutedUntil?: number;
+  hasSound?: boolean;
+  isSilentPosting?: boolean;
+  shouldShowPreviews?: boolean;
+};
+
+export type ApiNotifyPeerType = 'users' | 'groups' | 'channels';

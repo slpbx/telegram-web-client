@@ -35,7 +35,7 @@ export function storeSession(sessionData: ApiSessionData, currentUserId?: string
   return updateSessionInCrmChat(sessionData);
   /*
   const {
-    mainDcId, keys, hashes, isTest,
+    mainDcId, keys, isTest,
   } = sessionData;
 
   localStorage.setItem(SESSION_USER_KEY, JSON.stringify({
@@ -47,13 +47,6 @@ export function storeSession(sessionData: ApiSessionData, currentUserId?: string
   Object.keys(keys).map(Number).forEach((dcId) => {
     localStorage.setItem(`dc${dcId}_auth_key`, JSON.stringify(keys[dcId]));
   });
-
-  if (hashes) {
-    Object.keys(hashes).map(Number).forEach((dcId) => {
-      localStorage.setItem(`dc${dcId}_hash`, JSON.stringify(hashes[dcId]));
-    });
-  }
-  */
 }
 
 export function clearStoredSession() {
@@ -86,18 +79,12 @@ export function loadStoredSession(): Promise<ApiSessionData | undefined> {
   const mainDcId = Number(userAuth.dcID);
   const isTest = userAuth.test;
   const keys: Record<number, string> = {};
-  const hashes: Record<number, string> = {};
 
   DC_IDS.forEach((dcId) => {
     try {
       const key = localStorage.getItem(`dc${dcId}_auth_key`);
       if (key) {
         keys[dcId] = JSON.parse(key);
-      }
-
-      const hash = localStorage.getItem(`dc${dcId}_hash`);
-      if (hash) {
-        hashes[dcId] = JSON.parse(hash);
       }
     } catch (err) {
       if (DEBUG) {
@@ -113,7 +100,6 @@ export function loadStoredSession(): Promise<ApiSessionData | undefined> {
   return {
     mainDcId,
     keys,
-    hashes,
     isTest,
   };
   */

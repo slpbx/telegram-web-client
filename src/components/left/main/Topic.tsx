@@ -9,8 +9,8 @@ import type {
 import type { ObserveFn } from '../../../hooks/useIntersectionObserver';
 import type { ChatAnimationTypes } from './hooks';
 
-import { getMessageAction, groupStatetefulContent } from '../../../global/helpers';
-import { getMessageReplyInfo } from '../../../global/helpers/replies';
+import { groupStatefulContent } from '../../../global/helpers';
+import { getIsChatMuted } from '../../../global/helpers/notifications';
 import {
   selectCanAnimateInterface,
   selectCanDeleteTopic,
@@ -18,6 +18,8 @@ import {
   selectChatMessage,
   selectCurrentMessageList,
   selectDraft,
+  selectNotifyDefaults,
+  selectNotifyException,
   selectOutgoingStatus,
   selectPeerStory,
   selectSender,
@@ -58,14 +60,12 @@ type OwnProps = {
 
 type StateProps = {
   chat: ApiChat;
+  isChatMuted?: boolean;
   canDelete?: boolean;
   lastMessage?: ApiMessage;
   lastMessageStory?: ApiTypeStory;
   lastMessageOutgoingStatus?: ApiMessageOutgoingStatus;
-  actionTargetMessage?: ApiMessage;
-  actionTargetUserIds?: string[];
   lastMessageSender?: ApiPeer;
-  actionTargetChatId?: string;
   typingStatus?: ApiTypingStatus;
   draft?: ApiDraft;
   canScrollDown?: boolean;
@@ -79,6 +79,7 @@ const Topic: FC<OwnProps & StateProps> = ({
   isSelected,
   chatId,
   chat,
+  isChatMuted,
   style,
   lastMessage,
   lastMessageStory,
@@ -86,9 +87,6 @@ const Topic: FC<OwnProps & StateProps> = ({
   lastMessageOutgoingStatus,
   observeIntersection,
   canDelete,
-  actionTargetMessage,
-  actionTargetUserIds,
-  actionTargetChatId,
   lastMessageSender,
   animationType,
   withInterfaceAnimations,
@@ -113,9 +111,9 @@ const Topic: FC<OwnProps & StateProps> = ({
   const [shouldRenderMuteModal, markRenderMuteModal, unmarkRenderMuteModal] = useFlag();
 
   const {
-    isPinned, isClosed,
+    isPinned, isClosed, notifySettings,
   } = topic;
-  const isMuted = topic.isMuted || (topic.isMuted === undefined && chat.isMuted);
+  const isMuted = Boolean(notifySettings.mutedUntil || (notifySettings.mutedUntil === undefined && isChatMuted));
 
   const handleOpenDeleteModal = useLastCallback(() => {
     markRenderDeleteModal();
@@ -136,16 +134,13 @@ const Topic: FC<OwnProps & StateProps> = ({
     chatId,
     lastMessage,
     draft,
-    actionTargetMessage,
-    actionTargetUserIds,
-    actionTargetChatId,
     lastMessageSender,
     lastMessageTopic: topic,
     observeIntersection,
     isTopic: true,
     typingStatus,
     topics,
-    statefulMediaContent: groupStatetefulContent({ story: lastMessageStory }),
+    statefulMediaContent: groupStatefulContent({ story: lastMessageStory }),
 
     animationType,
     withInterfaceAnimations,
@@ -164,6 +159,7 @@ const Topic: FC<OwnProps & StateProps> = ({
   const contextActions = useTopicContextActions({
     topic,
     chat,
+    isChatMuted,
     wasOpened: wasTopicOpened,
     canDelete,
     handleDelete: handleOpenDeleteModal,
@@ -191,7 +187,7 @@ const Topic: FC<OwnProps & StateProps> = ({
             <TopicIcon topic={topic} className={styles.topicIcon} observeIntersection={observeIntersection} />
             <h3 dir="auto" className="fullName">{renderText(topic.title)}</h3>
           </div>
-          {topic.isMuted && <Icon name="muted" />}
+          {Boolean(notifySettings.mutedUntil) && <Icon name="muted" />}
           <div className="separator" />
           {isClosed && (
             <Icon name="lock-badge" className={styles.closedIcon} />
@@ -245,13 +241,7 @@ export default memo(withGlobal<OwnProps>(
 
     const lastMessage = selectChatMessage(global, chatId, topic.lastMessageId);
     const { isOutgoing } = lastMessage || {};
-    const replyToMessageId = lastMessage && getMessageReplyInfo(lastMessage)?.replyToMsgId;
     const lastMessageSender = lastMessage && selectSender(global, lastMessage);
-    const lastMessageAction = lastMessage ? getMessageAction(lastMessage) : undefined;
-    const actionTargetMessage = lastMessageAction && replyToMessageId
-      ? selectChatMessage(global, chatId, replyToMessageId)
-      : undefined;
-    const { targetUserIds: actionTargetUserIds, targetChatId: actionTargetChatId } = lastMessageAction || {};
     const typingStatus = selectThreadParam(global, chatId, topic.id, 'typingStatus');
     const draft = selectDraft(global, chatId, topic.id);
     const threadInfo = selectThreadInfo(global, chatId, topic.id);
@@ -263,14 +253,16 @@ export default memo(withGlobal<OwnProps>(
     const storyData = lastMessage?.content.storyData;
     const lastMessageStory = storyData && selectPeerStory(global, storyData.peerId, storyData.id);
 
+    const isChatMuted = chat && getIsChatMuted(
+      chat, selectNotifyDefaults(global), selectNotifyException(global, chat.id),
+    );
+
     return {
       chat,
       lastMessage,
-      actionTargetUserIds,
-      actionTargetChatId,
-      actionTargetMessage,
       lastMessageSender,
       typingStatus,
+      isChatMuted,
       canDelete: selectCanDeleteTopic(global, chatId, topic.id),
       withInterfaceAnimations: selectCanAnimateInterface(global),
       draft,

@@ -72,6 +72,7 @@ import {
   selectUser,
   selectUserStatus,
 } from '../../../global/selectors';
+import buildClassName from '../../../util/buildClassName';
 import { copyTextToClipboard } from '../../../util/clipboard';
 import { getSelectionAsFormattedText } from './helpers/getSelectionAsFormattedText';
 import { isSelectionRangeInsideMessage } from './helpers/isSelectionRangeInsideMessage';
@@ -96,6 +97,7 @@ export type OwnProps = {
   noReplies?: boolean;
   detectedLanguage?: string;
   repliesThreadInfo?: ApiThreadInfo;
+  className?: string;
   onClose: NoneToVoidFunction;
   onCloseAnimationEnd: NoneToVoidFunction;
 };
@@ -217,10 +219,11 @@ const ContextMenuContainer: FC<OwnProps & StateProps> = ({
   isInSavedMessages,
   canReplyInChat,
   isWithPaidReaction,
-  onClose,
-  onCloseAnimationEnd,
   userFullName,
   canGift,
+  className,
+  onClose,
+  onCloseAnimationEnd,
 }) => {
   const {
     openThread,
@@ -362,9 +365,11 @@ const ContextMenuContainer: FC<OwnProps & StateProps> = ({
 
     const selectionText = getSelectionAsFormattedText(selectionRange);
 
+    const messageText = message.content.text!.text!.replace(/\u00A0/g, ' ');
+
     setCanQuoteSelection(
       selectionText.text.trim().length > 0
-      && message.content.text!.text!.includes(selectionText.text),
+      && messageText.includes(selectionText.text),
     );
   }, [
     selectionRange, selectionRange?.collapsed, selectionRange?.startOffset, selectionRange?.endOffset,
@@ -621,7 +626,7 @@ const ContextMenuContainer: FC<OwnProps & StateProps> = ({
   scheduledMaxDate.setFullYear(scheduledMaxDate.getFullYear() + 1);
 
   return (
-    <div ref={containerRef} className="ContextMenuContainer">
+    <div ref={containerRef} className={buildClassName('ContextMenuContainer', className)}>
       <MessageContextMenu
         isReactionPickerOpen={isReactionPickerOpen}
         availableReactions={availableReactions}

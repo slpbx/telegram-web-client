@@ -14,7 +14,8 @@ import type {
 import type { TabState } from '../../../../global/types';
 import { ApiMediaFormat } from '../../../../api/types';
 
-import { getPeerTitle, getStickerMediaHash } from '../../../../global/helpers';
+import { getStickerMediaHash } from '../../../../global/helpers';
+import { getPeerTitle } from '../../../../global/helpers/peers';
 import { selectPeer } from '../../../../global/selectors';
 import { formatStarsAsIcon } from '../../../../util/localization/format';
 import { fetch } from '../../../../util/mediaLoader';
@@ -102,7 +103,7 @@ const GiftUpgradeModal = ({ modal, recipient }: OwnProps & StateProps) => {
   }, [renderingModal?.sampleAttributes]);
 
   const modalData = useMemo(() => {
-    if (!previewAttributes) {
+    if (!previewAttributes || !isOpen) {
       return undefined;
     }
 
@@ -159,7 +160,7 @@ const GiftUpgradeModal = ({ modal, recipient }: OwnProps & StateProps) => {
       header,
       footer,
     };
-  }, [previewAttributes, lang, renderingRecipient, renderingModal?.gift, shouldKeepOriginalDetails]);
+  }, [previewAttributes, isOpen, lang, renderingRecipient, renderingModal?.gift, shouldKeepOriginalDetails]);
 
   return (
     <TableAboutModal

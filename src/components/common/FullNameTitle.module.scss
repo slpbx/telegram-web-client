@@ -13,6 +13,11 @@
       color: white;
     }
   }
+
+  .statusTransition {
+    height: 1.5em !important;
+    width: 1.5em !important;
+  }
 }
 
 .fullName {
@@ -28,6 +33,7 @@
   }
 }
 
-.transition {
-  width: 1.5rem;
+.statusTransitionSlide {
+  display: flex;
+  align-items: center;
 }

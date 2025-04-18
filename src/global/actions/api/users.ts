@@ -184,6 +184,47 @@ addActionHandler('loadCommonChats', async (global, actions, payload): Promise<vo
   setGlobal(global);
 });
 
+addActionHandler('addNoPaidMessagesException', async (global, actions, payload): Promise<void> => {
+  const { userId, shouldRefundCharged } = payload;
+  const user = selectUser(global, userId);
+  if (!user) {
+    return;
+  }
+
+  const result = await callApi('addNoPaidMessagesException',
+    { user, shouldRefundCharged });
+  if (!result) {
+    return;
+  }
+
+  global = getGlobal();
+  global = updateUserFullInfo(global, userId, {
+    settings: undefined,
+  });
+  setGlobal(global);
+});
+
+addActionHandler('openChatRefundModal', async (global, actions, payload): Promise<void> => {
+  const { userId, tabId = getCurrentTabId() } = payload;
+  const user = selectUser(global, userId);
+  if (!user) {
+    return;
+  }
+
+  const starsAmount = await callApi('fetchPaidMessagesRevenue', { user });
+  if (starsAmount === undefined) return;
+
+  global = getGlobal();
+  global = updateTabState(global, {
+    chatRefundModal: {
+      userId,
+      starsToRefund: starsAmount,
+    },
+  }, tabId);
+
+  setGlobal(global);
+});
+
 addActionHandler('updateContact', async (global, actions, payload): Promise<void> => {
   const {
     userId, isMuted = false, firstName, lastName, shouldSharePhoneNumber,
@@ -217,7 +258,7 @@ addActionHandler('updateContact', async (global, actions, payload): Promise<void
   }
 
   if (result) {
-    actions.loadChatSettings({ chatId: userId });
+    actions.loadPeerSettings({ peerId: userId });
     actions.loadPeerStories({ peerId: userId });
 
     global = getGlobal();
@@ -503,6 +544,30 @@ addActionHandler('openSuggestedStatusModal', async (global, actions, payload): P
       botId,
     },
   }, tabId);
+  setGlobal(global);
+});
+
+addActionHandler('loadPeerSettings', async (global, actions, payload): Promise<void> => {
+  const { peerId } = payload;
+
+  const userFullInfo = selectUserFullInfo(global, peerId);
+  if (!userFullInfo) {
+    actions.loadFullUser({ userId: peerId });
+    return;
+  }
+
+  const user = selectUser(global, peerId);
+  if (!user) {
+    return;
+  }
+
+  const result = await callApi('fetchPeerSettings', user);
+  if (!result) return;
+
+  const { settings } = result;
+
+  global = getGlobal();
+  global = updateUserFullInfo(global, peerId, { settings });
   setGlobal(global);
 });
 

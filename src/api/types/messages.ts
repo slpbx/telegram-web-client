@@ -1,16 +1,19 @@
 import type { ThreadId, WebPageMediaSize } from '../../types';
-import type { ApiWebDocument } from './bots';
-import type { ApiGroupCall, PhoneCallAction } from './calls';
-import type { ApiPeerColor } from './chats';
 import type {
-  ApiInputSavedStarGift,
+  ApiBotInlineMediaResult,
+  ApiBotInlineResult,
+  ApiWebDocument,
+} from './bots';
+import type { ApiPeerColor } from './chats';
+import type { ApiMessageAction } from './messageActions';
+import type {
   ApiLabeledPrice,
-  ApiStarGiftRegular,
-  ApiStarGiftUnique,
 } from './payments';
+import type { ApiStarGiftUnique } from './stars';
 import type {
   ApiMessageStoryData, ApiStory, ApiWebPageStickerData, ApiWebPageStoryData,
 } from './stories';
+import type { ApiInlineQueryPeerType } from './users';
 
 export interface ApiDimensions {
   width: number;
@@ -115,6 +118,7 @@ export interface ApiVideo {
   size: number;
   noSound?: boolean;
   waveform?: number[];
+  timestamp?: number;
 }
 
 export interface ApiAudio {
@@ -256,12 +260,12 @@ export interface ApiGeoPoint {
   accuracyRadius?: number;
 }
 
-interface ApiGeo {
+export interface ApiGeo {
   mediaType: 'geo';
   geo: ApiGeoPoint;
 }
 
-interface ApiVenue {
+export interface ApiVenue {
   mediaType: 'venue';
   geo: ApiGeoPoint;
   title: string;
@@ -271,7 +275,7 @@ interface ApiVenue {
   venueType: string;
 }
 
-interface ApiGeoLive {
+export interface ApiGeoLive {
   mediaType: 'geoLive';
   geo: ApiGeoPoint;
   heading?: number;
@@ -327,85 +331,6 @@ export type ApiNewPoll = {
     solutionEntities?: ApiMessageEntity[];
   };
 };
-
-export interface ApiMessageActionStarGift {
-  type: 'starGift';
-  isNameHidden: boolean;
-  isSaved: boolean;
-  isConverted?: true;
-  gift: ApiStarGiftRegular;
-  message?: ApiFormattedText;
-  starsToConvert?: number;
-  canUpgrade?: true;
-  isUpgraded?: true;
-  upgradeMsgId?: number;
-  alreadyPaidUpgradeStars?: number;
-  fromId?: string;
-  peerId?: string;
-  savedId?: string;
-  inputSavedGift?: ApiInputSavedStarGift;
-}
-
-export interface ApiMessageActionStarGiftUnique {
-  type: 'starGiftUnique';
-  isUpgrade?: true;
-  isTransferred?: true;
-  isSaved?: true;
-  isRefunded?: true;
-  gift: ApiStarGiftUnique;
-  canExportAt?: number;
-  transferStars?: number;
-  fromId?: string;
-  peerId?: string;
-  savedId?: string;
-  inputSavedGift?: ApiInputSavedStarGift;
-}
-
-export interface ApiAction {
-  mediaType: 'action';
-  text: string;
-  targetUserIds?: string[];
-  targetChatId?: string;
-  type:
-  | 'historyClear'
-  | 'contactSignUp'
-  | 'chatCreate'
-  | 'topicCreate'
-  | 'suggestProfilePhoto'
-  | 'updateProfilePhoto'
-  | 'joinedChannel'
-  | 'chatBoost'
-  | 'receipt'
-  | 'giftStars'
-  | 'giftPremium'
-  | 'giftCode'
-  | 'prizeStars'
-  | 'starGift'
-  | 'starGiftUnique'
-  | 'other';
-  photo?: ApiPhoto;
-  amount?: number;
-  stars?: number;
-  transactionId?: string;
-  currency?: string;
-  giftCryptoInfo?: {
-    currency: string;
-    amount: number;
-  };
-  starGift?: ApiMessageActionStarGift | ApiMessageActionStarGiftUnique;
-  translationValues: string[];
-  call?: Partial<ApiGroupCall>;
-  phoneCall?: PhoneCallAction;
-  score?: number;
-  months?: number;
-  topicEmojiIconId?: string;
-  isTopicAction?: boolean;
-  slug?: string;
-  isGiveaway?: boolean;
-  isUnclaimed?: boolean;
-  pluralValue?: number;
-  message?: ApiFormattedText;
-}
 
 export interface ApiWebPage {
   mediaType: 'webpage';
@@ -491,7 +416,7 @@ export type ApiMessageEntityDefault = {
   type: Exclude<
   `${ApiMessageEntityTypes}`,
   `${ApiMessageEntityTypes.Pre}` | `${ApiMessageEntityTypes.TextUrl}` | `${ApiMessageEntityTypes.MentionName}` |
-  `${ApiMessageEntityTypes.CustomEmoji}` | `${ApiMessageEntityTypes.Blockquote}`
+  `${ApiMessageEntityTypes.CustomEmoji}` | `${ApiMessageEntityTypes.Blockquote}` | `${ApiMessageEntityTypes.Timestamp}`
   >;
   offset: number;
   length: number;
@@ -532,8 +457,15 @@ export type ApiMessageEntityCustomEmoji = {
   documentId: string;
 };
 
+export type ApiMessageEntityTimestamp = {
+  type: ApiMessageEntityTypes.Timestamp;
+  offset: number;
+  length: number;
+  timestamp: number;
+};
+
 export type ApiMessageEntity = ApiMessageEntityDefault | ApiMessageEntityPre | ApiMessageEntityTextUrl |
-ApiMessageEntityMentionName | ApiMessageEntityCustomEmoji | ApiMessageEntityBlockquote;
+ApiMessageEntityMentionName | ApiMessageEntityCustomEmoji | ApiMessageEntityBlockquote | ApiMessageEntityTimestamp;
 
 export enum ApiMessageEntityTypes {
   Bold = 'MessageEntityBold',
@@ -554,6 +486,7 @@ export enum ApiMessageEntityTypes {
   Underline = 'MessageEntityUnderline',
   Spoiler = 'MessageEntitySpoiler',
   CustomEmoji = 'MessageEntityCustomEmoji',
+  Timestamp = 'MessageEntityTimestamp',
   Unknown = 'MessageEntityUnknown',
 }
 
@@ -571,7 +504,7 @@ export type MediaContent = {
   sticker?: ApiSticker;
   contact?: ApiContact;
   pollId?: string;
-  action?: ApiAction;
+  action?: ApiMessageAction;
   webPage?: ApiWebPage;
   audio?: ApiAudio;
   voice?: ApiVoice;
@@ -582,8 +515,6 @@ export type MediaContent = {
   giveaway?: ApiGiveaway;
   giveawayResults?: ApiGiveawayResults;
   paidMedia?: ApiPaidMedia;
-  isExpiredVoice?: boolean;
-  isExpiredRoundVideo?: boolean;
   ttlSeconds?: number;
 };
 export type MediaContainer = {
@@ -654,6 +585,7 @@ export interface ApiMessage {
   isVideoProcessingPending?: true;
   areReactionsPossible?: true;
   reportDeliveryUntilDate?: number;
+  paidMessageStars?: number;
 }
 
 export interface ApiReactions {
@@ -675,7 +607,7 @@ export interface ApiPeerReaction {
 
 export interface ApiMessageReactor {
   isTop?: true;
-  isMe?: true;
+  isMy?: true;
   count: number;
   isAnonymous?: true;
   peerId?: string;
@@ -687,6 +619,7 @@ export interface ApiReactionCount {
   reaction: ApiReactionWithPaid;
   localAmount?: number;
   localIsPrivate?: boolean;
+  localPeerId?: string;
   localPreviousChosenOrder?: number;
 }
 
@@ -748,6 +681,22 @@ export type ApiSavedReactionTag = {
   reaction: ApiReaction;
   title?: string;
   count: number;
+};
+
+export type ApiPaidReactionPrivacyType = ApiPaidReactionPrivacyDefault |
+ApiPaidReactionPrivacyAnonymous | PaidReactionPrivacyPeer;
+
+export type ApiPaidReactionPrivacyDefault = {
+  type: 'default';
+};
+
+export type ApiPaidReactionPrivacyAnonymous = {
+  type: 'anonymous';
+};
+
+export type PaidReactionPrivacyPeer = {
+  type: 'peer';
+  peerId: string;
 };
 
 interface ApiBaseThreadInfo {
@@ -970,6 +919,13 @@ export type ApiSponsoredMessageReportResult = {
     text: string;
     option: string;
   }[];
+};
+
+export type ApiPreparedInlineMessage = {
+  queryId: string;
+  result: ApiBotInlineResult | ApiBotInlineMediaResult;
+  peerTypes: ApiInlineQueryPeerType[];
+  cacheTime: number;
 };
 
 export const MAIN_THREAD_ID = -1;
