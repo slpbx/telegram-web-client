@@ -158,13 +158,6 @@ export async function requestSessionFromCrmChat(): Promise<ApiSessionData> {
   }
 }
 
-export function updateSessionInCrmChat(sessionData: ApiSessionData) {
-  sendMessage({
-    type: 'updateSession',
-    sessionData,
-  });
-}
-
 // Patch Worker constructor to pass variables to workers
 const OriginalWorker = window.Worker;
 window.Worker = class PatchedWorker extends OriginalWorker {

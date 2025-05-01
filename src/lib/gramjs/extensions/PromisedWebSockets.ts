@@ -3,7 +3,7 @@ import { Mutex } from "async-mutex";
 const mutex = new Mutex();
 
 const closeError = new Error('WebSocket was closed');
-const CONNECTION_TIMEOUT = 3000;
+const CONNECTION_TIMEOUT = 6000;
 const MAX_TIMEOUT = 30000;
 
 export default class PromisedWebSockets {

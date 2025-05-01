@@ -5,7 +5,7 @@ import {
   DEBUG, IS_SCREEN_LOCKED_CACHE_KEY,
   SESSION_USER_KEY,
 } from '../config';
-import { requestSessionFromCrmChat, updateSessionInCrmChat } from './crmchat';
+import { requestSessionFromCrmChat } from './crmchat';
 
 const DC_IDS = [1, 2, 3, 4, 5];
 
@@ -32,7 +32,6 @@ export function hasStoredSession() {
 }
 
 export function storeSession(sessionData: ApiSessionData, currentUserId?: string) {
-  return updateSessionInCrmChat(sessionData);
   /*
   const {
     mainDcId, keys, isTest,

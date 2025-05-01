@@ -114,7 +114,7 @@ class TelegramClient {
         timeout: 10,
         requestRetries: 5,
         connectionRetries: Infinity,
-        connectionRetriesToFallback: 1,
+        connectionRetriesToFallback: 2,
         retryDelay: 1000,
         retryMainConnectionDelay: 10000,
         autoReconnect: true,
