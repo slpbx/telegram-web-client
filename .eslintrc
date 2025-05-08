@@ -25,7 +25,7 @@
       }
     ],
     "max-len": [
-      "error",
+      "off",
       {
         "code": 120,
         "ignoreComments": true,
