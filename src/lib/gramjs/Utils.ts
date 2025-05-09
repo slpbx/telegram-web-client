@@ -232,7 +232,7 @@ export function getDC(dcId: number, downloadDC = false) {
             return {
                 id: 5,
                 ipAddress: `zws5${downloadDC ? '-1' : ''}${postfix}`,
-                port: 443,
+                port,
             };
         default:
             throw new Error(`Cannot find the DC with the ID of ${dcId}`);
