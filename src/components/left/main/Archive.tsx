@@ -5,7 +5,7 @@ import { getActions, getGlobal } from '../../../global';
 import type { GlobalState } from '../../../global/types';
 import type { CustomPeer } from '../../../types';
 
-import { ARCHIVED_FOLDER_ID } from '../../../config';
+import { ARCHIVED_FOLDER_ID, CHAT_HEIGHT_PX } from '../../../config';
 import { getChatTitle } from '../../../global/helpers';
 import buildClassName from '../../../util/buildClassName';
 import { compact } from '../../../util/iteratees';
@@ -162,6 +162,7 @@ const Archive: FC<OwnProps> = ({
         'chat-item-archive',
       )}
       buttonClassName={styles.button}
+      buttonStyle={archiveSettings.isMinimized ? '' : `height: ${CHAT_HEIGHT_PX}px`}
       contextActions={contextActions}
       withPortalForMenu
     >

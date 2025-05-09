@@ -50,6 +50,7 @@ interface OwnProps {
   secondaryIconClassName?: string;
   rightElement?: TeactNode;
   buttonClassName?: string;
+  buttonStyle?: string;
   className?: string;
   style?: string;
   children: React.ReactNode;
@@ -85,6 +86,7 @@ const ListItem: FC<OwnProps> = ({
   iconClassName,
   leftElement,
   buttonClassName,
+  buttonStyle,
   menuBubbleClassName,
   secondaryIcon,
   secondaryIconClassName,
@@ -230,6 +232,7 @@ const ListItem: FC<OwnProps> = ({
     >
       <ButtonElementTag
         className={buildClassName('ListItem-button', isTouched && 'active', buttonClassName)}
+        style={buttonStyle}
         role={!isStatic ? 'button' : undefined}
         href={href}
         ref={buttonRef as any /* TS requires specific types for refs */}

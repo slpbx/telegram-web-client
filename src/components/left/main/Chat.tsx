@@ -15,10 +15,12 @@ import type {
   ApiUserStatus,
 } from '../../../api/types';
 import type { ObserveFn } from '../../../hooks/useIntersectionObserver';
+import type { DisplayedProperty } from '../../../util/crmchat';
 import type { ChatAnimationTypes } from './hooks';
 import { MAIN_THREAD_ID } from '../../../api/types';
 import { StoryViewerOrigin } from '../../../types';
 
+import { CHAT_HEIGHT_PX } from '../../../config';
 import {
   groupStatefulContent,
   isUserId,
@@ -114,6 +116,7 @@ type StateProps = {
   lastMessage?: ApiMessage;
   currentUserId: string;
   isSynced?: boolean;
+  crmchatDisplayProperties?: DisplayedProperty[];
 };
 
 const Chat: FC<OwnProps & StateProps> = ({
@@ -151,6 +154,7 @@ const Chat: FC<OwnProps & StateProps> = ({
   className,
   isSynced,
   onDragEnter,
+  crmchatDisplayProperties,
 }) => {
   const {
     openChat,
@@ -328,6 +332,7 @@ const Chat: FC<OwnProps & StateProps> = ({
       className={chatClassName}
       href={href}
       style={`top: ${offsetTop}px`}
+      buttonStyle={`height: ${CHAT_HEIGHT_PX}px; padding-top: 4px; padding-bottom: 4px;`}
       ripple={!isForum && !isMobile}
       contextActions={contextActions}
       onClick={handleClick}
@@ -398,6 +403,9 @@ const Chat: FC<OwnProps & StateProps> = ({
             />
           )}
         </div>
+        {crmchatDisplayProperties?.length && (
+          <CrmchatDisplayedProperties properties={crmchatDisplayProperties} />
+        )}
       </div>
       {shouldRenderDeleteModal && (
         <DeleteChatModal
@@ -469,6 +477,9 @@ export default memo(withGlobal<OwnProps>(
     const storyData = lastMessage?.content.storyData;
     const lastMessageStory = storyData && selectPeerStory(global, storyData.peerId, storyData.id);
 
+    const crmchatDisplayProperties = global.crmchatDisplayedProperties?.byTelegramId?.[chatId]
+      ?? global.crmchatDisplayedProperties?.byTelegramUsername?.[user?.usernames?.[0]?.username?.toLowerCase() ?? ''];
+
     return {
       chat,
       isMuted: getIsChatMuted(chat, selectNotifyDefaults(global), selectNotifyException(global, chat.id)),
@@ -494,6 +505,32 @@ export default memo(withGlobal<OwnProps>(
       topics: topicsInfo?.topicsById,
       isSynced: global.isSynced,
       lastMessageStory,
+      crmchatDisplayProperties,
     };
   },
 )(Chat));
+
+function CrmchatDisplayedProperties({ properties }: { properties: DisplayedProperty[] }) {
+  return (
+    <div className="crmchat-badges">
+      {properties?.map((p, i) => (
+        <>
+          {i > 0 && <span>•</span>}
+          {p.values.map((v) => (
+            <div className={`${v.color ?? ''} ${p.type ?? ''}`}>
+              {p.type === 'amount' && (
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="height: 12px; width: 12px">
+                  <circle cx="8" cy="8" r="6" />
+                  <path d="M18.09 10.37A6 6 0 1 1 10.34 18" />
+                  <path d="M7 6h1v4" />
+                  <path d="m16.71 13.88.7.71-2.82 2.82" />
+                </svg>
+              )}
+              {v.text}
+            </div>
+          ))}
+        </>
+      ))}
+    </div>
+  );
+}

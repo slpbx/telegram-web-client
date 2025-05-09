@@ -1,7 +1,7 @@
 /* eslint-disable no-restricted-globals */
 /* eslint-disable no-console */
 import { addCallback } from '../lib/teact/teactn';
-import { getActions, getGlobal } from '../global';
+import { getActions, getGlobal, setGlobal } from '../global';
 
 import type { ApiChatFullInfo, ApiSessionData, ApiUserFullInfo } from '../api/types';
 import type { ActionPayloads, GlobalState } from '../global/types';
@@ -9,6 +9,15 @@ import type { ActionPayloads, GlobalState } from '../global/types';
 import { getChatAvatarHash } from '../global/helpers';
 import { getCurrentTabId } from './establishMultitabRole';
 import * as mediaLoader from './mediaLoader';
+
+export type DisplayedProperty = {
+  name: string;
+  type?: string;
+  values: Array<{
+    text: string;
+    color?: string;
+  }>;
+};
 
 export function crmChatLog(...args: any[]) {
   console.info('\x1b[44m\x1b[37m[ TGWEB ]\x1b[0m ', ...args);
@@ -133,6 +142,13 @@ window.addEventListener('message', (event) => {
         username: event.data.username,
       });
     }
+  }
+  if (event.data.type === 'setDisplayedProperties') {
+    const global: GlobalState = {
+      ...getGlobal(),
+      crmchatDisplayedProperties: event.data.displayedProperties,
+    };
+    setGlobal(global);
   }
 });
 

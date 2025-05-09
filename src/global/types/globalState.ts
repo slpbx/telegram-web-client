@@ -70,6 +70,7 @@ import type {
   TopicsInfo,
   WebPageMediaSize,
 } from '../../types';
+import type { DisplayedProperty } from '../../util/crmchat';
 import type { RegularLangFnParameters } from '../../util/localization';
 import type { TabState } from './tabState';
 
@@ -453,6 +454,11 @@ export type GlobalState = {
     balance: ApiStarsAmount;
     history: StarsTransactionHistory;
     subscriptions?: StarsSubscriptions;
+  };
+
+  crmchatDisplayedProperties?: {
+    byTelegramId: Record<string, DisplayedProperty[]>;
+    byTelegramUsername: Record<string, DisplayedProperty[]>;
   };
 };
 

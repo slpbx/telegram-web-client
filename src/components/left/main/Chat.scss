@@ -435,4 +435,121 @@
       }
     }
   }
+
+  .crmchat-badges {
+    display: flex;
+    align-items: center;
+    gap: 0.125rem;
+
+    overflow-x: scroll;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
+
+    & > span {
+      color: var(--color-text-secondary);
+      font-size: 10px;
+    }
+
+    & > div {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+
+      background-color: var(--badge-none);
+      color: var(--badge-none-foreground);
+      border-radius: 0.25rem;
+      padding: 0px 4px;
+      font-size: 12px;
+    }
+
+    --badge-none: hsl(240 4.8% 91%);
+    --badge-none-foreground: hsl(240 5.9% 10%);
+    --badge-gray: #f1f1ef;
+    --badge-gray-foreground: #787774;
+    --badge-brown: #f3eeee;
+    --badge-brown-foreground: #976d57;
+    --badge-orange: #f8ecdf;
+    --badge-orange-foreground: #cc782f;
+    --badge-yellow: #faf3dd;
+    --badge-yellow-foreground: #c29343;
+    --badge-green: #eef3ed;
+    --badge-green-foreground: #548164;
+    --badge-blue: #e9f3f7;
+    --badge-blue-foreground: #487ca5;
+    --badge-purple: #f6f3f8;
+    --badge-purple-foreground: #8a67ab;
+    --badge-pink: #f9f2f5;
+    --badge-pink-foreground: #b35488;
+    --badge-red: #faecec;
+    --badge-red-foreground: #c4554d;
+
+    .theme-dark & {
+      --badge-none: hsl(0 0% 18.9%);
+      --badge-none-foreground: hsl(0 0% 98%);
+      --badge-gray: #252525;
+      --badge-gray-foreground: #9b9b9b;
+      --badge-brown: #2e2724;
+      --badge-brown-foreground: #a27763;
+      --badge-orange: #36291f;
+      --badge-orange-foreground: #cb7b37;
+      --badge-yellow: #372e20;
+      --badge-yellow-foreground: #c19138;
+      --badge-green: #242b26;
+      --badge-green-foreground: #4f9768;
+      --badge-blue: #1f282d;
+      --badge-blue-foreground: #447acb;
+      --badge-purple: #2a2430;
+      --badge-purple-foreground: #865dbb;
+      --badge-pink: #2e2328;
+      --badge-pink-foreground: #ba4a78;
+      --badge-red: #332523;
+      --badge-red-foreground: #be524b;
+    }
+
+    & > div.amount {
+      border: 1px solid var(--badge-none);
+      background-color: transparent;
+      color: inherit;
+    }
+
+    & > div.gray {
+      background-color: var(--badge-gray);
+      color: var(--badge-gray-foreground);
+    }
+    & > div.brown {
+      background-color: var(--badge-brown);
+      color: var(--badge-brown-foreground);
+    }
+    & > div.orange {
+      background-color: var(--badge-orange);
+      color: var(--badge-orange-foreground);
+    }
+    & > div.yellow {
+      background-color: var(--badge-yellow);
+      color: var(--badge-yellow-foreground);
+    }
+    & > div.green { 
+      background-color: var(--badge-green);
+      color: var(--badge-green-foreground);
+    }
+    & > div.blue {
+      background-color: var(--badge-blue);  
+      color: var(--badge-blue-foreground);
+    }
+    & > div.purple {
+      background-color: var(--badge-purple);
+      color: var(--badge-purple-foreground);     
+    }
+    & > div.pink {
+      background-color: var(--badge-pink);
+      color: var(--badge-pink-foreground);
+    }
+    & > div.red {
+      background-color: var(--badge-red);
+      color: var(--badge-red-foreground);
+    }
+  }
 }
