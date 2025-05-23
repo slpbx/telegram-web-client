@@ -94,6 +94,7 @@ export default function createConfig(
         stats: 'minimal',
       },
       headers: {
+        'Access-Control-Allow-Origin': '*',
         'Content-Security-Policy': CSP,
       },
     },
