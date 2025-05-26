@@ -1,7 +1,9 @@
 /* eslint-disable no-restricted-globals */
 /* eslint-disable no-console */
 import { addCallback } from '../lib/teact/teactn';
-import { getActions, getGlobal, setGlobal } from '../global';
+import {
+  addActionHandler, getActions, getGlobal, setGlobal,
+} from '../global';
 
 import type { ApiChatFullInfo, ApiSessionData, ApiUserFullInfo } from '../api/types';
 import type { ActionPayloads, GlobalState } from '../global/types';
@@ -32,24 +34,16 @@ const sessionPromise = new Promise<ApiSessionData>(
   },
 );
 
-type CurrentState = Pick<GlobalState, 'authState' | 'currentUserId'> & {
+type CurrentState = Pick<GlobalState, 'currentUserId'> & {
   messageList?: GlobalState['byTabId'][number]['messageLists'][number];
 };
 const current: CurrentState = {
   currentUserId: undefined,
-  authState: undefined,
   messageList: undefined,
 };
 
 addCallback(async () => {
   const global = getGlobal();
-  if (global.authState !== current.authState) {
-    current.authState = global.authState;
-    sendMessage({
-      type: 'authState',
-      state: current.authState,
-    });
-  }
 
   const messageLists = global.byTabId[getCurrentTabId()]?.messageLists;
   const currentList = messageLists?.[messageLists.length - 1];
@@ -173,6 +167,23 @@ export async function requestSessionFromCrmChat(): Promise<ApiSessionData> {
     throw e;
   }
 }
+
+addActionHandler('apiUpdate', (global, actions, update): void => {
+  switch (update['@type']) {
+    case 'updateAuthorizationState':
+      sendMessage({
+        type: 'authState',
+        state: update.authorizationState,
+      });
+      break;
+    case 'updateConnectionState':
+      sendMessage({
+        type: 'connectionState',
+        state: update.connectionState,
+      });
+      break;
+  }
+});
 
 // Patch Worker constructor to pass variables to workers
 const OriginalWorker = window.Worker;
