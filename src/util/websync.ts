@@ -30,7 +30,8 @@ const saveSync = (authed: boolean) => {
 let lastTimeout: NodeJS.Timeout | undefined;
 
 export const forceWebsync = (authed: boolean) => {
-  if (IS_MOCKED_CLIENT || IS_ELECTRON) return undefined;
+  // eslint-disable-next-line no-constant-condition, no-constant-binary-expression
+  if (true || IS_MOCKED_CLIENT || IS_ELECTRON) return undefined;
   const currentTs = getTs();
 
   const { canRedirect, ts } = JSON.parse(localStorage.getItem(WEBSYNC_KEY) || '{}');

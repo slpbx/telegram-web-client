@@ -27,7 +27,7 @@ const {
   IS_PACKAGED_ELECTRON,
 } = process.env;
 
-const DEFAULT_APP_TITLE = `Telegram${APP_ENV !== 'production' ? ' Beta' : ''}`;
+const DEFAULT_APP_TITLE = `CRMchat TG Client${APP_ENV !== 'production' ? ' Beta' : ''}`;
 
 // GitHub workflow uses an empty string as the default value if it's not in repository variables, so we cannot define a default value here
 process.env.BASE_URL = process.env.BASE_URL || PRODUCTION_URL;
@@ -41,7 +41,7 @@ const {
 const CSP = `
   default-src 'self';
   connect-src 'self' wss://*.dcx.crmchat.ai blob: http: https: ${APP_ENV === 'development' ? 'wss: ws:' : ''};
-  script-src 'self' 'wasm-unsafe-eval' https://t.me/_websync_ https://telegram.me/_websync_;
+  script-src 'self' 'wasm-unsafe-eval';
   style-src 'self' 'unsafe-inline';
   img-src 'self' data: blob: https://ss3.4sqi.net/img/categories_v2/
   ${IS_PACKAGED_ELECTRON ? `${BASE_URL}/` : ''};

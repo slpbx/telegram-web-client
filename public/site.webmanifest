@@ -1,7 +1,7 @@
 {
-    "name": "Telegram Web",
-    "short_name": "Telegram Web",
-    "description": "Telegram is a cloud-based mobile and desktop messaging app with a focus on security and speed.",
+    "name": "CRMchat TG Client",
+    "short_name": "CRMchat Client",
+    "description": "CRMchat is the best CRM for TG",
     "start_url": "./",
     "gcm_sender_id": "122867383838",
     "icons": [
