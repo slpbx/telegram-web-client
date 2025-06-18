@@ -1,5 +1,5 @@
 import type { FC } from '../../../lib/teact/teact';
-import React, {
+import {
   memo, useRef,
 } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
@@ -9,8 +9,8 @@ import type { TabState } from '../../../global/types';
 
 import { getUserFullName } from '../../../global/helpers';
 import { selectUser } from '../../../global/selectors';
+import { getGeolocationStatus } from '../../../util/browser/windowEnvironment';
 import buildClassName from '../../../util/buildClassName';
-import { getGeolocationStatus } from '../../../util/windowEnvironment';
 
 import useLang from '../../../hooks/useLang';
 import useLastCallback from '../../../hooks/useLastCallback';
@@ -44,8 +44,7 @@ const LocationAccessModal: FC<OwnProps & StateProps> = ({
   const oldLang = useOldLang();
   const lang = useLang();
 
-  // eslint-disable-next-line no-null/no-null
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>();
 
   const confirmHandler = useLastCallback(async () => {
     const geolocationData = await getGeolocationStatus();
@@ -116,7 +115,7 @@ const LocationAccessModal: FC<OwnProps & StateProps> = ({
   const renderStatusText = useLastCallback(() => {
     if (!modal?.bot) return undefined;
     return lang('LocationPermissionText', {
-      name: getUserFullName(modal?.bot!),
+      name: getUserFullName(modal?.bot),
     }, {
       withNodes: true,
       withMarkdown: true,

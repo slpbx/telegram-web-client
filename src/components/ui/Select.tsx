@@ -1,6 +1,7 @@
-import type { ChangeEvent, RefObject } from 'react';
-import type { FC } from '../../lib/teact/teact';
-import React, { memo } from '../../lib/teact/teact';
+import type { ChangeEvent } from 'react';
+import type { ElementRef, FC } from '../../lib/teact/teact';
+import type React from '../../lib/teact/teact';
+import { memo } from '../../lib/teact/teact';
 
 import buildClassName from '../../util/buildClassName';
 
@@ -9,7 +10,7 @@ type OwnProps = {
   value?: string;
   label?: string;
   error?: string;
-  ref?: RefObject<HTMLSelectElement>;
+  ref?: ElementRef<HTMLSelectElement>;
   hasArrow?: boolean;
   tabIndex?: number;
   onChange?: (e: ChangeEvent<HTMLSelectElement>) => void;

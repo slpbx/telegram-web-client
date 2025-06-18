@@ -10,7 +10,9 @@ import {
   clearStarPayment, openStarsTransactionModal,
 } from '../../reducers';
 import { updateTabState } from '../../reducers/tabs';
-import { selectChatMessage, selectStarsPayment, selectTabState } from '../../selectors';
+import {
+  selectChatMessage, selectIsCurrentUserFrozen, selectStarsPayment, selectTabState,
+} from '../../selectors';
 
 addActionHandler('processOriginStarsPayment', (global, actions, payload): ActionReturnType => {
   const { originData, status, tabId = getCurrentTabId() } = payload;
@@ -58,6 +60,11 @@ addActionHandler('openGiftRecipientPicker', (global, actions, payload): ActionRe
   const {
     tabId = getCurrentTabId(),
   } = payload || {};
+
+  if (selectIsCurrentUserFrozen(global)) {
+    actions.openFrozenAccountModal({ tabId });
+    return global;
+  }
 
   return updateTabState(global, {
     isGiftRecipientPickerOpen: true,
@@ -249,9 +256,24 @@ addActionHandler('openGiftInfoModal', (global, actions, payload): ActionReturnTy
   } = payload;
 
   const peerId = 'peerId' in payload ? payload.peerId : undefined;
+  const recipientId = 'recipientId' in payload ? payload.recipientId : undefined;
 
   return updateTabState(global, {
     giftInfoModal: {
+      peerId,
+      gift,
+      recipientId,
+    },
+  }, tabId);
+});
+
+addActionHandler('openGiftResalePriceComposerModal', (global, actions, payload): ActionReturnType => {
+  const {
+    gift, peerId, tabId = getCurrentTabId(),
+  } = payload;
+
+  return updateTabState(global, {
+    giftResalePriceComposerModal: {
       peerId,
       gift,
     },
@@ -259,6 +281,8 @@ addActionHandler('openGiftInfoModal', (global, actions, payload): ActionReturnTy
 });
 
 addTabStateResetterAction('closeGiftInfoModal', 'giftInfoModal');
+
+addTabStateResetterAction('closeGiftResalePriceComposerModal', 'giftResalePriceComposerModal');
 
 addTabStateResetterAction('closeGiftUpgradeModal', 'giftUpgradeModal');
 

@@ -1,11 +1,9 @@
-import React, { useEffect, useRef, useState } from '../../lib/teact/teact';
+import { useEffect, useRef, useState } from '../../lib/teact/teact';
 
 function TestUpdateRef() {
   const [isShown, setIsShown] = useState(true);
-  // eslint-disable-next-line no-null/no-null
-  const inputRef = useRef<HTMLInputElement>(null);
-  // eslint-disable-next-line no-null/no-null
-  const headingRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>();
+  const headingRef = useRef<HTMLDivElement>();
 
   useEffect(() => {
     // Input content should preserve, but ref should clean up

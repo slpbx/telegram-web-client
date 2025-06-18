@@ -1,4 +1,4 @@
-import type { RefObject } from 'react';
+import type { ElementRef } from '../lib/teact/teact';
 import { useEffect, useState } from '../lib/teact/teact';
 import { addExtraClass, removeExtraClass } from '../lib/teact/teact-dom';
 
@@ -6,7 +6,7 @@ import type { IAnchorPosition } from '../types';
 import type { Signal } from '../util/signals';
 
 import { requestMutation } from '../lib/fasterdom/fasterdom';
-import { IS_IOS, IS_PWA, IS_TOUCH_ENV } from '../util/windowEnvironment';
+import { IS_IOS, IS_PWA, IS_TOUCH_ENV } from '../util/browser/windowEnvironment';
 import useLastCallback from './useLastCallback';
 
 const LONG_TAP_DURATION_MS = 200;
@@ -19,7 +19,7 @@ function stopEvent(e: Event) {
 }
 
 const useContextMenuHandlers = (
-  elementRef: RefObject<HTMLElement>,
+  elementRef: ElementRef<HTMLElement>,
   isMenuDisabled?: boolean,
   shouldDisableOnLink?: boolean,
   shouldDisableOnLongTap?: boolean,

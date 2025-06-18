@@ -4,8 +4,8 @@ import {
   APP_CODE_NAME,
   DEBUG, IS_MOCKED_CLIENT,
 } from '../config';
+import { IS_ELECTRON } from './browser/windowEnvironment';
 import { hasStoredSession } from './sessions';
-import { IS_ELECTRON } from './windowEnvironment';
 
 const WEBSYNC_URLS = [
   't.me',
@@ -45,7 +45,7 @@ export const forceWebsync = (authed: boolean) => {
         script.src = url + new URLSearchParams({
           authed: Number(authed).toString(),
           version: WEBSYNC_VERSION,
-        });
+        }).toString();
 
         document.body.appendChild(script);
 

@@ -1,5 +1,5 @@
 import type { FC } from '../../../lib/teact/teact';
-import React, {
+import {
   memo, useCallback, useEffect, useRef, useState,
 } from '../../../lib/teact/teact';
 import { getActions } from '../../../global';
@@ -26,8 +26,7 @@ const CodeOverlay: FC<OwnProps> = ({
   text, className, noCopy, onWordWrapToggle,
 }) => {
   const { showNotification } = getActions();
-  // eslint-disable-next-line no-null/no-null
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLDivElement>();
   const windowSize = useWindowSize();
   const lang = useOldLang();
   const [isWordWrap, setIsWordWrap] = useState(true);

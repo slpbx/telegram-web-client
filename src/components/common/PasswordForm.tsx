@@ -1,14 +1,15 @@
 import type { ChangeEvent } from 'react';
 import type { FC } from '../../lib/teact/teact';
-import React, {
+import type React from '../../lib/teact/teact';
+import {
   memo, useEffect, useRef, useState,
 } from '../../lib/teact/teact';
 
 import { MIN_PASSWORD_LENGTH } from '../../config';
 import { requestMutation } from '../../lib/fasterdom/fasterdom';
+import { IS_TOUCH_ENV } from '../../util/browser/windowEnvironment';
 import buildClassName from '../../util/buildClassName';
 import stopEvent from '../../util/stopEvent';
-import { IS_TOUCH_ENV } from '../../util/windowEnvironment';
 
 import useTimeout from '../../hooks/schedulers/useTimeout';
 import useAppLayout from '../../hooks/useAppLayout';
@@ -52,8 +53,7 @@ const PasswordForm: FC<OwnProps> = ({
   onInputChange,
   onSubmit,
 }) => {
-  // eslint-disable-next-line no-null/no-null
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>();
   const lang = useOldLang();
 
   const { isMobile } = useAppLayout();

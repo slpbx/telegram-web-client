@@ -1,5 +1,5 @@
 import type { FC } from '../../lib/teact/teact';
-import React, {
+import {
   memo,
   useLayoutEffect,
   useMemo,
@@ -20,8 +20,7 @@ const BORDER_MASK_LEVEL = 4;
 const PinnedMessageNavigation: FC<OwnProps> = ({
   count, index,
 }) => {
-  // eslint-disable-next-line no-null/no-null
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>();
 
   const markupParams = useMemo(() => {
     return calculateMarkup(count, index);

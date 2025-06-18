@@ -1,5 +1,6 @@
 import type { TeactNode } from '../../../lib/teact/teact';
-import React, { memo, useEffect, useRef } from '../../../lib/teact/teact';
+import type React from '../../../lib/teact/teact';
+import { memo, useEffect, useRef } from '../../../lib/teact/teact';
 
 import { ApiMessageEntityTypes } from '../../../api/types';
 
@@ -16,7 +17,7 @@ type OwnProps = {
   containerId?: string;
 };
 
-const revealByContainerId: Map<string, VoidFunction[]> = new Map();
+const revealByContainerId = new Map<string, VoidFunction[]>();
 
 const buildClassName = createClassNameBuilder('Spoiler');
 
@@ -24,8 +25,7 @@ const Spoiler = ({
   children,
   containerId,
 }: OwnProps) => {
-  // eslint-disable-next-line no-null/no-null
-  const contentRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>();
 
   const [isRevealed, revealSpoiler] = useFlag();
 

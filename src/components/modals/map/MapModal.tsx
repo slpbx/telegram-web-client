@@ -1,10 +1,10 @@
-import React, { memo, useMemo } from '../../../lib/teact/teact';
+import { memo, useMemo } from '../../../lib/teact/teact';
 import { getActions } from '../../../global';
 
 import type { TabState } from '../../../global/types';
 
+import { IS_IOS, IS_MAC_OS } from '../../../util/browser/windowEnvironment';
 import { prepareMapUrl } from '../../../util/map';
-import { IS_IOS, IS_MAC_OS } from '../../../util/windowEnvironment';
 
 import useLastCallback from '../../../hooks/useLastCallback';
 import useOldLang from '../../../hooks/useOldLang';

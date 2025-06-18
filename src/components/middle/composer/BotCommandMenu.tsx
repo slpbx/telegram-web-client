@@ -1,10 +1,10 @@
 import type { FC } from '../../../lib/teact/teact';
-import React, { memo } from '../../../lib/teact/teact';
+import { memo } from '../../../lib/teact/teact';
 import { getActions } from '../../../global';
 
 import type { ApiBotCommand } from '../../../api/types';
 
-import { IS_TOUCH_ENV } from '../../../util/windowEnvironment';
+import { IS_TOUCH_ENV } from '../../../util/browser/windowEnvironment';
 
 import useAppLayout from '../../../hooks/useAppLayout';
 import useLastCallback from '../../../hooks/useLastCallback';

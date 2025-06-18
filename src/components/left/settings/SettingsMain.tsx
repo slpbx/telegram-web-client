@@ -1,5 +1,5 @@
 import type { FC } from '../../../lib/teact/teact';
-import React, { memo, useEffect } from '../../../lib/teact/teact';
+import { memo, useEffect } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
 import type { ApiStarsAmount } from '../../../api/types';
@@ -25,7 +25,6 @@ import ListItem from '../../ui/ListItem';
 
 type OwnProps = {
   isActive?: boolean;
-  onScreenSelect: (screen: SettingsScreens) => void;
   onReset: () => void;
 };
 
@@ -44,7 +43,6 @@ const SettingsMain: FC<OwnProps & StateProps> = ({
   canBuyPremium,
   isGiveawayAvailable,
   starsBalance,
-  onScreenSelect,
   onReset,
 }) => {
   const {
@@ -54,6 +52,7 @@ const SettingsMain: FC<OwnProps & StateProps> = ({
     openUrl,
     openGiftRecipientPicker,
     openStarsBalanceModal,
+    openSettingsScreen,
   } = getActions();
 
   const [isSupportDialogOpen, openSupportDialog, closeSupportDialog] = useFlag(false);
@@ -97,56 +96,56 @@ const SettingsMain: FC<OwnProps & StateProps> = ({
         <ListItem
           icon="settings"
           narrow
-          // eslint-disable-next-line react/jsx-no-bind
-          onClick={() => onScreenSelect(SettingsScreens.General)}
+
+          onClick={() => openSettingsScreen({ screen: SettingsScreens.General })}
         >
           {lang('TelegramGeneralSettingsViewController')}
         </ListItem>
         <ListItem
           icon="animations"
           narrow
-          // eslint-disable-next-line react/jsx-no-bind
-          onClick={() => onScreenSelect(SettingsScreens.Performance)}
+
+          onClick={() => openSettingsScreen({ screen: SettingsScreens.Performance })}
         >
           {lang('MenuAnimations')}
         </ListItem>
         <ListItem
           icon="unmute"
           narrow
-          // eslint-disable-next-line react/jsx-no-bind
-          onClick={() => onScreenSelect(SettingsScreens.Notifications)}
+
+          onClick={() => openSettingsScreen({ screen: SettingsScreens.Notifications })}
         >
           {lang('Notifications')}
         </ListItem>
         <ListItem
           icon="data"
           narrow
-          // eslint-disable-next-line react/jsx-no-bind
-          onClick={() => onScreenSelect(SettingsScreens.DataStorage)}
+
+          onClick={() => openSettingsScreen({ screen: SettingsScreens.DataStorage })}
         >
           {lang('DataSettings')}
         </ListItem>
         <ListItem
           icon="lock"
           narrow
-          // eslint-disable-next-line react/jsx-no-bind
-          onClick={() => onScreenSelect(SettingsScreens.Privacy)}
+
+          onClick={() => openSettingsScreen({ screen: SettingsScreens.Privacy })}
         >
           {lang('PrivacySettings')}
         </ListItem>
         <ListItem
           icon="folder"
           narrow
-          // eslint-disable-next-line react/jsx-no-bind
-          onClick={() => onScreenSelect(SettingsScreens.Folders)}
+
+          onClick={() => openSettingsScreen({ screen: SettingsScreens.Folders })}
         >
           {lang('Filters')}
         </ListItem>
         <ListItem
           icon="active-sessions"
           narrow
-          // eslint-disable-next-line react/jsx-no-bind
-          onClick={() => onScreenSelect(SettingsScreens.ActiveSessions)}
+
+          onClick={() => openSettingsScreen({ screen: SettingsScreens.ActiveSessions })}
         >
           {lang('SessionsTitle')}
           {sessionCount > 0 && (<span className="settings-item__current-value">{sessionCount}</span>)}
@@ -154,8 +153,8 @@ const SettingsMain: FC<OwnProps & StateProps> = ({
         <ListItem
           icon="language"
           narrow
-          // eslint-disable-next-line react/jsx-no-bind
-          onClick={() => onScreenSelect(SettingsScreens.Language)}
+
+          onClick={() => openSettingsScreen({ screen: SettingsScreens.Language })}
         >
           {lang('Language')}
           <span className="settings-item__current-value">{lang.languageInfo.nativeName}</span>
@@ -163,8 +162,8 @@ const SettingsMain: FC<OwnProps & StateProps> = ({
         <ListItem
           icon="stickers"
           narrow
-          // eslint-disable-next-line react/jsx-no-bind
-          onClick={() => onScreenSelect(SettingsScreens.Stickers)}
+
+          onClick={() => openSettingsScreen({ screen: SettingsScreens.Stickers })}
         >
           {lang('MenuStickers')}
         </ListItem>
@@ -174,7 +173,7 @@ const SettingsMain: FC<OwnProps & StateProps> = ({
           <ListItem
             leftElement={<StarIcon className="icon ListItem-main-icon" type="premium" size="big" />}
             narrow
-            // eslint-disable-next-line react/jsx-no-bind
+
             onClick={() => openPremiumModal()}
           >
             {lang('TelegramPremium')}
@@ -183,7 +182,7 @@ const SettingsMain: FC<OwnProps & StateProps> = ({
         <ListItem
           leftElement={<StarIcon className="icon ListItem-main-icon" type="gold" size="big" />}
           narrow
-          // eslint-disable-next-line react/jsx-no-bind
+
           onClick={() => openStarsBalanceModal({})}
         >
           {lang('MenuStars')}
@@ -197,7 +196,7 @@ const SettingsMain: FC<OwnProps & StateProps> = ({
           <ListItem
             icon="gift"
             narrow
-            // eslint-disable-next-line react/jsx-no-bind
+
             onClick={() => openGiftRecipientPicker()}
           >
             {lang('MenuSendGift')}
@@ -215,7 +214,7 @@ const SettingsMain: FC<OwnProps & StateProps> = ({
         <ListItem
           icon="help"
           narrow
-          // eslint-disable-next-line react/jsx-no-bind
+
           onClick={() => openUrl({ url: FAQ_URL })}
         >
           {lang('MenuTelegramFaq')}
@@ -223,7 +222,7 @@ const SettingsMain: FC<OwnProps & StateProps> = ({
         <ListItem
           icon="privacy-policy"
           narrow
-          // eslint-disable-next-line react/jsx-no-bind
+
           onClick={() => openUrl({ url: PRIVACY_URL })}
         >
           {lang('MenuPrivacyPolicy')}

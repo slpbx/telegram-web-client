@@ -1,5 +1,6 @@
 import type { FC } from '../../lib/teact/teact';
-import React, {
+import type React from '../../lib/teact/teact';
+import {
   memo, useEffect, useLayoutEffect, useMemo, useRef, useSignal, useState,
 } from '../../lib/teact/teact';
 
@@ -8,6 +9,7 @@ import type { RealTouchEvent } from '../../util/captureEvents';
 import type { MediaViewerItem } from './helpers/getViewableMedia';
 
 import { animateNumber, timingFunctions } from '../../util/animation';
+import { IS_IOS, IS_TOUCH_ENV } from '../../util/browser/windowEnvironment';
 import buildClassName from '../../util/buildClassName';
 import {
   captureEvents,
@@ -17,7 +19,6 @@ import {
 } from '../../util/captureEvents';
 import { clamp, isBetween, round } from '../../util/math';
 import { debounce } from '../../util/schedulers';
-import { IS_IOS, IS_TOUCH_ENV } from '../../util/windowEnvironment';
 
 import useTimeout from '../../hooks/schedulers/useTimeout';
 import useDebouncedCallback from '../../hooks/useDebouncedCallback';
@@ -72,8 +73,8 @@ const CLICK_Y_THRESHOLD = 80;
 const HEADER_HEIGHT = 60;
 const MAX_ZOOM = 4;
 const MIN_ZOOM = 1;
-let cancelAnimation: Function | undefined;
-let cancelZoomAnimation: Function | undefined;
+let cancelAnimation: ReturnType<typeof animateNumber> | undefined;
+let cancelZoomAnimation: ReturnType<typeof animateNumber> | undefined;
 
 type Transform = {
   x: number;
@@ -102,14 +103,10 @@ const MediaViewerSlides: FC<OwnProps> = ({
   onFooterClick,
   handleSponsoredClick,
 }) => {
-  // eslint-disable-next-line no-null/no-null
-  const containerRef = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line no-null/no-null
-  const activeSlideRef = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line no-null/no-null
-  const leftSlideRef = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line no-null/no-null
-  const rightSlideRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>();
+  const activeSlideRef = useRef<HTMLDivElement>();
+  const leftSlideRef = useRef<HTMLDivElement>();
+  const rightSlideRef = useRef<HTMLDivElement>();
   const lastTransformRef = useRef<Transform>({ x: 0, y: 0, scale: 1 });
   const swipeDirectionRef = useRef<SwipeDirection | undefined>(undefined);
   const initialContentRectRef = useRef<DOMRect | undefined>(undefined);

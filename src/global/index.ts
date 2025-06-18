@@ -13,7 +13,7 @@ type ProjectActionTypes =
 
 type ProjectActionNames = keyof ProjectActionTypes;
 
-type Helper<T, E> = Exclude<T, E> extends never ? {} : Exclude<T, E>;
+type Helper<T, E> = Exclude<T, E> extends never ? unknown : Exclude<T, E>;
 
 export type TabStateActionNames = {
   [ActionName in ProjectActionNames]:
@@ -47,6 +47,7 @@ type ActionHandlers = {
 export const getGlobal = typed.getGlobal;
 export const setGlobal = typed.setGlobal;
 export const getActions = typed.getActions;
+export const getPromiseActions = typed.getPromiseActions;
 export const addActionHandler = typed.addActionHandler as <ActionName extends ProjectActionNames>(
   name: ActionName,
   handler: ActionHandlers[ActionName],

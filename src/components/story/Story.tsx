@@ -1,5 +1,6 @@
 import type { FC } from '../../lib/teact/teact';
-import React, {
+import type React from '../../lib/teact/teact';
+import {
   memo, useEffect, useMemo, useRef, useState,
 } from '../../lib/teact/teact';
 import { getActions, withGlobal } from '../../global';
@@ -15,10 +16,11 @@ import type { Signal } from '../../util/signals';
 import { MAIN_THREAD_ID } from '../../api/types';
 
 import { EDITABLE_STORY_INPUT_CSS_SELECTOR, EDITABLE_STORY_INPUT_ID } from '../../config';
-import { isChatChannel, isUserId } from '../../global/helpers';
+import { isChatChannel } from '../../global/helpers';
 import { getPeerTitle } from '../../global/helpers/peers';
 import {
   selectChat,
+  selectIsCurrentUserFrozen,
   selectIsCurrentUserPremium,
   selectPeer,
   selectPeerPaidMessagesStars,
@@ -28,14 +30,15 @@ import {
   selectUser,
   selectUserFullInfo,
 } from '../../global/selectors';
+import { IS_SAFARI } from '../../util/browser/windowEnvironment';
 import buildClassName from '../../util/buildClassName';
 import captureKeyboardListeners from '../../util/captureKeyboardListeners';
 import { formatMediaDuration, formatRelativePastTime } from '../../util/dates/dateFormat';
 import download from '../../util/download';
+import { isUserId } from '../../util/entities/ids';
 import { formatStarsAsIcon } from '../../util/localization/format';
 import { round } from '../../util/math';
 import { getServerTime } from '../../util/serverTime';
-import { IS_SAFARI } from '../../util/windowEnvironment';
 import renderText from '../common/helpers/renderText';
 import { BASE_STORY_HEIGHT, BASE_STORY_WIDTH } from './helpers/dimensions';
 import { PRIMARY_VIDEO_MIME, SECONDARY_VIDEO_MIME } from './helpers/videoFormats';
@@ -77,7 +80,7 @@ interface OwnProps {
   peerId: string;
   storyId: number;
   dimensions: IDimensions;
-  // eslint-disable-next-line react/no-unused-prop-types
+
   isDeleteModalOpen?: boolean;
   isPrivateStories?: boolean;
   isArchivedStories?: boolean;
@@ -104,6 +107,7 @@ interface StateProps {
   stealthMode: ApiStealthMode;
   withHeaderAnimation?: boolean;
   paidMessagesStars?: number;
+  isAccountFrozen?: boolean;
 }
 
 const VIDEO_MIN_READY_STATE = IS_SAFARI ? 4 : 3;
@@ -137,6 +141,7 @@ function Story({
   onClose,
   onReport,
   paidMessagesStars,
+  isAccountFrozen,
 }: OwnProps & StateProps) {
   const {
     viewStory,
@@ -168,8 +173,7 @@ function Story({
   const [isPausedBySpacebar, setIsPausedBySpacebar] = useState(false);
   const [isPausedByLongPress, markIsPausedByLongPress, unmarkIsPausedByLongPress] = useFlag(false);
   const [isDropdownMenuOpen, markDropdownMenuOpen, unmarkDropdownMenuOpen] = useFlag(false);
-  // eslint-disable-next-line no-null/no-null
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const videoRef = useRef<HTMLVideoElement>();
   const {
     isDeletedStory,
     hasText,
@@ -203,7 +207,7 @@ function Story({
     true,
   );
   const areViewsExpired = Boolean(
-    isOut && (story!.date + viewersExpirePeriod) < getServerTime(),
+    isOut && (story.date + viewersExpirePeriod) < getServerTime(),
   );
 
   const forwardSenderTitle = forwardSender ? getPeerTitle(oldLang, forwardSender)
@@ -213,7 +217,7 @@ function Story({
     isLoadedStory
     && story.isPublic
     && !isChangelog
-    && peer?.usernames?.length,
+    && peer?.hasUsername,
   );
 
   const canShare = Boolean(
@@ -233,7 +237,7 @@ function Story({
     ? story.content.video.duration
     : undefined;
 
-  const shouldShowComposer = !(isOut && isUserStory) && !isChangelog && !isChannelStory;
+  const shouldShowComposer = !(isOut && isUserStory) && !isChangelog && !isChannelStory && !isAccountFrozen;
   const shouldShowFooter = isLoadedStory && !shouldShowComposer && (isOut || isChannelStory);
   const headerAnimation = isMobile && withHeaderAnimation ? 'slideFade' : 'none';
 
@@ -748,7 +752,8 @@ function Story({
                 icon="delete"
                 destructive
                 onClick={handleDeleteStoryClick}
-              >{oldLang('Delete')}
+              >
+                {oldLang('Delete')}
               </MenuItem>
             )}
           </DropdownMenu>
@@ -965,6 +970,7 @@ export default memo(withGlobal<OwnProps>((global, {
 
   const fromPeer = isLoadedStory && story.fromId ? selectPeer(global, story.fromId) : undefined;
   const paidMessagesStars = selectPeerPaidMessagesStars(global, peerId);
+  const isAccountFrozen = selectIsCurrentUserFrozen(global);
 
   return {
     peer: (user || chat)!,
@@ -982,5 +988,6 @@ export default memo(withGlobal<OwnProps>((global, {
     stealthMode: global.stories.stealthMode,
     withHeaderAnimation,
     paidMessagesStars,
+    isAccountFrozen,
   };
 })(Story));

@@ -1,4 +1,4 @@
-import React, {
+import {
   memo, useMemo,
   useRef,
 } from '../../../lib/teact/teact';
@@ -37,8 +37,7 @@ const MinimizedWebAppModal = ({
 
   const oldLang = useOldLang();
   const lang = useLang();
-  // eslint-disable-next-line no-null/no-null
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLDivElement>();
 
   const openedWebAppsValues = useMemo(() => {
     return openedWebApps && Object.values(openedWebApps);
@@ -69,14 +68,14 @@ const MinimizedWebAppModal = ({
   function renderTitle() {
     const activeTabName = peers.length > 0 && peers[0]?.firstName;
     const title = openedTabsCount && activeTabName && openedTabsCount > 1
-      ? `${lang('MiniAppsMoreTabs',
+      ? lang('MiniAppsMoreTabs',
         {
           botName: activeTabName,
           count: openedTabsCount - 1,
         },
         {
           pluralValue: openedTabsCount - 1,
-        })}`
+        })
       : activeTabName;
 
     return (

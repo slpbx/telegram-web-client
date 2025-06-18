@@ -1,5 +1,5 @@
 import type { FC } from '../../lib/teact/teact';
-import React, { memo, useEffect, useState } from '../../lib/teact/teact';
+import { memo, useEffect, useState } from '../../lib/teact/teact';
 import { getActions, withGlobal } from '../../global';
 
 import type {
@@ -20,10 +20,10 @@ import {
   selectUser,
   selectUserStatus,
 } from '../../global/selectors';
+import { IS_TOUCH_ENV } from '../../util/browser/windowEnvironment';
 import buildClassName from '../../util/buildClassName';
 import { captureEvents, SwipeDirection } from '../../util/captureEvents';
 import { MEMO_EMPTY_ARRAY } from '../../util/memo';
-import { IS_TOUCH_ENV } from '../../util/windowEnvironment';
 import renderText from './helpers/renderText';
 
 import useIntervalForceUpdate from '../../hooks/schedulers/useIntervalForceUpdate';
@@ -287,11 +287,12 @@ const ProfileInfo: FC<OwnProps & StateProps> = ({
     }
 
     return (
-      <span className={buildClassName(styles.status, 'status')} dir="auto">{
-        isChatChannel(chat!)
-          ? lang('Subscribers', chat!.membersCount ?? 0, 'i')
-          : lang('Members', chat!.membersCount ?? 0, 'i')
-      }
+      <span className={buildClassName(styles.status, 'status')} dir="auto">
+        {
+          isChatChannel(chat!)
+            ? lang('Subscribers', chat!.membersCount ?? 0, 'i')
+            : lang('Members', chat!.membersCount ?? 0, 'i')
+        }
       </span>
     );
   }

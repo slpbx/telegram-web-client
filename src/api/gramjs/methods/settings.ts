@@ -6,6 +6,7 @@ import type { LANG_PACKS } from '../../../config';
 import type {
   ApiAppConfig,
   ApiConfig,
+  ApiDisallowedGiftsSettings,
   ApiInputPrivacyRules,
   ApiLanguage,
   ApiNotifyPeerType,
@@ -24,6 +25,7 @@ import {
 import { buildCollectionByKey } from '../../../util/iteratees';
 import { buildAppConfig } from '../apiBuilders/appConfig';
 import { buildApiPhoto, buildPrivacyRules } from '../apiBuilders/common';
+import { buildApiDisallowedGiftsSettings } from '../apiBuilders/gifts';
 import {
   buildApiConfig,
   buildApiCountryList,
@@ -39,9 +41,12 @@ import {
 } from '../apiBuilders/misc';
 import { getApiChatIdFromMtpPeer } from '../apiBuilders/peers';
 import {
-  buildInputEntity, buildInputPeer, buildInputPhoto,
+  buildDisallowedGiftsSettings,
+  buildInputChannel,
+  buildInputPeer, buildInputPhoto,
   buildInputPrivacyKey,
   buildInputPrivacyRules,
+  buildInputUser,
 } from '../gramjsBuilders';
 import { addPhotoToLocalDb } from '../helpers/localDb';
 import localDb from '../localDb';
@@ -116,7 +121,7 @@ export async function uploadProfilePhoto(
 ) {
   const inputFile = await uploadFile(file);
   const result = await invokeRequest(new GramJs.photos.UploadProfilePhoto({
-    ...(bot ? { bot: buildInputPeer(bot.id, bot.accessHash) } : undefined),
+    ...(bot ? { bot: buildInputUser(bot.id, bot.accessHash) } : undefined),
     ...(isVideo ? { video: inputFile, videoStartTs: videoTs } : { file: inputFile }),
     ...(isFallback ? { fallback: true } : undefined),
   }));
@@ -141,7 +146,7 @@ export async function uploadContactProfilePhoto({
 }) {
   const inputFile = file ? await uploadFile(file) : undefined;
   const result = await invokeRequest(new GramJs.photos.UploadContactProfilePhoto({
-    userId: buildInputEntity(user.id, user.accessHash) as GramJs.InputUser,
+    userId: buildInputUser(user.id, user.accessHash),
     file: inputFile,
     ...(isSuggest ? { suggest: true } : { save: true }),
   }));
@@ -657,6 +662,8 @@ export async function fetchGlobalPrivacySettings() {
     shouldHideReadMarks: Boolean(result.hideReadMarks),
     shouldNewNonContactPeersRequirePremium: Boolean(result.newNoncontactPeersRequirePremium),
     nonContactPeersPaidStars: Number(result.noncontactPeersPaidStars),
+    shouldDisplayGiftsButton: Boolean(result.displayGiftsButton),
+    disallowedGifts: result.disallowedGifts && buildApiDisallowedGiftsSettings(result.disallowedGifts),
   };
 }
 
@@ -665,18 +672,24 @@ export async function updateGlobalPrivacySettings({
   shouldHideReadMarks,
   shouldNewNonContactPeersRequirePremium,
   nonContactPeersPaidStars,
+  shouldDisplayGiftsButton,
+  disallowedGifts,
 }: {
   shouldArchiveAndMuteNewNonContact?: boolean;
   shouldHideReadMarks?: boolean;
   shouldNewNonContactPeersRequirePremium?: boolean;
   nonContactPeersPaidStars?: number | null;
+  shouldDisplayGiftsButton?: boolean;
+  disallowedGifts?: ApiDisallowedGiftsSettings;
 }) {
   const result = await invokeRequest(new GramJs.account.SetGlobalPrivacySettings({
     settings: new GramJs.GlobalPrivacySettings({
       ...(shouldArchiveAndMuteNewNonContact && { archiveAndMuteNewNoncontactPeers: true }),
       ...(shouldHideReadMarks && { hideReadMarks: true }),
       ...(shouldNewNonContactPeersRequirePremium && { newNoncontactPeersRequirePremium: true }),
+      displayGiftsButton: shouldDisplayGiftsButton || undefined,
       noncontactPeersPaidStars: BigInt(nonContactPeersPaidStars || 0),
+      disallowedGifts: disallowedGifts && buildDisallowedGiftsSettings(disallowedGifts),
     }),
   }));
 
@@ -689,6 +702,8 @@ export async function updateGlobalPrivacySettings({
     shouldHideReadMarks: Boolean(result.hideReadMarks),
     shouldNewNonContactPeersRequirePremium: Boolean(result.newNoncontactPeersRequirePremium),
     nonContactPeersPaidStars: Number(result.noncontactPeersPaidStars),
+    shouldDisplayGiftsButton,
+    disallowedGifts,
   };
 }
 
@@ -702,7 +717,7 @@ export function toggleUsername({
 }) {
   if (chatId) {
     return invokeRequest(new GramJs.channels.ToggleUsername({
-      channel: buildInputEntity(chatId, accessHash) as GramJs.InputChannel,
+      channel: buildInputChannel(chatId, accessHash),
       username,
       active: isActive,
     }));
@@ -721,7 +736,7 @@ export function reorderUsernames({ chatId, accessHash, usernames }: {
 }) {
   if (chatId) {
     return invokeRequest(new GramJs.channels.ReorderUsernames({
-      channel: buildInputEntity(chatId, accessHash) as GramJs.InputChannel,
+      channel: buildInputChannel(chatId, accessHash),
       order: usernames,
     }));
   }

@@ -1,5 +1,6 @@
 import type { FC } from '../../../../lib/teact/teact';
-import React, { memo, useEffect, useMemo } from '../../../../lib/teact/teact';
+import type React from '../../../../lib/teact/teact';
+import { memo, useEffect, useMemo } from '../../../../lib/teact/teact';
 import { getActions, getGlobal } from '../../../../global';
 
 import type {
@@ -36,6 +37,7 @@ type OwnProps = {
   isCurrentUserPremium?: boolean;
   observeIntersection?: ObserveFn;
   noRecentReactors?: boolean;
+  isAccountFrozen?: boolean;
 };
 
 const MAX_RECENT_AVATARS = 3;
@@ -51,6 +53,7 @@ const Reactions: FC<OwnProps> = ({
   noRecentReactors,
   isCurrentUserPremium,
   tags,
+  isAccountFrozen,
 }) => {
   const {
     toggleReaction,
@@ -60,6 +63,7 @@ const Reactions: FC<OwnProps> = ({
     openPremiumModal,
     resetLocalPaidReactions,
     showNotification,
+    openFrozenAccountModal,
   } = getActions();
   const lang = useOldLang();
 
@@ -107,6 +111,10 @@ const Reactions: FC<OwnProps> = ({
   }, [message, noRecentReactors, recentReactorsByReactionKey, results, areTags, tags, totalCount]);
 
   const handleClick = useLastCallback((reaction: ApiReaction) => {
+    if (isAccountFrozen) {
+      openFrozenAccountModal();
+      return;
+    }
     if (areTags) {
       if (!isCurrentUserPremium) {
         openPremiumModal({
@@ -130,6 +138,11 @@ const Reactions: FC<OwnProps> = ({
   const paidLocalCount = useMemo(() => results.find((r) => r.reaction.type === 'paid')?.localAmount || 0, [results]);
 
   const handlePaidClick = useLastCallback((count: number) => {
+    if (isAccountFrozen) {
+      openFrozenAccountModal();
+      return;
+    }
+
     addLocalPaidReaction({
       chatId: message.chatId,
       messageId: message.id,
@@ -162,6 +175,11 @@ const Reactions: FC<OwnProps> = ({
   }, [lang, message, paidLocalCount]);
 
   const handleRemoveReaction = useLastCallback((reaction: ApiReaction) => {
+    if (isAccountFrozen) {
+      openFrozenAccountModal();
+      return;
+    }
+
     toggleReaction({
       chatId: message.chatId,
       messageId: message.id,

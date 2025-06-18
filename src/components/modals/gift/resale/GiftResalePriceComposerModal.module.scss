@@ -1,0 +1,21 @@
+.descriptionContainer {
+  display: flex;
+
+  margin-bottom: 2rem;
+  margin-inline: 1rem;
+
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.descriptionPrice {
+  margin-left: auto;
+}
+
+.inputPrice {
+  margin-top: 0.5rem;
+
+  :global(.input-group) {
+    margin-bottom: 0.25rem;
+  }
+}

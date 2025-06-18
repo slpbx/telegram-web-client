@@ -1,5 +1,6 @@
 import type { FC } from '../../../../lib/teact/teact';
-import React, {
+import type React from '../../../../lib/teact/teact';
+import {
   memo, useEffect, useMemo, useRef,
   useState,
 } from '../../../../lib/teact/teact';
@@ -51,8 +52,7 @@ const StarsGiftModal: FC<OwnProps & StateProps> = ({
   const {
     closeStarsGiftModal, openInvoice, requestConfetti,
   } = getActions();
-  // eslint-disable-next-line no-null/no-null
-  const dialogRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDivElement>();
 
   const isOpen = Boolean(modal?.isOpen);
 
@@ -162,7 +162,7 @@ const StarsGiftModal: FC<OwnProps & StateProps> = ({
           size="smaller"
           className={styles.closeButton}
           color="translucent"
-          // eslint-disable-next-line react/jsx-no-bind
+
           onClick={() => closeStarsGiftModal()}
           ariaLabel={oldLang('Close')}
         >

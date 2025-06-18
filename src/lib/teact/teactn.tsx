@@ -2,6 +2,7 @@ import type { FC, FC_withDebug, Props } from './teact';
 
 import { DEBUG, DEBUG_MORE } from '../../config';
 import arePropsShallowEqual, { logUnequalProps } from '../../util/arePropsShallowEqual';
+import Deferred from '../../util/Deferred';
 import { handleError } from '../../util/handleError';
 import { orderBy } from '../../util/iteratees';
 import { throttleWithTickEnd } from '../../util/schedulers';
@@ -18,7 +19,7 @@ interface Container {
   stuckTo?: any;
   ownProps: Props;
   mappedProps?: Props;
-  forceUpdate: Function;
+  forceUpdate: VoidFunction;
   DEBUG_updates: number;
   DEBUG_componentName: string;
 }
@@ -49,20 +50,21 @@ type StickToFirstFn = (value: any) => boolean;
 type ActivationFn<OwnProps = undefined> = (
   global: GlobalState, ownProps: OwnProps, stickToFirst: StickToFirstFn,
 ) => boolean;
+// TODO: Add callback to typify
+type GlobalCallback = (global: any) => void;
 
 let currentGlobal = {
   isInited: false,
 } as GlobalState;
 
-// eslint-disable-next-line @typescript-eslint/naming-convention
 let DEBUG_currentRandomId: number | undefined;
-// eslint-disable-next-line @typescript-eslint/naming-convention
+
 const DEBUG_invalidateGlobalOnTickEnd = throttleWithTickEnd(() => {
   DEBUG_currentRandomId = Math.random();
 });
 
 const actionHandlers: Record<string, ActionHandler[]> = {};
-const callbacks: Function[] = [updateContainers];
+const callbacks: GlobalCallback[] = [updateContainers];
 const actions = {} as Actions;
 const containers = new Map<string, Container>();
 
@@ -131,16 +133,25 @@ export function forceOnHeavyAnimationOnce() {
 
 let actionQueue: NoneToVoidFunction[] = [];
 
-function handleAction(name: string, payload?: ActionPayload, options?: ActionOptions) {
+function handleAction(name: string, payload?: ActionPayload, options?: ActionOptions): Promise<void> {
+  const deferred = new Deferred<void>();
   actionQueue.push(() => {
     actionHandlers[name]?.forEach((handler) => {
       const response = handler(DEBUG ? getUntypedGlobal() : currentGlobal, actions, payload);
-      if (!response || typeof response.then === 'function') {
+      if (!response) {
+        deferred.resolve();
         return;
       }
 
-      // eslint-disable-next-line eslint-multitab-tt/set-global-only-variable
+      if (typeof response.then === 'function') {
+        response.then(() => {
+          deferred.resolve();
+        });
+        return;
+      }
+
       setUntypedGlobal(response as GlobalState, options);
+      deferred.resolve();
     });
   });
 
@@ -154,16 +165,16 @@ function handleAction(name: string, payload?: ActionPayload, options?: ActionOpt
       actionQueue = [];
     }
   }
+
+  return deferred.promise;
 }
 
 function updateContainers() {
-  // eslint-disable-next-line @typescript-eslint/naming-convention
   let DEBUG_startAt: number | undefined;
   if (DEBUG) {
     DEBUG_startAt = performance.now();
   }
 
-  // eslint-disable-next-line no-restricted-syntax
   for (const container of containers.values()) {
     const {
       mapStateToProps, ownProps, mappedProps, forceUpdate,
@@ -187,7 +198,7 @@ function updateContainers() {
       if (Object.values(newMappedProps).some(Number.isNaN)) {
         // eslint-disable-next-line no-console
         console.warn(
-          // eslint-disable-next-line max-len
+          // eslint-disable-next-line @stylistic/max-len
           `[TeactN] Some of \`${container.DEBUG_componentName}\` mappers contain NaN values. This may cause redundant updates because of incorrect equality check.`,
         );
       }
@@ -223,18 +234,18 @@ export function addUntypedActionHandler(name: ActionNames, handler: ActionHandle
     actionHandlers[name] = [];
 
     actions[name] = (payload?: ActionPayload, options?: ActionOptions) => {
-      handleAction(name, payload, options);
+      return handleAction(name, payload, options);
     };
   }
 
   actionHandlers[name].push(handler);
 }
 
-export function addCallback(cb: Function) {
+export function addCallback(cb: GlobalCallback) {
   callbacks.push(cb);
 }
 
-export function removeCallback(cb: Function) {
+export function removeCallback(cb: GlobalCallback) {
   const index = callbacks.indexOf(cb);
   if (index !== -1) {
     callbacks.splice(index, 1);
@@ -268,9 +279,10 @@ export function withUntypedGlobal<OwnProps extends AnyLiteral>(
         containers.set(id, container);
       }
 
-      if (!container.mappedProps || (
-        !arePropsShallowEqual(container.ownProps, props) && activateContainer(container, currentGlobal, props)
-      )) {
+      if (
+        (!container.mappedProps || !arePropsShallowEqual(container.ownProps, props))
+        && activateContainer(container, currentGlobal, props)
+      ) {
         try {
           container.mappedProps = mapStateToProps(currentGlobal, props);
         } catch (err: any) {
@@ -280,7 +292,6 @@ export function withUntypedGlobal<OwnProps extends AnyLiteral>(
 
       container.ownProps = props;
 
-      // eslint-disable-next-line react/jsx-props-no-spreading
       return <Component {...container.mappedProps} {...props} />;
     }
 
@@ -297,11 +308,13 @@ function activateContainer(container: Container, global: GlobalState, props: Pro
   }
 
   return activationFn(global, props, (stickTo: any) => {
-    if (stickTo && !stuckTo) {
+    if (stuckTo) {
+      return stuckTo === stickTo;
+    } else if (stickTo !== undefined) {
       container.stuckTo = stickTo;
     }
 
-    return stickTo && (!stuckTo || stuckTo === stickTo);
+    return true;
   });
 }
 
@@ -312,12 +325,12 @@ export function typify<
   type ProjectActionNames = keyof ActionPayloads;
 
   // When payload is allowed to be `undefined` we consider it optional
-  type ProjectActions = {
+  type ProjectActions<ReturnType = void> = {
     [ActionName in ProjectActionNames]:
     (undefined extends ActionPayloads[ActionName] ? (
-      (payload?: ActionPayloads[ActionName], options?: ActionOptions) => void
+      (payload?: ActionPayloads[ActionName], options?: ActionOptions) => ReturnType
     ) : (
-      (payload: ActionPayloads[ActionName], options?: ActionOptions) => void
+      (payload: ActionPayloads[ActionName], options?: ActionOptions) => ReturnType
     ))
   };
 
@@ -333,6 +346,7 @@ export function typify<
     getGlobal: getUntypedGlobal as <T extends ProjectGlobalState>() => T,
     setGlobal: setUntypedGlobal as (state: ProjectGlobalState, options?: ActionOptions) => void,
     getActions: getUntypedActions as () => ProjectActions,
+    getPromiseActions: getUntypedActions as () => ProjectActions<Promise<void>>,
     addActionHandler: addUntypedActionHandler as <ActionName extends ProjectActionNames>(
       name: ActionName,
       handler: ActionHandlers[ActionName],
@@ -347,6 +361,7 @@ export function typify<
 if (DEBUG) {
   (window as any).getGlobal = getUntypedGlobal;
   (window as any).setGlobal = setUntypedGlobal;
+  (window as any).getActions = getUntypedActions;
 
   document.addEventListener('dblclick', () => {
     // eslint-disable-next-line no-console

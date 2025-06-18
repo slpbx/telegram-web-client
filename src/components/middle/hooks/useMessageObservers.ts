@@ -1,10 +1,10 @@
-import type { RefObject } from 'react';
+import type { ElementRef } from '../../../lib/teact/teact';
 import { getActions } from '../../../global';
 
 import type { MessageListType } from '../../../types';
 import type { OnIntersectPinnedMessage } from './usePinnedMessage';
 
-import { IS_ANDROID } from '../../../util/windowEnvironment';
+import { IS_ANDROID } from '../../../util/browser/windowEnvironment';
 
 import useAppLayout from '../../../hooks/useAppLayout';
 import { useIntersectionObserver } from '../../../hooks/useIntersectionObserver';
@@ -15,7 +15,7 @@ const INTERSECTION_THROTTLE_FOR_MEDIA = IS_ANDROID ? 1000 : 350;
 
 export default function useMessageObservers(
   type: MessageListType,
-  containerRef: RefObject<HTMLDivElement>,
+  containerRef: ElementRef<HTMLDivElement>,
   memoFirstUnreadIdRef: { current: number | undefined },
   onIntersectPinnedMessage: OnIntersectPinnedMessage,
   chatId: string,

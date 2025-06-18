@@ -73,7 +73,7 @@ export async function changeSessionTtl({
   return result;
 }
 
-export async function resolveBusinessChatLink({ slug } : { slug: string }) {
+export async function resolveBusinessChatLink({ slug }: { slug: string }) {
   const result = await invokeRequest(new GramJs.account.ResolveBusinessChatLink({
     slug,
   }), {
@@ -95,6 +95,32 @@ export function toggleSponsoredMessages({
 }) {
   return invokeRequest(new GramJs.account.ToggleSponsoredMessages({
     enabled,
+  }), {
+    shouldReturnTrue: true,
+  });
+}
+
+export function buildApiAccountDays(ttl: GramJs.AccountDaysTTL): { days: number } {
+  return {
+    days: ttl.days,
+  };
+}
+
+export function buildApiAccountDaysTTL(days: number): GramJs.AccountDaysTTL {
+  return new GramJs.AccountDaysTTL({
+    days,
+  });
+}
+
+export async function fetchAccountTTL() {
+  const result = await invokeRequest(new GramJs.account.GetAccountTTL());
+  if (!result) return undefined;
+  return buildApiAccountDays(result);
+}
+
+export function setAccountTTL({ days }: { days: number }) {
+  return invokeRequest(new GramJs.account.SetAccountTTL({
+    ttl: buildApiAccountDaysTTL(days),
   }), {
     shouldReturnTrue: true,
   });

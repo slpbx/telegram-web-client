@@ -122,7 +122,11 @@ function sha256(plaintext: string) {
 
 function store(key: string, value: ArrayBuffer) {
   const asArray = Array.from(new Uint8Array(value));
-  PASSCODE_IDB_STORE.set(key, asArray);
+  return PASSCODE_IDB_STORE.set(key, asArray);
+}
+
+export function hasEncryptedSession() {
+  return PASSCODE_IDB_STORE.get('sessionEncrypted');
 }
 
 async function load(key: string) {

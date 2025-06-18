@@ -1,4 +1,4 @@
-import React, { memo, useMemo, useRef } from '../../../../lib/teact/teact';
+import { memo, useMemo, useRef } from '../../../../lib/teact/teact';
 import { withGlobal } from '../../../../global';
 
 import type { ApiChat, ApiSticker } from '../../../../api/types';
@@ -45,8 +45,7 @@ const GiveawayPrizeAction = ({
   observeIntersectionForLoading,
   observeIntersectionForPlaying,
 }: OwnProps & StateProps) => {
-  // eslint-disable-next-line no-null/no-null
-  const stickerRef = useRef<HTMLDivElement>(null);
+  const stickerRef = useRef<HTMLDivElement>();
   const lang = useLang();
 
   const channelLink = useMemo(() => {

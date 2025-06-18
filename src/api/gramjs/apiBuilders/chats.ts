@@ -1,5 +1,5 @@
-import type BigInt from 'big-integer';
 import { Api as GramJs } from '../../../lib/gramjs';
+import type { Entity } from '../../../lib/gramjs/types';
 
 import type {
   ApiBotCommand,
@@ -18,6 +18,7 @@ import type {
   ApiRestrictionReason,
   ApiSendAsPeerId,
   ApiSponsoredMessageReportResult,
+  ApiSponsoredPeer,
   ApiStarsSubscriptionPricing,
   ApiTopic,
 } from '../../types';
@@ -48,70 +49,80 @@ type PeerEntityApiChatFields = Omit<ApiChat, (
 )>;
 
 function buildApiChatFieldsFromPeerEntity(
-  peerEntity: GramJs.TypeUser | GramJs.TypeChat,
+  peerEntity: Entity,
   isSupport = false,
 ): PeerEntityApiChatFields {
+  const user = peerEntity instanceof GramJs.User ? peerEntity : undefined;
+  const channel = peerEntity instanceof GramJs.Channel ? peerEntity : undefined;
+
+  const userOrChannel = user || channel;
+
+  // Shared fields
   const isMin = Boolean('min' in peerEntity && peerEntity.min);
   const accessHash = ('accessHash' in peerEntity) ? String(peerEntity.accessHash) : undefined;
   const hasVideoAvatar = 'photo' in peerEntity && peerEntity.photo && 'hasVideo' in peerEntity.photo
     && peerEntity.photo.hasVideo;
   const avatarPhotoId = ('photo' in peerEntity) && peerEntity.photo ? buildAvatarPhotoId(peerEntity.photo) : undefined;
-  const areSignaturesShown = Boolean('signatures' in peerEntity && peerEntity.signatures);
-  const hasPrivateLink = Boolean('hasLink' in peerEntity && peerEntity.hasLink);
-  const isScam = Boolean('scam' in peerEntity && peerEntity.scam);
-  const isFake = Boolean('fake' in peerEntity && peerEntity.fake);
-  const isJoinToSend = Boolean('joinToSend' in peerEntity && peerEntity.joinToSend);
-  const isJoinRequest = Boolean('joinRequest' in peerEntity && peerEntity.joinRequest);
+  const hasUsername = Boolean('username' in peerEntity && peerEntity.username);
+
   const usernames = buildApiUsernames(peerEntity);
-  const isForum = Boolean('forum' in peerEntity && peerEntity.forum);
-  const areStoriesHidden = Boolean('storiesHidden' in peerEntity && peerEntity.storiesHidden);
-  const maxStoryId = 'storiesMaxId' in peerEntity ? peerEntity.storiesMaxId : undefined;
-  const botVerificationIconId = 'botVerificationIcon' in peerEntity
-    ? peerEntity.botVerificationIcon?.toString() : undefined;
-  const storiesUnavailable = Boolean('storiesUnavailable' in peerEntity && peerEntity.storiesUnavailable);
-  const color = ('color' in peerEntity && peerEntity.color) ? buildApiPeerColor(peerEntity.color) : undefined;
-  const emojiStatus = ('emojiStatus' in peerEntity && peerEntity.emojiStatus)
-    ? buildApiEmojiStatus(peerEntity.emojiStatus) : undefined;
-  const boostLevel = ('level' in peerEntity) ? peerEntity.level : undefined;
-  const areProfilesShown = Boolean('signatureProfiles' in peerEntity && peerEntity.signatureProfiles);
-  const subscriptionUntil = 'subscriptionUntilDate' in peerEntity ? peerEntity.subscriptionUntilDate : undefined;
-  const paidMessagesStars = 'sendPaidMessagesStars' in peerEntity ? peerEntity.sendPaidMessagesStars : undefined;
+
+  // Chat and channel shared fields
+  const isCallActive = 'callActive' in peerEntity && peerEntity.callActive;
+  const isCallNotEmpty = 'callNotEmpty' in peerEntity && peerEntity.callNotEmpty;
+  const creationDate = 'date' in peerEntity ? peerEntity.date : undefined;
+  const membersCount = 'participantsCount' in peerEntity ? peerEntity.participantsCount : undefined;
+  const isProtected = 'noforwards' in peerEntity && peerEntity.noforwards;
+  const isCreator = 'creator' in peerEntity && peerEntity.creator;
+
+  // User and channel shared fields
+  const isScam = userOrChannel?.scam;
+  const isFake = userOrChannel?.fake;
+  const areStoriesHidden = userOrChannel?.storiesHidden;
+  const maxStoryId = userOrChannel?.storiesMaxId;
+  const botVerificationIconId = userOrChannel?.botVerificationIcon?.toString();
+  const storiesUnavailable = userOrChannel?.storiesUnavailable;
+  const color = userOrChannel?.color ? buildApiPeerColor(userOrChannel.color) : undefined;
+  const emojiStatus = userOrChannel?.emojiStatus ? buildApiEmojiStatus(userOrChannel.emojiStatus) : undefined;
+  const paidMessagesStars = userOrChannel?.sendPaidMessagesStars;
+  const isVerified = userOrChannel?.verified;
 
   return {
     isMin,
-    hasPrivateLink,
-    areSignaturesShown,
-    areProfilesShown,
+    isLinkedInDiscussion: channel?.hasLink,
+    areSignaturesShown: channel?.signatures,
+    areProfilesShown: channel?.signatureProfiles,
     usernames,
     accessHash,
     hasVideoAvatar,
     avatarPhotoId,
-    ...('verified' in peerEntity && { isVerified: peerEntity.verified }),
-    ...('callActive' in peerEntity && { isCallActive: peerEntity.callActive }),
-    ...('callNotEmpty' in peerEntity && { isCallNotEmpty: peerEntity.callNotEmpty }),
-    ...('date' in peerEntity && { creationDate: peerEntity.date }),
-    ...('participantsCount' in peerEntity && peerEntity.participantsCount !== undefined && {
-      membersCount: peerEntity.participantsCount,
-    }),
-    ...('noforwards' in peerEntity && { isProtected: Boolean(peerEntity.noforwards) }),
+    isVerified,
+    isCallActive,
+    isCallNotEmpty,
+    creationDate,
+    hasUsername,
+    ...(membersCount !== undefined && { membersCount }),
+    isProtected,
     isSupport: isSupport || undefined,
-    ...buildApiChatPermissions(peerEntity),
-    ...('creator' in peerEntity && { isCreator: peerEntity.creator }),
-    ...buildApiChatRestrictions(peerEntity),
-    ...buildApiChatMigrationInfo(peerEntity),
+    isCreator,
     fakeType: isScam ? 'scam' : (isFake ? 'fake' : undefined),
     color,
-    isJoinToSend,
-    isJoinRequest,
-    isForum,
+    isJoinToSend: channel?.joinToSend,
+    isJoinRequest: channel?.joinRequest,
+    isForum: channel?.forum,
     areStoriesHidden,
     maxStoryId,
     hasStories: Boolean(maxStoryId) && !storiesUnavailable,
     emojiStatus,
-    boostLevel,
+    boostLevel: channel?.level,
     botVerificationIconId,
-    subscriptionUntil,
+    hasGeo: channel?.hasGeo,
+    subscriptionUntil: channel?.subscriptionUntilDate,
     paidMessagesStars: paidMessagesStars?.toJSNumber(),
+
+    ...buildApiChatPermissions(peerEntity),
+    ...buildApiChatRestrictions(peerEntity),
+    ...buildApiChatMigrationInfo(peerEntity),
   };
 }
 
@@ -224,7 +235,7 @@ function buildApiChatRestrictions(peerEntity: GramJs.TypeUser | GramJs.TypeChat)
   return restrictions;
 }
 
-function buildApiChatMigrationInfo(peerEntity: GramJs.TypeChat): {
+function buildApiChatMigrationInfo(peerEntity: Entity): {
   migratedTo?: {
     chatId: string;
     accessHash?: string;
@@ -296,15 +307,15 @@ export function getApiChatTypeFromPeerEntity(peerEntity: GramJs.TypeChat | GramJ
 
 export function getPeerKey(peer: GramJs.TypePeer) {
   if (isMtpPeerUser(peer)) {
-    return `user${peer.userId}`;
+    return `user${peer.userId.toString()}`;
   } else if (isMtpPeerChat(peer)) {
-    return `chat${peer.chatId}`;
+    return `chat${peer.chatId.toString()}`;
   } else {
-    return `chat${peer.channelId}`;
+    return `chat${peer.channelId.toString()}`;
   }
 }
 
-export function getApiChatTitleFromMtpPeer(peer: GramJs.TypePeer, peerEntity: GramJs.User | GramJs.Chat) {
+export function getApiChatTitleFromMtpPeer(peer: GramJs.TypePeer, peerEntity: Entity) {
   if (isMtpPeerUser(peer)) {
     return getUserName(peerEntity as GramJs.User);
   } else {
@@ -328,7 +339,7 @@ export function buildChatMember(
   return {
     userId,
     inviterId: 'inviterId' in member && member.inviterId
-      ? buildApiPeerId(member.inviterId as BigInt.BigInteger, 'user')
+      ? buildApiPeerId(member.inviterId, 'user')
       : undefined,
     joinedDate: 'date' in member ? member.date : undefined,
     kickedByUserId: 'kickedBy' in member && member.kickedBy ? buildApiPeerId(member.kickedBy, 'user') : undefined,
@@ -709,5 +720,18 @@ export function buildApiStarsSubscriptionPricing(
   return {
     period: pricing.period,
     amount: pricing.amount.toJSNumber(),
+  };
+}
+
+export function buildApiSponsoredPeer(sponsoredPeer: GramJs.SponsoredPeer): ApiSponsoredPeer {
+  const {
+    peer, randomId, additionalInfo, sponsorInfo,
+  } = sponsoredPeer;
+
+  return {
+    peerId: getApiChatIdFromMtpPeer(peer),
+    randomId: serializeBytes(randomId),
+    additionalInfo,
+    sponsorInfo,
   };
 }

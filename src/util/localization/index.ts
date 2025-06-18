@@ -24,17 +24,17 @@ import {
 
 import { DEBUG, LANG_PACK } from '../../config';
 import { callApi } from '../../api/gramjs';
-import renderText, { type TextFilter } from '../../components/common/helpers/renderText';
+import renderText from '../../components/common/helpers/renderText';
+import { IS_INTL_LIST_FORMAT_SUPPORTED } from '../browser/globalEnvironment';
 import { MAIN_IDB_STORE } from '../browser/idb';
 import { getBasicListFormat } from '../browser/intlListFormat';
+import { notifyLangpackUpdate } from '../browser/multitab';
 import { createCallbackManager } from '../callbacks';
 import readFallbackStrings from '../data/readFallbackStrings';
 import { initialEstablishmentPromise, isCurrentTabMaster } from '../establishMultitabRole';
 import { omit, unique } from '../iteratees';
-import { notifyLangpackUpdate } from '../multitab';
 import { replaceInStringsWithTeact } from '../replaceWithTeact';
 import { fastRaf } from '../schedulers';
-import { IS_INTL_LIST_FORMAT_SUPPORTED, IS_MULTITAB_SUPPORTED } from '../windowEnvironment';
 
 import Deferred from '../Deferred';
 import LimitedMap from '../primitives/LimitedMap';
@@ -108,10 +108,8 @@ async function fetchDifference() {
     return;
   }
 
-  if (IS_MULTITAB_SUPPORTED) {
-    await initialEstablishmentPromise;
-    if (!isCurrentTabMaster()) return;
-  }
+  await initialEstablishmentPromise;
+  if (!isCurrentTabMaster()) return;
 
   const result = await callApi('fetchLangDifference', {
     langPack: LANG_PACK,
@@ -233,10 +231,8 @@ export async function loadAndChangeLanguage(langCode: string, shouldCheckCache?:
     }
   }
 
-  if (IS_MULTITAB_SUPPORTED) {
-    await initialEstablishmentPromise;
-    if (!isCurrentTabMaster()) return undefined;
-  }
+  await initialEstablishmentPromise;
+  if (!isCurrentTabMaster()) return undefined;
 
   const remoteLanguage = await callApi('fetchLanguage', {
     langPack: LANG_PACK,
@@ -269,10 +265,8 @@ export async function changeLanguage(newLanguage: ApiLanguage) {
 
     fetchDifference();
   } else {
-    if (IS_MULTITAB_SUPPORTED) {
-      await initialEstablishmentPromise;
-      if (!isCurrentTabMaster()) return;
-    }
+    await initialEstablishmentPromise;
+    if (!isCurrentTabMaster()) return;
     const remoteLangPack = await callApi('fetchLangPack', {
       langPack: LANG_PACK,
       langCode: newLanguage.langCode,
@@ -315,18 +309,18 @@ function createTranslationFn(): LangFn {
   fn.rawCode = language?.langCode || FORMATTERS_FALLBACK_LANG;
   fn.isRtl = language?.isRtl;
   fn.code = language?.pluralCode || FORMATTERS_FALLBACK_LANG;
-  fn.with = (({ key, variables, options }: LangFnParameters) => {
+  fn.with = ({ key, variables, options }: LangFnParameters) => {
     if (options && areAdvancedLangFnOptions(options)) {
       return processTranslationAdvanced(key, variables as Record<string, TeactNode | undefined>, options);
     }
     return processTranslation(key, variables as Record<string, LangVariable>, options);
-  });
-  fn.withRegular = (({ key, variables, options }: RegularLangFnParameters) => {
+  };
+  fn.withRegular = ({ key, variables, options }: RegularLangFnParameters) => {
     return processTranslation(key, variables, options);
-  });
-  fn.withAdvanced = (({ key, variables, options }: AdvancedLangFnParameters) => {
+  };
+  fn.withAdvanced = ({ key, variables, options }: AdvancedLangFnParameters) => {
     return processTranslationAdvanced(key, variables, options);
-  });
+  };
   fn.region = (code: string) => formatters?.region.of(code);
   fn.conjunction = (list: string[]) => formatters?.conjunction.format(list) || list.join(', ');
   fn.disjunction = (list: string[]) => formatters?.disjunction.format(list) || list.join(', ');
@@ -384,7 +378,7 @@ function processTranslation(
     }
 
     const valueAsString = Number.isFinite(value) ? formatters!.number.format(value as number) : String(value);
-    return result.replace(`{${key}}`, valueAsString);
+    return result.replaceAll(`{${key}}`, valueAsString);
   }, string);
 
   TRANSLATION_CACHE.set(cacheKey, finalString);
@@ -415,7 +409,7 @@ function processTranslationAdvanced(
 
   if (withRenderText) {
     const filters = options?.withMarkdown
-      ? unique((options.renderTextFilters || []).concat(['simple_markdown', 'emoji']) as TextFilter[])
+      ? unique((options.renderTextFilters || []).concat(['simple_markdown', 'emoji']))
       : options.renderTextFilters;
 
     return tempResult.flatMap((curr: TeactNode) => {

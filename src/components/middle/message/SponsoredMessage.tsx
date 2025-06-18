@@ -1,12 +1,12 @@
-import type { RefObject } from 'react';
-import type { FC } from '../../../lib/teact/teact';
-import React, {
+import type { ElementRef, FC } from '../../../lib/teact/teact';
+import type React from '../../../lib/teact/teact';
+import {
   memo, useEffect, useMemo, useRef,
 } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
 import type { ApiSponsoredMessage } from '../../../api/types';
-import type { ISettings } from '../../../types';
+import type { ThemeKey } from '../../../types';
 import { MediaViewerOrigin } from '../../../types';
 
 import {
@@ -19,8 +19,8 @@ import {
   selectSponsoredMessage,
   selectTheme,
 } from '../../../global/selectors';
+import { IS_ANDROID } from '../../../util/browser/windowEnvironment';
 import buildClassName from '../../../util/buildClassName';
-import { IS_ANDROID } from '../../../util/windowEnvironment';
 import { renderTextWithEntities } from '../../common/helpers/renderTextWithEntities';
 import { preventMessageInputBlur } from '../helpers/preventMessageInputBlur';
 import { calculateMediaDimensions, getMinMediaWidth, MIN_MEDIA_WIDTH_WITH_TEXT } from './helpers/mediaDimensions';
@@ -38,21 +38,21 @@ import PeerColorWrapper from '../../common/PeerColorWrapper';
 import Button from '../../ui/Button';
 import MessageAppendix from './MessageAppendix';
 import Photo from './Photo';
-import SponsoredMessageContextMenuContainer from './SponsoredMessageContextMenuContainer.async';
+import SponsoredContextMenuContainer from './SponsoredContextMenuContainer.async';
 import Video from './Video';
 
 import './SponsoredMessage.scss';
 
 type OwnProps = {
   chatId: string;
-  containerRef: RefObject<HTMLDivElement>;
+  containerRef: ElementRef<HTMLDivElement>;
   observeIntersectionForLoading: ObserveFn;
   observeIntersectionForPlaying: ObserveFn;
 };
 
 type StateProps = {
   message?: ApiSponsoredMessage;
-  theme: ISettings['theme'];
+  theme: ThemeKey;
   isDownloading?: boolean;
   canAutoLoadMedia?: boolean;
   canAutoPlayMedia?: boolean;
@@ -72,19 +72,17 @@ const SponsoredMessage: FC<OwnProps & StateProps> = ({
   canAutoPlayMedia,
 }) => {
   const {
-    viewSponsoredMessage,
+    viewSponsored,
     openUrl,
-    hideSponsoredMessages,
-    clickSponsoredMessage,
+    hideSponsored,
+    clickSponsored,
     openMediaViewer,
     openAboutAdsModal,
   } = getActions();
 
   const lang = useOldLang();
-  // eslint-disable-next-line no-null/no-null
-  const contentRef = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line no-null/no-null
-  const ref = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>();
+  const ref = useRef<HTMLDivElement>();
   const shouldObserve = Boolean(message);
 
   const { isMobile } = useAppLayout();
@@ -103,11 +101,11 @@ const SponsoredMessage: FC<OwnProps & StateProps> = ({
 
   useEffect(() => {
     return shouldObserve ? observeIntersection(contentRef.current!, (target) => {
-      if (target.isIntersecting) {
-        viewSponsoredMessage({ peerId: chatId });
+      if (target.isIntersecting && message?.randomId) {
+        viewSponsored({ randomId: message.randomId });
       }
     }) : undefined;
-  }, [chatId, shouldObserve, observeIntersection, viewSponsoredMessage]);
+  }, [message?.randomId, shouldObserve, observeIntersection, viewSponsored]);
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
     preventMessageInputBlur(e);
@@ -115,7 +113,7 @@ const SponsoredMessage: FC<OwnProps & StateProps> = ({
   };
 
   const handleHideSponsoredMessage = useLastCallback(() => {
-    hideSponsoredMessages();
+    hideSponsored();
   });
 
   const {
@@ -128,12 +126,13 @@ const SponsoredMessage: FC<OwnProps & StateProps> = ({
   const handleClick = useLastCallback(() => {
     if (!message) return;
 
-    clickSponsoredMessage({ isMedia: photo || isGif ? true : undefined, peerId: chatId });
+    clickSponsored({ randomId: message.randomId, isMedia: photo || isGif ? true : undefined });
     openUrl({ url: message.url, shouldSkipModal: true });
   });
 
   const handleOpenMedia = useLastCallback(() => {
-    clickSponsoredMessage({ isMedia: true, peerId: chatId });
+    if (!message) return;
+    clickSponsored({ randomId: message.randomId, isMedia: true });
     openMediaViewer({
       origin: MediaViewerOrigin.SponsoredMessage,
       chatId,
@@ -142,7 +141,13 @@ const SponsoredMessage: FC<OwnProps & StateProps> = ({
   });
 
   const handleOpenAboutAdsModal = useLastCallback(() => {
-    openAboutAdsModal({ chatId });
+    if (!message) return;
+    openAboutAdsModal({
+      randomId: message.randomId,
+      canReport: message.canReport,
+      additionalInfo: message.additionalInfo,
+      sponsorInfo: message.sponsorInfo,
+    });
   });
 
   const extraPadding = 0;
@@ -280,7 +285,7 @@ const SponsoredMessage: FC<OwnProps & StateProps> = ({
             />
           )}
           <span className={buildClassName('message-title message-type', hasMedia && 'has-media')}>
-            {message!.isRecommended ? lang('Message.RecommendedLabel') : lang('SponsoredMessage')}
+            {message.isRecommended ? lang('Message.RecommendedLabel') : lang('SponsoredMessage')}
             <BadgeButton onClick={handleOpenAboutAdsModal} className="ad-about">
               {lang('SponsoredMessageAdWhatIsThis')}
             </BadgeButton>
@@ -315,11 +320,14 @@ const SponsoredMessage: FC<OwnProps & StateProps> = ({
         </div>
       </div>
       {contextMenuAnchor && (
-        <SponsoredMessageContextMenuContainer
+        <SponsoredContextMenuContainer
           isOpen={isContextMenuOpen}
           anchor={contextMenuAnchor}
           triggerRef={ref}
-          message={message!}
+          randomId={message.randomId}
+          canReport={message.canReport}
+          sponsorInfo={message.sponsorInfo}
+          additionalInfo={message.additionalInfo}
           onClose={handleContextMenuClose}
           onCloseAnimationEnd={handleContextMenuHide}
         />

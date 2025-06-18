@@ -1,5 +1,5 @@
 import type { FC } from '../../lib/teact/teact';
-import React, { memo, useRef } from '../../lib/teact/teact';
+import { memo, useRef } from '../../lib/teact/teact';
 
 import type { ApiMessage } from '../../api/types';
 import type { ObserveFn } from '../../hooks/useIntersectionObserver';
@@ -40,8 +40,7 @@ const Media: FC<OwnProps> = ({
   observeIntersection,
   onClick,
 }) => {
-  // eslint-disable-next-line no-null/no-null
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLDivElement>();
 
   const isIntersecting = useIsIntersecting(ref, observeIntersection);
   const thumbDataUri = getMessageMediaThumbDataUri(message);

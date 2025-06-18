@@ -1,5 +1,5 @@
 import type { FC } from '../../../lib/teact/teact';
-import React, { memo, useCallback } from '../../../lib/teact/teact';
+import { memo, useCallback } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
 import type { ApiSession } from '../../../api/types';
@@ -98,8 +98,14 @@ const SettingsActiveSession: FC<OwnProps & StateProps> = ({
       <dl className={styles.box}>
         <dt>{lang('SessionPreview.App')}</dt>
         <dd>
-          {renderingSession?.appName} {renderingSession?.appVersion},{' '}
-          {renderingSession?.platform} {renderingSession?.systemVersion}
+          {renderingSession?.appName}
+          {' '}
+          {renderingSession?.appVersion}
+          ,
+          {' '}
+          {renderingSession?.platform}
+          {' '}
+          {renderingSession?.systemVersion}
         </dd>
 
         <dt>{lang('SessionPreview.Ip')}</dt>

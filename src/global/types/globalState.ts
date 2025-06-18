@@ -13,7 +13,6 @@ import type {
   ApiCountryCode,
   ApiEmojiStatusType,
   ApiGroupCall,
-  ApiLanguage,
   ApiMessage,
   ApiNotifyPeerType,
   ApiPaidReactionPrivacyType,
@@ -50,17 +49,14 @@ import type {
   ApiWebSession,
 } from '../../api/types';
 import type {
+  AccountSettings,
   BotAppPermissions,
   ChatListType,
   ChatTranslatedMessages,
   EmojiKeywords,
-  ISettings,
   IThemeSettings,
-  PerformanceType,
-  Point,
   ServiceNotification,
   SimilarBotsInfo,
-  Size,
   StarGiftCategory,
   StarsSubscriptions,
   StarsTransactionHistory,
@@ -72,6 +68,7 @@ import type {
 } from '../../types';
 import type { DisplayedProperty } from '../../util/crmchat';
 import type { RegularLangFnParameters } from '../../util/localization';
+import type { SharedState } from './sharedState';
 import type { TabState } from './tabState';
 
 export type GlobalState = {
@@ -90,6 +87,7 @@ export type GlobalState = {
   connectionState?: ApiUpdateConnectionStateType;
   currentUserId?: string;
   isSyncing?: boolean;
+  isAppConfigLoaded?: boolean;
   isAppUpdateAvailable?: boolean;
   isElectronUpdateAvailable?: boolean;
   isSynced?: boolean;
@@ -98,6 +96,7 @@ export type GlobalState = {
   lastIsChatInfoShown?: boolean;
   initialUnreadNotifications?: number;
   shouldShowContextMenuHint?: boolean;
+  botFreezeAppealId?: string;
 
   audioPlayer: {
     lastPlaybackRate: number;
@@ -409,18 +408,15 @@ export type GlobalState = {
   };
 
   settings: {
-    byKey: ISettings;
-    performance: PerformanceType;
+    byKey: AccountSettings;
     loadedWallpapers?: ApiWallpaper[];
-    themes: Partial<Record<ThemeKey, IThemeSettings>>;
     privacy: Partial<Record<ApiPrivacyKey, ApiPrivacySettings>>;
     notifyDefaults?: Record<ApiNotifyPeerType, ApiPeerNotifySettings>;
     lastPremiumBandwithNotificationDate?: number;
     paidReactionPrivacy?: ApiPaidReactionPrivacyType;
-    languages?: ApiLanguage[];
     botVerificationShownPeerIds: string[];
-    miniAppsCachedPosition?: Point;
-    miniAppsCachedSize?: Size;
+    themes: Partial<Record<ThemeKey, IThemeSettings>>;
+    accountDaysTtl: number;
   };
 
   push?: {
@@ -434,6 +430,7 @@ export type GlobalState = {
   serviceNotifications: ServiceNotification[];
 
   byTabId: Record<number, TabState>;
+  sharedState: SharedState;
 
   archiveSettings: {
     isMinimized: boolean;

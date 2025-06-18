@@ -1,5 +1,5 @@
-import type { FC } from '../../../lib/teact/teact';
-import React, { memo, useEffect, useRef } from '../../../lib/teact/teact';
+import type { ElementRef, FC } from '../../../lib/teact/teact';
+import { memo, useEffect, useRef } from '../../../lib/teact/teact';
 import { getActions, getGlobal } from '../../../global';
 
 import type { ApiStickerSet } from '../../../api/types';
@@ -8,9 +8,9 @@ import type { ObserveFn } from '../../../hooks/useIntersectionObserver';
 import { STICKER_SIZE_PICKER_HEADER } from '../../../config';
 import { getStickerMediaHash } from '../../../global/helpers';
 import { selectIsAlwaysHighPriorityEmoji } from '../../../global/selectors';
+import { IS_WEBM_SUPPORTED } from '../../../util/browser/windowEnvironment';
 import buildClassName from '../../../util/buildClassName';
 import { getFirstLetters } from '../../../util/textFormat';
-import { IS_WEBM_SUPPORTED } from '../../../util/windowEnvironment';
 
 import useColorFilter from '../../../hooks/stickers/useColorFilter';
 import useDynamicColorListener from '../../../hooks/stickers/useDynamicColorListener';
@@ -32,7 +32,7 @@ type OwnProps = {
   noPlay?: boolean;
   forcePlayback?: boolean;
   observeIntersection: ObserveFn;
-  sharedCanvasRef?: React.RefObject<HTMLCanvasElement>;
+  sharedCanvasRef?: ElementRef<HTMLCanvasElement>;
 };
 
 const StickerSetCover: FC<OwnProps> = ({
@@ -44,8 +44,7 @@ const StickerSetCover: FC<OwnProps> = ({
   sharedCanvasRef,
 }) => {
   const { loadStickers } = getActions();
-  // eslint-disable-next-line no-null/no-null
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>();
 
   const {
     hasThumbnail, hasVideoThumb, hasAnimatedThumb, hasStaticThumb, thumbCustomEmojiId,

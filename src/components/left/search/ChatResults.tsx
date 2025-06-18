@@ -1,11 +1,12 @@
 import type { FC } from '../../../lib/teact/teact';
-import React, {
+import type React from '../../../lib/teact/teact';
+import {
   memo, useCallback, useEffect,
   useMemo, useRef, useState,
 } from '../../../lib/teact/teact';
 import { getActions, getGlobal, withGlobal } from '../../../global';
 
-import type { ApiMessage, ApiMessageSearchContext } from '../../../api/types';
+import type { ApiMessage, ApiMessageSearchContext, ApiSponsoredPeer } from '../../../api/types';
 import { LoadMoreDirection } from '../../../types';
 
 import { ALL_FOLDER_ID, GLOBAL_SUGGESTED_CHANNELS_ID } from '../../../config';
@@ -27,6 +28,7 @@ import useAppLayout from '../../../hooks/useAppLayout';
 import useContextMenuHandlers from '../../../hooks/useContextMenuHandlers';
 import useEffectOnce from '../../../hooks/useEffectOnce';
 import useHorizontalScroll from '../../../hooks/useHorizontalScroll';
+import { useIntersectionObserver } from '../../../hooks/useIntersectionObserver';
 import useLang from '../../../hooks/useLang';
 import useLastCallback from '../../../hooks/useLastCallback';
 import useOldLang from '../../../hooks/useOldLang';
@@ -43,6 +45,7 @@ import Transition from '../../ui/Transition';
 import ChatMessage from './ChatMessage';
 import DateSuggest from './DateSuggest';
 import LeftSearchResultChat from './LeftSearchResultChat';
+import LeftSearchResultSponsored from './LeftSearchResultSponsored';
 import RecentContacts from './RecentContacts';
 
 import './ChatResults.scss';
@@ -62,6 +65,7 @@ type StateProps = {
   accountPeerIds?: string[];
   globalPeerIds?: string[];
   foundIds?: SearchResultKey[];
+  sponsoredPeer?: ApiSponsoredPeer;
   globalMessagesByChatId?: Record<string, { byId: Record<number, ApiMessage> }>;
   fetchingStatus?: { chats?: boolean; messages?: boolean };
   suggestedChannelIds?: string[];
@@ -69,6 +73,7 @@ type StateProps = {
 
 const MIN_QUERY_LENGTH_FOR_GLOBAL_SEARCH = 4;
 const LESS_LIST_ITEMS_AMOUNT = 5;
+const INTERSECTION_THROTTLE = 200;
 
 const runThrottled = throttle((cb) => cb(), 500, false);
 
@@ -85,6 +90,7 @@ const ChatResults: FC<OwnProps & StateProps> = ({
   globalMessagesByChatId,
   fetchingStatus,
   suggestedChannelIds,
+  sponsoredPeer,
   onReset,
   onSearchDateSelect,
 }) => {
@@ -93,8 +99,8 @@ const ChatResults: FC<OwnProps & StateProps> = ({
     setGlobalSearchChatId, loadChannelRecommendations,
   } = getActions();
 
-  // eslint-disable-next-line no-null/no-null
-  const chatSelectionRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>();
+  const chatSelectionRef = useRef<HTMLDivElement>();
 
   const oldLang = useOldLang();
   const lang = useLang();
@@ -103,8 +109,7 @@ const ChatResults: FC<OwnProps & StateProps> = ({
   const [shouldShowMoreLocal, setShouldShowMoreLocal] = useState<boolean>(false);
   const [shouldShowMoreGlobal, setShouldShowMoreGlobal] = useState<boolean>(false);
   const [searchContext, setSearchContext] = useState<ApiMessageSearchContext>('all');
-  // eslint-disable-next-line no-null/no-null
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLDivElement>();
 
   useEffectOnce(() => {
     if (isChannelList) loadChannelRecommendations({});
@@ -180,7 +185,7 @@ const ChatResults: FC<OwnProps & StateProps> = ({
           <MenuItem
             icon={searchContext === 'all' ? 'check' : undefined}
             customIcon={searchContext !== 'all' ? <i className={itemPlaceholderClass} /> : undefined}
-            // eslint-disable-next-line react/jsx-no-bind
+
             onClick={() => setSearchContext('all')}
           >
             {getSearchContextCaption('all')}
@@ -188,7 +193,7 @@ const ChatResults: FC<OwnProps & StateProps> = ({
           <MenuItem
             icon={searchContext === 'users' ? 'check' : undefined}
             customIcon={searchContext !== 'users' ? <i className={itemPlaceholderClass} /> : undefined}
-            // eslint-disable-next-line react/jsx-no-bind
+
             onClick={() => setSearchContext('users')}
           >
             {getSearchContextCaption('users')}
@@ -196,7 +201,7 @@ const ChatResults: FC<OwnProps & StateProps> = ({
           <MenuItem
             icon={searchContext === 'groups' ? 'check' : undefined}
             customIcon={searchContext !== 'groups' ? <i className={itemPlaceholderClass} /> : undefined}
-            // eslint-disable-next-line react/jsx-no-bind
+
             onClick={() => setSearchContext('groups')}
           >
             {getSearchContextCaption('groups')}
@@ -204,7 +209,7 @@ const ChatResults: FC<OwnProps & StateProps> = ({
           <MenuItem
             icon={searchContext === 'channels' ? 'check' : undefined}
             customIcon={searchContext !== 'channels' ? <i className={itemPlaceholderClass} /> : undefined}
-            // eslint-disable-next-line react/jsx-no-bind
+
             onClick={() => setSearchContext('channels')}
           >
             {getSearchContextCaption('channels')}
@@ -335,7 +340,15 @@ const ChatResults: FC<OwnProps & StateProps> = ({
     && !localResults.length && !globalResults.length && !actualFoundIds.length;
   const isMessagesFetching = fetchingStatus?.messages;
 
-  if (!searchQuery && !searchDate && !isChannelList) {
+  const shouldRenderTopPeers = !searchQuery && !searchDate && !isChannelList;
+
+  const { observe } = useIntersectionObserver({
+    rootRef: containerRef,
+    throttleMs: INTERSECTION_THROTTLE,
+    isDisabled: !shouldRenderTopPeers,
+  });
+
+  if (shouldRenderTopPeers) {
     return <RecentContacts onReset={onReset} />;
   }
 
@@ -343,6 +356,7 @@ const ChatResults: FC<OwnProps & StateProps> = ({
 
   return (
     <InfiniteScroll
+      ref={containerRef}
       className="LeftSearch--content custom-scroll"
       items={actualFoundIds}
       onLoadMore={handleLoadMore}
@@ -415,6 +429,9 @@ const ChatResults: FC<OwnProps & StateProps> = ({
             )}
             {oldLang('DialogList.SearchSectionGlobal')}
           </h3>
+          {sponsoredPeer && (
+            <LeftSearchResultSponsored sponsoredPeer={sponsoredPeer} observeIntersection={observe} />
+          )}
           {globalResults.map((id, index) => {
             if (!shouldShowMoreGlobal && index >= LESS_LIST_ITEMS_AMOUNT) {
               return undefined;
@@ -493,7 +510,7 @@ export default memo(withGlobal<OwnProps>(
     }
 
     const {
-      fetchingStatus, globalResults, localResults, resultsByType,
+      fetchingStatus, globalResults, localResults, resultsByType, sponsoredPeer,
     } = selectTabState(global).globalSearch;
     const { peerIds: globalPeerIds } = globalResults || {};
     const { peerIds: accountPeerIds } = localResults || {};
@@ -509,6 +526,7 @@ export default memo(withGlobal<OwnProps>(
       foundIds,
       globalMessagesByChatId,
       fetchingStatus,
+      sponsoredPeer,
       suggestedChannelIds: similarChannelIds,
     };
   },

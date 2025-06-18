@@ -1,5 +1,6 @@
 import type { FC } from '../../lib/teact/teact';
-import React, {
+import type React from '../../lib/teact/teact';
+import {
   memo, useCallback, useRef, useState,
 } from '../../lib/teact/teact';
 import { withGlobal } from '../../global';
@@ -7,10 +8,10 @@ import { withGlobal } from '../../global';
 import type { ApiCountryCode } from '../../api/types';
 
 import { ANIMATION_END_DELAY } from '../../config';
+import { IS_EMOJI_SUPPORTED } from '../../util/browser/windowEnvironment';
 import buildClassName from '../../util/buildClassName';
 import { isoToEmoji } from '../../util/emoji/emoji';
 import { prepareSearchWordsForNeedle } from '../../util/searchWords';
-import { IS_EMOJI_SUPPORTED } from '../../util/windowEnvironment';
 import renderText from '../common/helpers/renderText';
 
 import useLang from '../../hooks/useLang';
@@ -44,8 +45,7 @@ const CountryCodeInput: FC<OwnProps & StateProps> = ({
   phoneCodeList,
 }) => {
   const lang = useLang();
-  // eslint-disable-next-line no-null/no-null
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>();
 
   const [filter, setFilter] = useState<string | undefined>();
   const [filteredList, setFilteredList] = useState<ApiCountryCode[]>([]);
@@ -105,7 +105,7 @@ const CountryCodeInput: FC<OwnProps & StateProps> = ({
       handleTrigger();
     };
 
-    const emoji = value && IS_EMOJI_SUPPORTED && renderText(isoToEmoji(value.iso2), ['hq_emoji']);
+    const emoji = value && IS_EMOJI_SUPPORTED && isoToEmoji(value.iso2);
     const name = value?.name || value?.defaultName || '';
     const inputValue = filter ?? [emoji, name].filter(Boolean).join(' ');
 
@@ -143,12 +143,15 @@ const CountryCodeInput: FC<OwnProps & StateProps> = ({
           <MenuItem
             key={`${country.iso2}-${country.countryCode}`}
             className={value && country.iso2 === value.iso2 ? 'selected' : ''}
-            // eslint-disable-next-line react/jsx-no-bind
+
             onClick={() => handleChange(country)}
           >
             <span className="country-flag">{renderText(isoToEmoji(country.iso2), ['hq_emoji'])}</span>
             <span className="country-name">{country.name || country.defaultName}</span>
-            <span className="country-code">+{country.countryCode}</span>
+            <span className="country-code">
+              +
+              {country.countryCode}
+            </span>
           </MenuItem>
         ))}
       {!filteredList.length && (

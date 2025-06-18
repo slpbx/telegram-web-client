@@ -1,4 +1,4 @@
-import { IS_ANDROID, IS_IOS } from './windowEnvironment';
+import { IS_ANDROID, IS_IOS } from './browser/windowEnvironment';
 
 const SHOULD_PRE_OPEN = IS_IOS || IS_ANDROID;
 
@@ -21,8 +21,8 @@ export default class PopupManager {
 
   open(url: string) {
     if (this.preOpened) {
-      this.preOpened!.location.href = url;
-      this.preOpened!.focus();
+      this.preOpened.location.href = url;
+      this.preOpened.focus();
       this.preOpened = undefined;
 
       return;

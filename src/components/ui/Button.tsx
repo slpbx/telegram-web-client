@@ -1,10 +1,11 @@
-import type { MouseEvent as ReactMouseEvent, RefObject } from 'react';
-import type { FC } from '../../lib/teact/teact';
-import React, { useRef, useState } from '../../lib/teact/teact';
+import type { MouseEvent as ReactMouseEvent } from 'react';
+import type { ElementRef, FC } from '../../lib/teact/teact';
+import type React from '../../lib/teact/teact';
+import { useRef, useState } from '../../lib/teact/teact';
 
+import { IS_TOUCH_ENV, MouseButton } from '../../util/browser/windowEnvironment';
 import buildClassName from '../../util/buildClassName';
 import buildStyle from '../../util/buildStyle';
-import { IS_TOUCH_ENV, MouseButton } from '../../util/windowEnvironment';
 
 import useLastCallback from '../../hooks/useLastCallback';
 import useOldLang from '../../hooks/useOldLang';
@@ -16,13 +17,13 @@ import Spinner from './Spinner';
 import './Button.scss';
 
 export type OwnProps = {
-  ref?: RefObject<HTMLButtonElement | HTMLAnchorElement>;
+  ref?: ElementRef<HTMLButtonElement | HTMLAnchorElement>;
   type?: 'button' | 'submit' | 'reset';
   children: React.ReactNode;
   size?: 'default' | 'smaller' | 'tiny';
   color?: (
     'primary' | 'secondary' | 'gray' | 'danger' | 'translucent' | 'translucent-white' | 'translucent-black'
-    | 'translucent-bordered' | 'dark' | 'green' | 'adaptive' | 'stars'
+    | 'translucent-bordered' | 'dark' | 'green' | 'adaptive' | 'stars' | 'bluredStarsBadge'
   );
   backgroundImage?: string;
   id?: string;
@@ -112,8 +113,7 @@ const Button: FC<OwnProps> = ({
   noForcedUpperCase,
   style,
 }) => {
-  // eslint-disable-next-line no-null/no-null
-  let elementRef = useRef<HTMLButtonElement | HTMLAnchorElement>(null);
+  let elementRef = useRef<HTMLButtonElement | HTMLAnchorElement>();
   if (ref) {
     elementRef = ref;
   }
@@ -191,7 +191,7 @@ const Button: FC<OwnProps> = ({
   if (href) {
     return (
       <a
-        ref={elementRef as RefObject<HTMLAnchorElement>}
+        ref={elementRef as ElementRef<HTMLAnchorElement>}
         id={id}
         className={fullClassName}
         href={href}
@@ -213,7 +213,7 @@ const Button: FC<OwnProps> = ({
 
   return (
     <button
-      ref={elementRef as RefObject<HTMLButtonElement>}
+      ref={elementRef as ElementRef<HTMLButtonElement>}
       id={id}
       type={type}
       className={fullClassName}

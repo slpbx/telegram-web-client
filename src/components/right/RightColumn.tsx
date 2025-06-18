@@ -1,5 +1,5 @@
 import type { FC } from '../../lib/teact/teact';
-import React, {
+import {
   memo, useEffect, useRef, useState,
 } from '../../lib/teact/teact';
 import { getActions, withGlobal } from '../../global';
@@ -109,8 +109,7 @@ const RightColumn: FC<OwnProps & StateProps> = ({
     closeMonetizationStatistics,
   } = getActions();
 
-  // eslint-disable-next-line no-null/no-null
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>();
 
   const { width: windowWidth } = useWindowSize();
   const [profileState, setProfileState] = useState<ProfileState>(
@@ -182,6 +181,9 @@ const RightColumn: FC<OwnProps & StateProps> = ({
             setManagementScreen(ManagementScreens.GroupPermissions);
             setSelectedChatMemberId(undefined);
             setIsPromotedByCurrentUser(undefined);
+            break;
+          case ManagementScreens.NewDiscussionGroup:
+            setManagementScreen(ManagementScreens.Discussion);
             break;
           case ManagementScreens.ChatAdminRights:
           case ManagementScreens.ChatNewAdminRights:

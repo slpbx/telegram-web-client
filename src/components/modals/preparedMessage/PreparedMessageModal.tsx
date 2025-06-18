@@ -1,4 +1,4 @@
-import React, {
+import {
   type FC,
   memo, useMemo, useRef,
 } from '../../../lib/teact/teact';
@@ -10,7 +10,7 @@ import type { ThemeKey } from '../../../types';
 import { MAIN_THREAD_ID } from '../../../api/types';
 
 import { getMockPreparedMessageFromResult, getUserFullName } from '../../../global/helpers';
-import { selectTheme, selectUser } from '../../../global/selectors';
+import { selectTheme, selectThemeValues, selectUser } from '../../../global/selectors';
 import buildClassName from '../../../util/buildClassName';
 import buildStyle from '../../../util/buildStyle';
 
@@ -55,8 +55,7 @@ const PreparedMessageModal: FC<OwnProps & StateProps> = ({
 
   const { webAppKey, message, botId } = modal || {};
 
-  // eslint-disable-next-line no-null/no-null
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>();
 
   const customBackgroundValue = useCustomBackground(theme, customBackground);
 
@@ -182,7 +181,7 @@ export default memo(withGlobal<OwnProps>(
       patternColor,
       background: customBackground,
       backgroundColor,
-    } = global.settings.themes[theme] || {};
+    } = selectThemeValues(global, theme) || {};
     const bot = modal ? selectUser(global, modal?.botId) : undefined;
 
     return {

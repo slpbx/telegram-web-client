@@ -1,13 +1,14 @@
-import type { FC } from '../../lib/teact/teact';
-import React, {
+import type { ElementRef, FC } from '../../lib/teact/teact';
+import type React from '../../lib/teact/teact';
+import {
   memo, useMemo, useRef, useState,
 } from '../../lib/teact/teact';
 
 import type { IconName } from '../../types/icons';
 
+import { IS_CANVAS_FILTER_SUPPORTED } from '../../util/browser/windowEnvironment';
 import buildClassName from '../../util/buildClassName';
 import { formatMediaDateTime, formatPastTimeShort } from '../../util/dates/dateFormat';
-import { IS_CANVAS_FILTER_SUPPORTED } from '../../util/windowEnvironment';
 import { getColorFromExtension, getFileSizeString } from './helpers/documentInfo';
 import { getDocumentThumbnailDimensions } from './helpers/mediaDimensions';
 import renderText from './helpers/renderText';
@@ -25,7 +26,7 @@ import Icon from './icons/Icon';
 import './File.scss';
 
 type OwnProps = {
-  ref?: React.RefObject<HTMLDivElement>;
+  ref?: ElementRef<HTMLDivElement>;
   name: string;
   extension?: string;
   size: number;
@@ -66,8 +67,7 @@ const File: FC<OwnProps> = ({
   onDateClick,
 }) => {
   const lang = useOldLang();
-  // eslint-disable-next-line no-null/no-null
-  let elementRef = useRef<HTMLDivElement>(null);
+  let elementRef = useRef<HTMLDivElement>();
   if (ref) {
     elementRef = ref;
   }

@@ -1,7 +1,7 @@
 import { ApiMediaFormat } from '../../api/types';
 
+import { IS_ANDROID, IS_IOS } from '../../util/browser/windowEnvironment';
 import launchMediaWorkers, { MAX_WORKERS } from '../../util/launchMediaWorkers';
-import { IS_ANDROID, IS_IOS } from '../../util/windowEnvironment';
 import { callApi } from '../../api/gramjs';
 import { requestMutation } from '../fasterdom/fasterdom';
 
@@ -15,7 +15,7 @@ const connections = launchMediaWorkers();
 let videoPreview: VideoPreview | undefined;
 
 export class VideoPreview {
-  frames: Map<number, ImageBitmap> = new Map();
+  frames = new Map<number, ImageBitmap>();
 
   currentTime = 0;
 

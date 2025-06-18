@@ -1,4 +1,4 @@
-import React, { memo } from '../../../lib/teact/teact';
+import { memo } from '../../../lib/teact/teact';
 import { getActions } from '../../../global';
 
 import type { ApiStarsAmount } from '../../../api/types';
@@ -37,7 +37,7 @@ const BalanceBlock = ({ balance, className, withAddButton }: OwnProps) => {
           {withAddButton && (
             <BadgeButton
               className={styles.addStarsButton}
-              // eslint-disable-next-line react/jsx-no-bind
+
               onClick={() => openStarsBalanceModal({})}
             >
               <Icon

@@ -2,7 +2,7 @@ import { useEffect, useRef } from '../lib/teact/teact';
 
 import fastBlur from '../lib/fastBlur';
 import { requestMeasure, requestMutation } from '../lib/fasterdom/fasterdom';
-import { IS_CANVAS_FILTER_SUPPORTED } from '../util/windowEnvironment';
+import { IS_CANVAS_FILTER_SUPPORTED } from '../util/browser/windowEnvironment';
 import useSyncEffect from './useSyncEffect';
 
 const RADIUS = 2;
@@ -16,8 +16,7 @@ export default function useCanvasBlur(
   preferredWidth?: number,
   preferredHeight?: number,
 ) {
-  // eslint-disable-next-line no-null/no-null
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>();
   const isStarted = useRef();
 
   useSyncEffect(() => {

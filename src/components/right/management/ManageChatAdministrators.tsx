@@ -1,5 +1,5 @@
 import type { FC } from '../../../lib/teact/teact';
-import React, { memo, useMemo } from '../../../lib/teact/teact';
+import { memo, useMemo } from '../../../lib/teact/teact';
 import { getActions, getGlobal, withGlobal } from '../../../global';
 
 import type { ApiChat, ApiChatMember } from '../../../api/types';
@@ -134,7 +134,7 @@ const ManageChatAdministrators: FC<OwnProps & StateProps> = ({
             <ListItem
               key={member.userId}
               className="chat-item-clickable"
-              // eslint-disable-next-line react/jsx-no-bind
+
               onClick={() => handleAdminMemberClick(member)}
             >
               <PrivateChatInfo

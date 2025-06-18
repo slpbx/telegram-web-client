@@ -1,5 +1,5 @@
 import type { FC } from '../../lib/teact/teact';
-import React, { memo, useCallback } from '../../lib/teact/teact';
+import { memo, useCallback } from '../../lib/teact/teact';
 import { getActions } from '../../global';
 
 import type { ApiChatFolder } from '../../api/types';
@@ -27,7 +27,7 @@ const DeleteFolderDialog: FC<OwnProps> = ({
   const handleDeleteFolderMessage = useCallback(() => {
     closeDeleteChatFolderModal();
     if (isMyChatlist) {
-      openDeleteChatFolderModal({ folderId: renderingFolder!.id, isConfirmedForChatlist: true });
+      openDeleteChatFolderModal({ folderId: renderingFolder.id, isConfirmedForChatlist: true });
     } else {
       deleteChatFolder({ id: renderingFolder!.id });
     }

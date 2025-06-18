@@ -1,4 +1,4 @@
-import React, { memo, useMemo, useRef } from '../../../lib/teact/teact';
+import { memo, useMemo, useRef } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
 import type { ApiEmojiStatusType, ApiPeer, ApiSavedStarGift } from '../../../api/types';
@@ -11,13 +11,12 @@ import { formatIntegerCompact } from '../../../util/textFormat';
 import { getGiftAttributes, getStickerFromGift, getTotalGiftAvailability } from '../helpers/gifts';
 
 import useContextMenuHandlers from '../../../hooks/useContextMenuHandlers';
-import useFlag from '../../../hooks/useFlag';
-import { type ObserveFn, useOnIntersect } from '../../../hooks/useIntersectionObserver';
+import { type ObserveFn } from '../../../hooks/useIntersectionObserver';
+import useLang from '../../../hooks/useLang';
 import useLastCallback from '../../../hooks/useLastCallback';
-import useOldLang from '../../../hooks/useOldLang';
 
+import StickerView from '../../common/StickerView';
 import Menu from '../../ui/Menu';
-import AnimatedIconFromSticker from '../AnimatedIconFromSticker';
 import Avatar from '../Avatar';
 import Icon from '../icons/Icon';
 import RadialPatternBackground from '../profile/RadialPatternBackground';
@@ -56,14 +55,31 @@ const SavedGift = ({
 }: OwnProps & StateProps) => {
   const { openGiftInfoModal } = getActions();
 
-  // eslint-disable-next-line no-null/no-null
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLDivElement>();
 
-  const [shouldPlay, play] = useFlag();
+  const stickerRef = useRef<HTMLDivElement>();
 
-  const oldLang = useOldLang();
+  const lang = useLang();
 
   const canManage = peerId === currentUserId || hasAdminRights;
+
+  const totalIssued = getTotalGiftAvailability(gift.gift);
+  const starGift = gift.gift;
+  const starGiftUnique = starGift.type === 'starGiftUnique' ? starGift : undefined;
+  const ribbonText = (() => {
+    if (starGiftUnique?.resellPriceInStars) {
+      return lang('GiftRibbonSale');
+    }
+    if (gift.isPinned && starGiftUnique) {
+      return lang('GiftSavedNumber', { number: starGiftUnique.number });
+    }
+    if (totalIssued) {
+      return lang('ActionStarGiftLimitedRibbon', { total: formatIntegerCompact(lang, totalIssued) });
+    }
+    return undefined;
+  })();
+
+  const ribbonColor = starGiftUnique?.resellPriceInStars ? 'green' : 'blue';
 
   const {
     isContextMenuOpen, contextMenuAnchor,
@@ -83,10 +99,6 @@ const SavedGift = ({
       peerId,
       gift,
     });
-  });
-
-  const handleOnIntersect = useLastCallback((entry: IntersectionObserverEntry) => {
-    if (entry.isIntersecting) play();
   });
 
   const avatarPeer = (gift.isNameHidden && !fromPeer) ? CUSTOM_PEER_HIDDEN : fromPeer;
@@ -113,11 +125,7 @@ const SavedGift = ({
     );
   }, [gift.gift]);
 
-  useOnIntersect(ref, observeIntersection, sticker ? handleOnIntersect : undefined);
-
   if (!sticker) return undefined;
-
-  const totalIssued = getTotalGiftAvailability(gift.gift);
 
   return (
     <div
@@ -131,22 +139,32 @@ const SavedGift = ({
       {radialPatternBackdrop}
       {!radialPatternBackdrop && <Avatar className={styles.topIcon} peer={avatarPeer} size="micro" />}
       {gift.isPinned && <Icon name="pinned-message" className={styles.topIcon} />}
-      <AnimatedIconFromSticker
-        sticker={sticker}
-        noLoop
-        play={shouldPlay}
-        nonInteractive
-        size={GIFT_STICKER_SIZE}
-      />
+      <div
+        ref={stickerRef}
+        className={styles.stickerWrapper}
+        style={`width: ${GIFT_STICKER_SIZE}px; height: ${GIFT_STICKER_SIZE}px`}
+      >
+        {sticker && (
+          <StickerView
+            observeIntersectionForPlaying={observeIntersection}
+            observeIntersectionForLoading={observeIntersection}
+            containerRef={stickerRef}
+            sticker={sticker}
+            size={GIFT_STICKER_SIZE}
+            shouldPreloadPreview
+          />
+        )}
+
+      </div>
       {gift.isUnsaved && (
         <div className={styles.hiddenGift}>
           <Icon name="eye-crossed-outline" />
         </div>
       )}
-      {totalIssued && (
+      {ribbonText && (
         <GiftRibbon
-          color="blue"
-          text={oldLang('Gift2Limited1OfRibbon', formatIntegerCompact(totalIssued))}
+          color={ribbonColor}
+          text={ribbonText}
         />
       )}
       {contextMenuAnchor !== undefined && (

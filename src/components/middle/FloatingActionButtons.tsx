@@ -1,5 +1,5 @@
 import type { FC } from '../../lib/teact/teact';
-import React, { memo, useEffect, useRef } from '../../lib/teact/teact';
+import { memo, useEffect, useRef } from '../../lib/teact/teact';
 import { getActions, withGlobal } from '../../global';
 
 import type { MessageListType, ThreadId } from '../../types';
@@ -52,8 +52,7 @@ const FloatingActionButtons: FC<OwnProps & StateProps> = ({
     readAllMentions, readAllReactions, fetchUnreadMentions,
   } = getActions();
 
-  // eslint-disable-next-line no-null/no-null
-  const elementRef = useRef<HTMLDivElement>(null);
+  const elementRef = useRef<HTMLDivElement>();
 
   const hasUnreadReactions = Boolean(reactionsCount);
   const hasUnreadMentions = Boolean(mentionsCount);

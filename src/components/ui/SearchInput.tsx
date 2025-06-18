@@ -1,6 +1,7 @@
-import type { RefObject } from 'react';
-import type { FC } from '../../lib/teact/teact';
-import React, {
+import type { MouseEvent as ReactMouseEvent } from 'react';
+import type { ElementRef, FC } from '../../lib/teact/teact';
+import type React from '../../lib/teact/teact';
+import {
   memo, useEffect, useRef,
 } from '../../lib/teact/teact';
 
@@ -20,7 +21,7 @@ import Transition from './Transition';
 import './SearchInput.scss';
 
 type OwnProps = {
-  ref?: RefObject<HTMLInputElement>;
+  ref?: ElementRef<HTMLInputElement>;
   children?: React.ReactNode;
   resultsItemSelector?: string;
   className?: string;
@@ -44,7 +45,7 @@ type OwnProps = {
   onReset?: NoneToVoidFunction;
   onFocus?: NoneToVoidFunction;
   onBlur?: NoneToVoidFunction;
-  onClick?: NoneToVoidFunction;
+  onClick?: (e: ReactMouseEvent<HTMLDivElement, MouseEvent>) => void;
   onUpClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   onDownClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   onSpinnerClick?: NoneToVoidFunction;
@@ -80,8 +81,7 @@ const SearchInput: FC<OwnProps> = ({
   onDownClick,
   onSpinnerClick,
 }) => {
-  // eslint-disable-next-line no-null/no-null
-  let inputRef = useRef<HTMLInputElement>(null);
+  let inputRef = useRef<HTMLInputElement>();
   if (ref) {
     inputRef = ref;
   }

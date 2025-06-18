@@ -1,5 +1,5 @@
 import type { FC } from '../../lib/teact/teact';
-import React, {
+import {
   memo, useCallback, useEffect, useState,
 } from '../../lib/teact/teact';
 
@@ -26,7 +26,7 @@ const cropperResultOptions: Croppie.ResultOptions & { type: 'blob' } = {
 
 type ICroppie = typeof import('croppie');
 let Croppie: ICroppie;
-let croppiePromise: Promise<{ default: ICroppie }>;
+let croppiePromise: Promise<{ default: ICroppie }> | undefined;
 
 async function ensureCroppie() {
   if (!croppiePromise) {

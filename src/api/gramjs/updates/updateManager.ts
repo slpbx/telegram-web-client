@@ -1,5 +1,6 @@
 import { Api as GramJs, type Update } from '../../../lib/gramjs';
 import { UpdateConnectionState, UpdateServerTimeOffset } from '../../../lib/gramjs/network';
+import type { Entity } from '../../../lib/gramjs/types';
 
 import type { ApiChat } from '../../types';
 import type { invokeRequest } from '../methods/client';
@@ -7,7 +8,7 @@ import type { invokeRequest } from '../methods/client';
 import { DEBUG } from '../../../config';
 import SortedQueue from '../../../util/SortedQueue';
 import { buildApiPeerId } from '../apiBuilders/peers';
-import { buildInputEntity, buildMtpPeerId } from '../gramjsBuilders';
+import { buildInputChannel, buildMtpPeerId } from '../gramjsBuilders';
 import localDb from '../localDb';
 import { sendApiUpdate } from './apiUpdateEmitter';
 import { processAndUpdateEntities } from './entityProcessor';
@@ -75,7 +76,6 @@ export function processUpdate(update: Update, isFromDifference?: boolean, should
 
   if (update instanceof GramJs.Updates || update instanceof GramJs.UpdatesCombined) {
     if (isFromDifference) {
-      // eslint-disable-next-line no-underscore-dangle
       (update as SeqUpdate)._isFromDifference = true;
     }
 
@@ -89,7 +89,6 @@ export function processUpdate(update: Update, isFromDifference?: boolean, should
       return;
     }
     if (isFromDifference) {
-      // eslint-disable-next-line no-underscore-dangle
       (update as PtsUpdate)._isFromDifference = true;
     }
     savePtsUpdate(update, shouldOnlySave);
@@ -140,11 +139,10 @@ function applyUpdate(updateObject: SeqUpdate | PtsUpdate) {
 
   if (updateObject instanceof GramJs.UpdatesCombined || updateObject instanceof GramJs.Updates) {
     processAndUpdateEntities(updateObject);
-    const entities = updateObject.users.concat(updateObject.chats);
+    const entities = (updateObject.users as Entity[]).concat(updateObject.chats);
 
     updateObject.updates.forEach((update) => {
       if (entities) {
-        // eslint-disable-next-line no-underscore-dangle
         (update as any)._entities = entities;
       }
 
@@ -179,7 +177,6 @@ function popSeqQueue() {
   const localSeq = localDb.commonBoxState.seq;
   const seqStart = 'seqStart' in update ? update.seqStart : update.seq;
 
-  // eslint-disable-next-line no-underscore-dangle
   if (seqStart === 0 || (update._isFromDifference && seqStart >= localSeq + 1)) {
     applyUpdate(update);
   } else if (seqStart === localSeq + 1) {
@@ -209,13 +206,12 @@ function popPtsQueue(channelId: string) {
   if (localPts === undefined) {
     if (DEBUG) {
       // Uncomment to debug missing updates
-      // eslint-disable-next-line no-console
+
       // console.error('[UpdateManager] Got pts update without local state', channelId);
     }
     return;
   }
 
-  // eslint-disable-next-line no-underscore-dangle
   if (update._isFromDifference && pts >= localPts + ptsCount) {
     applyUpdate(update);
   } else if (pts === localPts + ptsCount) {
@@ -331,7 +327,7 @@ async function getChannelDifference(channelId: string) {
   }
 
   const response = await invoke(new GramJs.updates.GetChannelDifference({
-    channel: buildInputEntity(channelId, channel.accessHash.toString()) as GramJs.InputChannel,
+    channel: buildInputChannel(channelId, channel.accessHash.toString()),
     pts: localDb.channelPtsById[channelId],
     filter: new GramJs.ChannelMessagesFilterEmpty(),
     limit: CHANNEL_DIFFERENCE_LIMIT,

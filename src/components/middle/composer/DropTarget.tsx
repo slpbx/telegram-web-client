@@ -1,5 +1,6 @@
 import type { FC } from '../../../lib/teact/teact';
-import React, { memo, useRef } from '../../../lib/teact/teact';
+import type React from '../../../lib/teact/teact';
+import { memo, useRef } from '../../../lib/teact/teact';
 
 import buildClassName from '../../../util/buildClassName';
 
@@ -19,10 +20,8 @@ export type OwnProps = {
 };
 
 const DropTarget: FC<OwnProps> = ({ isQuick, isGeneric, onFileSelect }) => {
-  // eslint-disable-next-line no-null/no-null
-  const ref = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line no-null/no-null
-  const svgRef = useRef<SVGSVGElement>(null);
+  const ref = useRef<HTMLDivElement>();
+  const svgRef = useRef<SVGSVGElement>();
 
   const [isHovered, markHovered, unmarkHovered] = useFlag();
 

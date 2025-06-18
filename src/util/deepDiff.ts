@@ -4,7 +4,14 @@ const EQUAL = Symbol('EQUAL');
 const DELETE = { __delete: true };
 const DELETE_ALL_CHILDREN = { __deleteAllChildren: true };
 
-export function deepDiff<T extends any>(value1: T, value2: T): Partial<T> | typeof EQUAL | typeof DELETE_ALL_CHILDREN {
+type NestedDiff<T> = T extends object
+  ? { [K in keyof T]?: NestedDiff<T[K]> | typeof DELETE_ALL_CHILDREN | typeof DELETE | null } : T;
+
+export type DiffObject<T> = T extends object
+  ? { [K in keyof T]?: NestedDiff<T[K]> } | typeof DELETE_ALL_CHILDREN
+  : T;
+
+export function deepDiff<T>(value1: T, value2: T): Partial<T> | typeof EQUAL | typeof DELETE_ALL_CHILDREN {
   if (value1 === value2) {
     return EQUAL;
   }
@@ -44,7 +51,7 @@ export function deepDiff<T extends any>(value1: T, value2: T): Partial<T> | type
       return acc;
     }
 
-    if (!object1!.hasOwnProperty(key)) {
+    if (!object1.hasOwnProperty(key)) {
       acc[key] = subValue2;
       return acc;
     }

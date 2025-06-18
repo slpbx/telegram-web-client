@@ -1,4 +1,5 @@
-import type { RefObject } from 'react';
+import type {
+  ElementRef } from '../lib/teact/teact';
 import {
   useEffect, useSignal, useState,
 } from '../lib/teact/teact';
@@ -8,6 +9,7 @@ import type { Point, Size } from '../types';
 import { RESIZE_HANDLE_SELECTOR } from '../config';
 import buildStyle from '../util/buildStyle';
 import { captureEvents } from '../util/captureEvents';
+import getPointerPosition from '../util/events/getPointerPosition';
 import useFlag from './useFlag';
 import useLastCallback from './useLastCallback';
 
@@ -23,7 +25,7 @@ export enum ResizeHandleType {
 }
 
 type ResizeHandleSelectorType = 'top' | 'bottom' | 'left'
-| 'right' | 'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight';
+  | 'right' | 'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight';
 
 const resizeHandleSelectorsMap: Record<ResizeHandleSelectorType, ResizeHandleType> = {
   top: ResizeHandleType.Top,
@@ -42,8 +44,8 @@ let resizeTimeout: number | undefined;
 const FULLSCREEN_POSITION = { x: 0, y: 0 };
 
 export default function useDraggable(
-  ref: RefObject<HTMLElement>,
-  dragHandleElementRef: RefObject<HTMLElement>,
+  ref: ElementRef<HTMLElement>,
+  dragHandleElementRef: ElementRef<HTMLElement>,
   isDragEnabled: boolean = true,
   originalSize: Size,
   isFullscreen: boolean = false,
@@ -123,11 +125,11 @@ export default function useDraggable(
     if (targetElement.closest('.no-drag') || !element) {
       return;
     }
-    const { pageX, pageY } = ('touches' in event) ? event.touches[0] : event;
+    const { x, y } = getPointerPosition(event);
 
     const { left, top } = element.getBoundingClientRect();
     setElementPositionOnStartTransform({ x: left, y: top });
-    setTransformStartPoint({ x: pageX, y: pageY });
+    setTransformStartPoint({ x, y });
 
     startDragging();
   });
@@ -137,7 +139,9 @@ export default function useDraggable(
 
     if (!closest(RESIZE_HANDLE_SELECTOR)) return undefined;
     for (const selector of resizeHandleSelectors) {
-      if (closest(`.${selector}`)) { return resizeHandleSelectorsMap[selector]; }
+      if (closest(`.${selector}`)) {
+        return resizeHandleSelectorsMap[selector];
+      }
     }
     return undefined;
   }
@@ -156,14 +160,14 @@ export default function useDraggable(
     if (resizeHandle === undefined) return;
     setHitResizeHandle(resizeHandle);
 
-    const { pageX, pageY } = ('touches' in event) ? event.touches[0] : event;
+    const { x, y } = getPointerPosition(event);
 
     const {
       left, right, top, bottom,
     } = element.getBoundingClientRect();
     setElementPositionOnStartTransform({ x: left, y: top });
     setElementSizeOnStartTransform({ width: right - left, height: bottom - top });
-    setTransformStartPoint({ x: pageX, y: pageY });
+    setTransformStartPoint({ x, y });
 
     startResizing();
   });
@@ -266,10 +270,10 @@ export default function useDraggable(
 
   const handleDrag = useLastCallback((event: MouseEvent | TouchEvent) => {
     if (!isDragging || !element) return;
-    const { pageX, pageY } = ('touches' in event) ? event.touches[0] : event;
+    const { x, y } = getPointerPosition(event);
 
-    const offsetX = pageX - transformStartPoint.x;
-    const offsetY = pageY - transformStartPoint.y;
+    const offsetX = x - transformStartPoint.x;
+    const offsetY = y - transformStartPoint.y;
 
     const newX = elementPositionOnStartTransform.x + offsetX;
     const newY = elementPositionOnStartTransform.y + offsetY;
@@ -279,11 +283,11 @@ export default function useDraggable(
 
   const handleResize = useLastCallback((event: MouseEvent | TouchEvent) => {
     if (!isResizing || !element || hitResizeHandle === undefined) return;
-    const { pageX, pageY } = ('touches' in event) ? event.touches[0] : event;
+    const { x, y } = getPointerPosition(event);
     const sizeOnStartTransform = getElementSizeOnStartTransform();
 
-    const pageVisibleX = Math.min(Math.max(0, pageX), getVisibleArea().width);
-    const pageVisibleY = Math.min(Math.max(0, pageY), getVisibleArea().height);
+    const pageVisibleX = Math.min(Math.max(0, x), getVisibleArea().width);
+    const pageVisibleY = Math.min(Math.max(0, y), getVisibleArea().height);
 
     const offsetX = pageVisibleX - transformStartPoint.x;
     const offsetY = pageVisibleY - transformStartPoint.y;
@@ -301,31 +305,31 @@ export default function useDraggable(
     const newBounds = { ...originalBounds };
 
     if (hitResizeHandle === ResizeHandleType.Left
-    || hitResizeHandle === ResizeHandleType.TopLeft
-    || hitResizeHandle === ResizeHandleType.BottomLeft
+      || hitResizeHandle === ResizeHandleType.TopLeft
+      || hitResizeHandle === ResizeHandleType.BottomLeft
     ) {
       newBounds.width = Math.max(sizeOnStartTransform.width - offsetX, minimumSize.width);
       newBounds.x = Math.min(newBounds.x + offsetX, maxX);
     }
 
     if (hitResizeHandle === ResizeHandleType.Right
-    || hitResizeHandle === ResizeHandleType.TopRight
-    || hitResizeHandle === ResizeHandleType.BottomRight
+      || hitResizeHandle === ResizeHandleType.TopRight
+      || hitResizeHandle === ResizeHandleType.BottomRight
     ) {
       newBounds.width = Math.max(sizeOnStartTransform.width + offsetX, minimumSize.width);
     }
 
     if (hitResizeHandle === ResizeHandleType.Top
-    || hitResizeHandle === ResizeHandleType.TopLeft
-    || hitResizeHandle === ResizeHandleType.TopRight
+      || hitResizeHandle === ResizeHandleType.TopLeft
+      || hitResizeHandle === ResizeHandleType.TopRight
     ) {
       newBounds.height = Math.max(sizeOnStartTransform.height - offsetY, minimumSize.height);
       newBounds.y = Math.min(newBounds.y + offsetY, maxY);
     }
 
     if (hitResizeHandle === ResizeHandleType.Bottom
-    || hitResizeHandle === ResizeHandleType.BottomLeft
-    || hitResizeHandle === ResizeHandleType.BottomRight
+      || hitResizeHandle === ResizeHandleType.BottomLeft
+      || hitResizeHandle === ResizeHandleType.BottomRight
     ) {
       newBounds.height = Math.max(sizeOnStartTransform.height + offsetY, minimumSize.height);
     }

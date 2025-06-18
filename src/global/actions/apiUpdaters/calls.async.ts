@@ -7,11 +7,11 @@ import {
   handleUpdateGroupCallParticipants,
   joinPhoneCall, processSignalingMessage,
 } from '../../../lib/secret-sauce';
+import { ARE_CALLS_SUPPORTED } from '../../../util/browser/windowEnvironment';
 import { getCurrentTabId } from '../../../util/establishMultitabRole';
 import { omit } from '../../../util/iteratees';
 import * as langProvider from '../../../util/oldLangProvider';
 import { EMOJI_DATA, EMOJI_OFFSETS } from '../../../util/phoneCallEmojiConstants';
-import { ARE_CALLS_SUPPORTED } from '../../../util/windowEnvironment';
 import { callApi } from '../../../api/gramjs';
 import { addActionHandler, getGlobal, setGlobal } from '../../index';
 import { updateGroupCall, updateGroupCallParticipant } from '../../reducers/calls';
@@ -128,7 +128,7 @@ addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
         }, getCurrentTabId());
       } else if (state === 'accepted' && accessHash && gB) {
         (async () => {
-          const { gA, keyFingerprint, emojis } = await callApi('confirmPhoneCall', [gB, EMOJI_DATA, EMOJI_OFFSETS])!;
+          const { gA, keyFingerprint, emojis } = await callApi('confirmPhoneCall', [gB, EMOJI_DATA, EMOJI_OFFSETS]);
 
           global = getGlobal();
           const newCall = {
@@ -150,7 +150,7 @@ addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
         if (!isOutgoing) {
           callApi('receivedCall', { call });
           (async () => {
-            const { emojis } = await callApi('confirmPhoneCall', [call!.gAOrB!, EMOJI_DATA, EMOJI_OFFSETS])!;
+            const { emojis } = await callApi('confirmPhoneCall', [call.gAOrB!, EMOJI_DATA, EMOJI_OFFSETS]);
 
             global = getGlobal();
             const newCall = {

@@ -3,7 +3,7 @@ import { getActions } from '../global';
 
 import { IS_TEST } from '../config';
 import { requestMeasure } from '../lib/fasterdom/fasterdom';
-import { IS_IOS } from '../util/windowEnvironment';
+import { IS_IOS } from '../util/browser/windowEnvironment';
 import useEffectOnce from './useEffectOnce';
 import useLastCallback from './useLastCallback';
 import useSyncEffect from './useSyncEffect';
@@ -84,8 +84,8 @@ if (IS_IOS) {
 }
 
 function applyDeferredHistoryOperations() {
-  const goOperations = deferredHistoryOperations.filter((op) => op.type === 'go') as HistoryOperationGo[];
-  const stateOperations = deferredHistoryOperations.filter((op) => op.type !== 'go') as HistoryOperationState[];
+  const goOperations = deferredHistoryOperations.filter((op) => op.type === 'go');
+  const stateOperations = deferredHistoryOperations.filter((op) => op.type !== 'go');
   const goCount = goOperations.reduce((acc, op) => acc + op.delta, 0);
 
   deferredHistoryOperations = [];

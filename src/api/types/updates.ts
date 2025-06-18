@@ -8,7 +8,7 @@ import type {
 } from '../../lib/secret-sauce';
 import type { ThreadId } from '../../types';
 import type { RegularLangFnParameters } from '../../util/localization';
-import type { ApiBotMenuButton } from './bots';
+import type { ApiBotCommand, ApiBotMenuButton } from './bots';
 import type {
   ApiGroupCall, ApiPhoneCall,
 } from './calls';
@@ -165,7 +165,7 @@ export type ApiUpdateChatMembers = {
 
 export type ApiUpdatePinnedChatIds = {
   '@type': 'updatePinnedChatIds';
-  ids: string[];
+  ids?: string[];
   folderId?: number;
 };
 
@@ -233,6 +233,8 @@ export type ApiUpdateMessage = {
   id: number;
   message: Partial<ApiMessage>;
   poll?: ApiPoll;
+  shouldForceReply?: boolean;
+  isFromNew?: true;
 };
 
 export type ApiUpdateScheduledMessage = {
@@ -241,6 +243,7 @@ export type ApiUpdateScheduledMessage = {
   id: number;
   message: Partial<ApiMessage>;
   poll?: ApiPoll;
+  isFromNew?: true;
 };
 
 export type ApiUpdateQuickReplyMessage = {
@@ -458,6 +461,11 @@ export type ApiUpdateMessageImage = {
 
 export type ApiUpdateError = {
   '@type': 'error';
+  error: ApiError;
+};
+
+export type ApiUpdateNotSupportedInFrozenAccountError = {
+  '@type': 'notSupportedInFrozenAccount';
   error: ApiError;
 };
 
@@ -819,6 +827,12 @@ export type ApiUpdateLangPack = {
   keysToRemove: string[];
 };
 
+export type ApiUpdateBotCommands = {
+  '@type': 'updateBotCommands';
+  botId: string;
+  commands?: ApiBotCommand[];
+};
+
 export type ApiUpdate = (
   ApiUpdateReady | ApiUpdateSession | ApiUpdateWebAuthTokenFailed | ApiUpdateRequestUserUpdate |
   ApiUpdateAuthorizationState | ApiUpdateAuthorizationError | ApiUpdateConnectionState | ApiUpdateCurrentUser |
@@ -850,10 +864,10 @@ export type ApiUpdate = (
   ApiRequestReconnectApi | ApiRequestSync | ApiUpdateFetchingDifference | ApiUpdateChannelMessages |
   ApiUpdateStealthMode | ApiUpdateAttachMenuBots | ApiUpdateNewAuthorization | ApiUpdateGroupInvitePrivacyForbidden |
   ApiUpdateViewForumAsMessages | ApiUpdateSavedDialogPinned | ApiUpdatePinnedSavedDialogIds | ApiUpdateChatLastMessage |
-  ApiUpdateDeleteSavedHistory | ApiUpdatePremiumFloodWait | ApiUpdateStarsBalance |
+  ApiUpdateDeleteSavedHistory | ApiUpdatePremiumFloodWait | ApiUpdateStarsBalance | ApiUpdateBotCommands |
   ApiUpdateQuickReplyMessage | ApiUpdateQuickReplies | ApiDeleteQuickReply | ApiUpdateDeleteQuickReplyMessages |
   ApiUpdateDeleteProfilePhoto | ApiUpdateNewProfilePhoto | ApiUpdateEntities | ApiUpdatePaidReactionPrivacy |
-  ApiUpdateLangPackTooLong | ApiUpdateLangPack
+  ApiUpdateLangPackTooLong | ApiUpdateLangPack | ApiUpdateNotSupportedInFrozenAccountError
 );
 
 export type OnApiUpdate = (update: ApiUpdate) => void;

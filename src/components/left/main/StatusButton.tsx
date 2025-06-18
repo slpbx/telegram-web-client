@@ -1,11 +1,11 @@
 import type { FC } from '../../../lib/teact/teact';
-import React, { memo, useCallback, useRef } from '../../../lib/teact/teact';
+import { memo, useCallback, useRef } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
 import type { ApiEmojiStatusCollectible, ApiEmojiStatusType, ApiSticker } from '../../../api/types';
 
 import { EMOJI_STATUS_LOOP_LIMIT } from '../../../config';
-import { selectUser } from '../../../global/selectors';
+import { selectIsCurrentUserFrozen, selectUser } from '../../../global/selectors';
 import { getServerTime } from '../../../util/serverTime';
 
 import useTimeout from '../../../hooks/schedulers/useTimeout';
@@ -22,16 +22,16 @@ import StatusPickerMenu from './StatusPickerMenu.async';
 interface StateProps {
   emojiStatus?: ApiEmojiStatusType;
   collectibleStatuses?: ApiEmojiStatusType[];
+  isAccountFrozen?: boolean;
 }
 
 const EFFECT_DURATION_MS = 1500;
 const EMOJI_STATUS_SIZE = 24;
 
-const StatusButton: FC<StateProps> = ({ emojiStatus, collectibleStatuses }) => {
-  const { setEmojiStatus, loadCurrentUser } = getActions();
+const StatusButton: FC<StateProps> = ({ emojiStatus, collectibleStatuses, isAccountFrozen }) => {
+  const { setEmojiStatus, loadCurrentUser, openFrozenAccountModal } = getActions();
 
-  // eslint-disable-next-line no-null/no-null
-  const buttonRef = useRef<HTMLButtonElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>();
   const [shouldShowEffect, markShouldShowEffect, unmarkShouldShowEffect] = useFlag(false);
   const [isEffectShown, showEffect, hideEffect] = useFlag(false);
   const [isStatusPickerOpen, openStatusPicker, closeStatusPicker] = useFlag(false);
@@ -49,7 +49,7 @@ const StatusButton: FC<StateProps> = ({ emojiStatus, collectibleStatuses }) => {
 
   const handleEmojiStatusSet = useCallback((sticker: ApiSticker) => {
     const collectibleStatus = collectibleStatuses?.find(
-      ((status) => 'collectibleId' in status && status.documentId === sticker.id),
+      (status) => 'collectibleId' in status && status.documentId === sticker.id,
     ) as ApiEmojiStatusCollectible | undefined;
     markShouldShowEffect();
     setEmojiStatus({
@@ -60,11 +60,15 @@ const StatusButton: FC<StateProps> = ({ emojiStatus, collectibleStatuses }) => {
   useTimeout(hideEffect, isEffectShown ? EFFECT_DURATION_MS : undefined);
 
   const handleEmojiStatusClick = useCallback(() => {
+    if (isAccountFrozen) {
+      openFrozenAccountModal();
+      return;
+    }
     openStatusPicker();
-  }, [openStatusPicker]);
+  }, [openStatusPicker, isAccountFrozen]);
 
   return (
-    <div className="extra-spacing">
+    <div className="StatusButton extra-spacing">
       {Boolean(isEffectShown && emojiStatus) && (
         <CustomEmojiEffect
           reaction={emojiStatus!}
@@ -105,9 +109,11 @@ export default memo(withGlobal((global): StateProps => {
   const { currentUserId } = global;
   const currentUser = currentUserId ? selectUser(global, currentUserId) : undefined;
   const collectibleStatuses = global.collectibleEmojiStatuses?.statuses;
+  const isAccountFrozen = selectIsCurrentUserFrozen(global);
 
   return {
     emojiStatus: currentUser?.emojiStatus,
     collectibleStatuses,
+    isAccountFrozen,
   };
 })(StatusButton));

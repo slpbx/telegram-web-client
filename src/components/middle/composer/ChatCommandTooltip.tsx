@@ -1,5 +1,5 @@
 import type { FC } from '../../../lib/teact/teact';
-import React, {
+import {
   memo, useEffect, useMemo, useRef,
 } from '../../../lib/teact/teact';
 import { getActions, getGlobal } from '../../../global';
@@ -9,6 +9,7 @@ import type {
 } from '../../../api/types';
 import type { Signal } from '../../../util/signals';
 
+import { getMainUsername } from '../../../global/helpers';
 import buildClassName from '../../../util/buildClassName';
 import freezeWhenClosed from '../../../util/hoc/freezeWhenClosed';
 import setTooltipItemVisible from '../../../util/setTooltipItemVisible';
@@ -54,8 +55,7 @@ const ChatCommandTooltip: FC<OwnProps> = ({
 }) => {
   const { sendBotCommand, sendQuickReply } = getActions();
 
-  // eslint-disable-next-line no-null/no-null
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>();
   const { shouldRender, transitionClassNames } = useShowTransitionDeprecated(isOpen, undefined, undefined, false);
 
   const handleSendCommand = useLastCallback(({ botId, command }: ApiBotCommand) => {
@@ -64,7 +64,7 @@ const ChatCommandTooltip: FC<OwnProps> = ({
     const bot = usersById[botId];
 
     sendBotCommand({
-      command: `/${command}${withUsername && bot ? `@${bot.usernames![0].username}` : ''}`,
+      command: `/${command}${withUsername && bot ? `@${getMainUsername(bot)}` : ''}`,
     });
     onClick();
   });

@@ -1,5 +1,4 @@
 import type { FC } from '../../../lib/teact/teact';
-import React from '../../../lib/teact/teact';
 
 import type { OwnProps } from './StarsGiftingPickerModal';
 
@@ -11,7 +10,6 @@ const StarsGiftingPickerModalAsync: FC<OwnProps> = (props) => {
   const { isOpen } = props;
   const StarsGiftingPickerModal = useModuleLoader(Bundles.Stars, 'StarsGiftingPickerModal', !isOpen);
 
-  // eslint-disable-next-line react/jsx-props-no-spreading
   return StarsGiftingPickerModal ? <StarsGiftingPickerModal {...props} /> : undefined;
 };
 

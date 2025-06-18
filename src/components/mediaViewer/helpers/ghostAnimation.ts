@@ -5,10 +5,10 @@ import { ANIMATION_END_DELAY, MESSAGE_CONTENT_SELECTOR } from '../../../config';
 import { requestMutation } from '../../../lib/fasterdom/fasterdom';
 import { getMessageHtmlId } from '../../../global/helpers';
 import { applyStyles } from '../../../util/animation';
+import { IS_TOUCH_ENV } from '../../../util/browser/windowEnvironment';
 import stopEvent from '../../../util/stopEvent';
 import getOffsetToContainer from '../../../util/visibility/getOffsetToContainer';
 import { isElementInViewport } from '../../../util/visibility/isElementInViewport';
-import { IS_TOUCH_ENV } from '../../../util/windowEnvironment';
 import windowSize from '../../../util/windowSize';
 import {
   calculateDimensions,
@@ -295,7 +295,7 @@ function getNodes(origin: MediaViewerOrigin, message?: ApiMessage, index?: numbe
   switch (origin) {
     case MediaViewerOrigin.Album:
     case MediaViewerOrigin.ScheduledAlbum:
-      // eslint-disable-next-line max-len
+      // eslint-disable-next-line @stylistic/max-len
       containerSelector = `.Transition_slide-active > .MessageList #album-media-${getMessageHtmlId(message!.id, index)}`;
       mediaSelector = '.full-media';
       break;

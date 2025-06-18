@@ -1,5 +1,5 @@
 import type { FC } from '../../lib/teact/teact';
-import React, { memo, useCallback } from '../../lib/teact/teact';
+import { memo, useCallback } from '../../lib/teact/teact';
 
 import { formatCardExpiry } from '../middle/helpers/inputFormatters';
 
@@ -15,7 +15,7 @@ export type OwnProps = {
   onChange: (value: string) => void;
 };
 
-const ExpiryInput : FC<OwnProps> = ({ value, error, onChange }) => {
+const ExpiryInput: FC<OwnProps> = ({ value, error, onChange }) => {
   const lang = useOldLang();
 
   const handleChange = useCallback((e) => {

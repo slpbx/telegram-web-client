@@ -1,4 +1,4 @@
-import React, { memo, useMemo } from '../../../../lib/teact/teact';
+import { memo, useMemo } from '../../../../lib/teact/teact';
 import { getActions } from '../../../../global';
 
 import type {
@@ -80,7 +80,11 @@ const StarsTransactionItem = ({ transaction, className }: OwnProps) => {
     }
 
     if (transaction.isGiftUpgrade && transaction.starGift?.type === 'starGiftUnique') {
-      description = transaction.starGift.title;
+      description = lang('GiftUnique', { title: transaction.starGift.title, number: transaction.starGift.number });
+    }
+
+    if (transaction.isGiftResale && transaction.starGift?.type === 'starGiftUnique') {
+      description = lang('GiftUnique', { title: transaction.starGift.title, number: transaction.starGift.number });
     }
 
     if (transaction.photo) {

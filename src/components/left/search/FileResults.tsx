@@ -1,5 +1,5 @@
 import type { FC } from '../../../lib/teact/teact';
-import React, {
+import {
   memo, useCallback, useMemo, useRef,
 } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
@@ -50,8 +50,7 @@ const FileResults: FC<OwnProps & StateProps> = ({
     focusMessage,
   } = getActions();
 
-  // eslint-disable-next-line no-null/no-null
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>();
 
   const lang = useOldLang();
 
@@ -81,7 +80,7 @@ const FileResults: FC<OwnProps & StateProps> = ({
       const message = globalMessagesByChatId[chatId]?.byId[messageId];
 
       return message && getMessageDocument(message) ? message : undefined;
-    }).filter(Boolean) as ApiMessage[];
+    }).filter(Boolean);
   }, [globalMessagesByChatId, foundIds]);
 
   const handleMessageFocus = useCallback((message: ApiMessage) => {

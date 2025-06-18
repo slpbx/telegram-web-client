@@ -2,10 +2,11 @@ import { getActions } from '../global';
 
 import type { ApiChatType, ApiFormattedText } from '../api/types';
 import type { DeepLinkMethod } from './deepLinkParser';
+import { LeftColumnContent, SettingsScreens } from '../types';
 
 import { API_CHAT_TYPES, RE_TG_LINK } from '../config';
+import { IS_BAD_URL_PARSER } from './browser/globalEnvironment';
 import { tryParseDeepLink } from './deepLinkParser';
-import { IS_BAD_URL_PARSER } from './windowEnvironment';
 
 export const processDeepLink = (url: string): boolean => {
   const actions = getActions();
@@ -75,6 +76,35 @@ export const processDeepLink = (url: string): boolean => {
       case 'giftUniqueLink':
         actions.openUniqueGiftBySlug({ slug: parsedLink.slug });
         return true;
+      case 'settings':
+        if (!parsedLink.screen) {
+          actions.openLeftColumnContent({ contentKey: LeftColumnContent.Settings });
+          return true;
+        }
+        switch (parsedLink.screen) {
+          case 'editProfile':
+            actions.openSettingsScreen({ screen: SettingsScreens.EditProfile });
+            break;
+          case 'language':
+            actions.openSettingsScreen({ screen: SettingsScreens.Language });
+            break;
+          case 'devices':
+            actions.openSettingsScreen({ screen: SettingsScreens.ActiveSessions });
+            break;
+          case 'privacy':
+            actions.openSettingsScreen({ screen: SettingsScreens.Privacy });
+            break;
+          case 'folders':
+            actions.openSettingsScreen({ screen: SettingsScreens.Folders });
+            break;
+          case 'theme':
+            actions.openSettingsScreen({ screen: SettingsScreens.General });
+            break;
+        }
+        return true;
+      case 'stars':
+        actions.openStarsBalanceModal({});
+        break;
       default:
         break;
     }

@@ -1,5 +1,5 @@
 import type { FC } from '../../../lib/teact/teact';
-import React, { useEffect, useRef } from '../../../lib/teact/teact';
+import { useEffect, useRef } from '../../../lib/teact/teact';
 import { getActions } from '../../../global';
 
 import type { ApiMessage } from '../../../api/types';
@@ -7,8 +7,8 @@ import type { ObserveFn } from '../../../hooks/useIntersectionObserver';
 import { ApiMediaFormat } from '../../../api/types';
 
 import { getStickerMediaHash } from '../../../global/helpers';
+import { IS_WEBM_SUPPORTED } from '../../../util/browser/windowEnvironment';
 import buildClassName from '../../../util/buildClassName';
-import { IS_WEBM_SUPPORTED } from '../../../util/windowEnvironment';
 import { getStickerDimensions } from '../../common/helpers/mediaDimensions';
 
 import useAppLayout from '../../../hooks/useAppLayout';
@@ -47,18 +47,16 @@ const Sticker: FC<OwnProps> = ({
   const lang = useOldLang();
   const { isMobile } = useAppLayout();
 
-  // eslint-disable-next-line no-null/no-null
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLDivElement>();
 
-  // eslint-disable-next-line no-null/no-null
-  const effectRef = useRef<HTMLDivElement>(null);
+  const effectRef = useRef<HTMLDivElement>();
 
   const sticker = message.content.sticker!;
   const { stickerSetInfo, isVideo, hasEffect } = sticker;
   const isMirrored = !message.isOutgoing;
 
   const mediaHash = sticker.isPreloadedGlobally ? undefined : (
-    getStickerMediaHash(sticker, isVideo && !IS_WEBM_SUPPORTED ? 'pictogram' : 'inline')!
+    getStickerMediaHash(sticker, isVideo && !IS_WEBM_SUPPORTED ? 'pictogram' : 'inline')
   );
 
   const canLoad = useIsIntersecting(ref, observeIntersection);

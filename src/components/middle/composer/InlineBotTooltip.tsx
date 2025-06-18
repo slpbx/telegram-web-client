@@ -1,5 +1,5 @@
 import type { FC } from '../../../lib/teact/teact';
-import React, { memo, useEffect, useRef } from '../../../lib/teact/teact';
+import { memo, useEffect, useRef } from '../../../lib/teact/teact';
 import { getActions } from '../../../global';
 
 import type {
@@ -7,11 +7,11 @@ import type {
 } from '../../../api/types';
 import { LoadMoreDirection } from '../../../types';
 
+import { IS_TOUCH_ENV } from '../../../util/browser/windowEnvironment';
 import buildClassName from '../../../util/buildClassName';
 import { throttle } from '../../../util/schedulers';
 import setTooltipItemVisible from '../../../util/setTooltipItemVisible';
 import { extractCurrentThemeParams } from '../../../util/themeStyle';
-import { IS_TOUCH_ENV } from '../../../util/windowEnvironment';
 
 import useCurrentOrPrev from '../../../hooks/useCurrentOrPrev';
 import { useIntersectionObserver } from '../../../hooks/useIntersectionObserver';
@@ -69,8 +69,7 @@ const InlineBotTooltip: FC<OwnProps> = ({
     requestSimpleWebView,
   } = getActions();
 
-  // eslint-disable-next-line no-null/no-null
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>();
   const { shouldRender, transitionClassNames } = useShowTransitionDeprecated(isOpen, undefined, undefined, false);
   const renderedIsGallery = useCurrentOrPrev(isGallery, shouldRender);
   const {

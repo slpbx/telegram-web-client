@@ -1,40 +1,36 @@
-import React, {
+import {
   memo, useCallback, useMemo, useState,
 } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
+import type { GlobalState } from '../../../global/types';
 import { SettingsScreens } from '../../../types';
 
 import {
   DEFAULT_CHARGE_FOR_MESSAGES,
-  DEFAULT_MAXIMUM_CHARGE_FOR_MESSAGES,
-  MINIMUM_CHARGE_FOR_MESSAGES,
 } from '../../../config';
 import {
   selectIsCurrentUserPremium,
   selectNewNoncontactPeersRequirePremium,
   selectNonContactPeersPaidStars,
 } from '../../../global/selectors';
-import { formatCurrencyAsString } from '../../../util/formatCurrency';
-import { formatStarsAsText } from '../../../util/localization/format';
 
 import useDebouncedCallback from '../../../hooks/useDebouncedCallback';
+import useEffectWithPrevDeps from '../../../hooks/useEffectWithPrevDeps';
 import useHistoryBack from '../../../hooks/useHistoryBack';
 import useLang from '../../../hooks/useLang';
 import useLastCallback from '../../../hooks/useLastCallback';
 import useOldLang from '../../../hooks/useOldLang';
 
-import Icon from '../../common/icons/Icon';
+import PaidMessagePrice from '../../common/paidMessage/PaidMessagePrice';
 import ListItem from '../../ui/ListItem';
 import RadioGroup from '../../ui/RadioGroup';
-import RangeSlider from '../../ui/RangeSlider';
 import PremiumStatusItem from './PremiumStatusItem';
 import PrivacyLockedOption from './PrivacyLockedOption';
 
 type OwnProps = {
   isActive?: boolean;
   onReset: VoidFunction;
-  onScreenSelect: (screen: SettingsScreens) => void;
 };
 
 type StateProps = {
@@ -43,11 +39,9 @@ type StateProps = {
   canLimitNewMessagesWithoutPremium?: boolean;
   canChargeForMessages?: boolean;
   isCurrentUserPremium?: boolean;
-  starsUsdWithdrawRate: number;
-  starsPaidMessageCommissionPermille: number;
-  starsPaidMessageAmountMax?: number;
   nonContactPeersPaidStars: number;
   noPaidReactionsForUsersCount: number;
+  privacy: GlobalState['settings']['privacy'];
 };
 
 function PrivacyMessages({
@@ -58,26 +52,56 @@ function PrivacyMessages({
   shouldChargeForMessages,
   nonContactPeersPaidStars,
   isCurrentUserPremium,
-  starsPaidMessageCommissionPermille,
-  starsPaidMessageAmountMax,
-  starsUsdWithdrawRate,
   noPaidReactionsForUsersCount,
   onReset,
-  onScreenSelect,
+  privacy,
 }: OwnProps & StateProps) {
-  const { updateGlobalPrivacySettings } = getActions();
+  const { updateGlobalPrivacySettings, openSettingsScreen, showNotification } = getActions();
   const oldLang = useOldLang();
   const lang = useLang();
 
   const canChangeForContactsAndPremium = isCurrentUserPremium || canLimitNewMessagesWithoutPremium;
   const canChangeChargeForMessages = isCurrentUserPremium && canChargeForMessages;
   const [chargeForMessages, setChargeForMessages] = useState<number>(nonContactPeersPaidStars);
+  const [hasShownNotification, setHasShownNotification] = useState(false);
 
   const selectedValue = useMemo(() => {
     if (shouldChargeForMessages) return 'charge_for_messages';
     if (shouldNewNonContactPeersRequirePremium) return 'contacts_and_premium';
     return 'everybody';
   }, [shouldChargeForMessages, shouldNewNonContactPeersRequirePremium]);
+
+  useEffectWithPrevDeps(([prevSelectedValue]) => {
+    if (
+      !hasShownNotification && prevSelectedValue !== undefined
+      && selectedValue !== 'everybody'
+      && selectedValue !== prevSelectedValue
+    ) {
+      if (privacy.chatInvite?.visibility === 'everybody') {
+        showNotification({
+          message: lang('CheckPrivacyInviteText'),
+          action: {
+            action: 'openSettingsScreen',
+            payload: { screen: SettingsScreens.PrivacyGroupChats },
+          },
+          actionText: { key: 'Review' },
+          duration: 8000,
+        });
+      }
+      if (privacy.phoneCall?.visibility === 'everybody') {
+        showNotification({
+          message: lang('CheckPrivacyCallsText'),
+          action: {
+            action: 'openSettingsScreen',
+            payload: { screen: SettingsScreens.PrivacyPhoneCall },
+          },
+          actionText: { key: 'Review' },
+          duration: 8000,
+        });
+      }
+      setHasShownNotification(true);
+    }
+  }, [selectedValue, shouldChargeForMessages, privacy, lang, hasShownNotification]);
 
   const options = useMemo(() => {
     return [
@@ -111,11 +135,11 @@ function PrivacyMessages({
     ];
   }, [oldLang, lang, canChangeForContactsAndPremium, canChangeChargeForMessages, selectedValue]);
 
-  const handleChange = useLastCallback((privacy: string) => {
+  const handleChange = useLastCallback((privacyValue: string) => {
     updateGlobalPrivacySettings({
-      shouldNewNonContactPeersRequirePremium: privacy === 'contacts_and_premium',
+      shouldNewNonContactPeersRequirePremium: privacyValue === 'contacts_and_premium',
       // eslint-disable-next-line no-null/no-null
-      nonContactPeersPaidStars: privacy === 'charge_for_messages' ? chargeForMessages : null,
+      nonContactPeersPaidStars: privacyValue === 'charge_for_messages' ? chargeForMessages : null,
     });
   });
 
@@ -130,47 +154,6 @@ function PrivacyMessages({
     updateGlobalPrivacySettingsWithDebounced(value);
   }, [setChargeForMessages, updateGlobalPrivacySettingsWithDebounced]);
 
-  const renderValueForStarsRange = useCallback((value: number) => {
-    return (
-      <span className="settings-range-value">
-        {!canChangeChargeForMessages && (<Icon name="lock-badge" />)}
-        {formatStarsAsText(lang, value)}
-      </span>
-    );
-  }, [lang, canChangeChargeForMessages]);
-
-  function renderSectionStarsAmountForPaidMessages() {
-    return (
-      <div className="settings-item">
-        <h4 className="settings-item-header" dir={oldLang.isRtl ? 'rtl' : undefined}>
-          {lang('SectionTitleStarsForForMessages')}
-        </h4>
-        <RangeSlider
-          isCenteredLayout
-          min={MINIMUM_CHARGE_FOR_MESSAGES}
-          max={starsPaidMessageAmountMax}
-          value={chargeForMessages}
-          onChange={handleChargeForMessagesChange}
-          renderValue={renderValueForStarsRange}
-          readOnly={!canChangeChargeForMessages}
-        />
-        <p className="settings-item-description-larger" dir={oldLang.isRtl ? 'rtl' : undefined}>
-          {lang('SectionDescriptionStarsForForMessages', {
-            percent: starsPaidMessageCommissionPermille * 100,
-            amount: formatCurrencyAsString(
-              chargeForMessages * starsUsdWithdrawRate * starsPaidMessageCommissionPermille,
-              'USD',
-              lang.code,
-
-            ),
-          }, {
-            withNodes: true,
-          })}
-        </p>
-      </div>
-    );
-  }
-
   function renderSectionNoPaidMessagesForUsers() {
     const itemSubtitle = !noPaidReactionsForUsersCount ? lang('SubtitlePrivacyAddUsers')
       : oldLang('Users', noPaidReactionsForUsersCount, 'i');
@@ -183,16 +166,17 @@ function PrivacyMessages({
         <ListItem
           narrow
           icon="delete-user"
-          // eslint-disable-next-line react/jsx-no-bind
+
           onClick={() => {
-            onScreenSelect(SettingsScreens.PrivacyNoPaidMessages);
+            openSettingsScreen({ screen: SettingsScreens.PrivacyNoPaidMessages });
           }}
         >
           <div className="multiline-item full-size">
             <span className="title">{lang('ExceptionTitlePrivacyChargeForMessages')}</span>
-            <span className="subtitle">{
-              itemSubtitle
-            }
+            <span className="subtitle">
+              {
+                itemSubtitle
+              }
             </span>
           </div>
         </ListItem>
@@ -226,21 +210,29 @@ function PrivacyMessages({
           {privacyDescription}
         </p>
       </div>
-      {selectedValue === 'charge_for_messages' && renderSectionStarsAmountForPaidMessages()}
+      {selectedValue === 'charge_for_messages' && (
+        <div className="settings-item fluid-container">
+          <PaidMessagePrice
+            canChangeChargeForMessages={canChangeChargeForMessages}
+            chargeForMessages={chargeForMessages}
+            onChange={handleChargeForMessagesChange}
+          />
+        </div>
+      )}
       {canChangeChargeForMessages && selectedValue === 'charge_for_messages' && renderSectionNoPaidMessagesForUsers()}
-      {!isCurrentUserPremium && <PremiumStatusItem premiumSection="message_privacy" />}
+      {!isCurrentUserPremium && selectedValue !== 'charge_for_messages'
+        && <PremiumStatusItem premiumSection="message_privacy" />}
     </>
   );
 }
 
 export default memo(withGlobal<OwnProps>((global): StateProps => {
+  const {
+    settings: {
+      privacy,
+    },
+  } = global;
   const nonContactPeersPaidStars = selectNonContactPeersPaidStars(global);
-
-  const starsUsdWithdrawRateX1000 = global.appConfig?.starsUsdWithdrawRateX1000;
-  const starsUsdWithdrawRate = starsUsdWithdrawRateX1000 ? starsUsdWithdrawRateX1000 / 1000 : 1;
-  const configStarsPaidMessageCommissionPermille = global.appConfig?.starsPaidMessageCommissionPermille;
-  const starsPaidMessageCommissionPermille = configStarsPaidMessageCommissionPermille
-    ? configStarsPaidMessageCommissionPermille / 1000 : 100;
 
   const noPaidReactionsForUsersCount = global.settings.privacy.noPaidMessages?.allowUserIds.length || 0;
 
@@ -251,9 +243,7 @@ export default memo(withGlobal<OwnProps>((global): StateProps => {
     isCurrentUserPremium: selectIsCurrentUserPremium(global),
     canLimitNewMessagesWithoutPremium: global.appConfig?.canLimitNewMessagesWithoutPremium,
     canChargeForMessages: global.appConfig?.starsPaidMessagesAvailable,
-    starsPaidMessageAmountMax: global.appConfig?.starsPaidMessageAmountMax || DEFAULT_MAXIMUM_CHARGE_FOR_MESSAGES,
-    starsPaidMessageCommissionPermille,
-    starsUsdWithdrawRate,
     noPaidReactionsForUsersCount,
+    privacy,
   };
 })(PrivacyMessages));

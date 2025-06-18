@@ -1,5 +1,4 @@
 import type { FC } from '../../lib/teact/teact';
-import React from '../../lib/teact/teact';
 
 import type { OwnProps } from './PaymentModal';
 
@@ -11,7 +10,6 @@ const PaymentModalAsync: FC<OwnProps> = (props) => {
   const { isOpen } = props;
   const PaymentModal = useModuleLoader(Bundles.Extra, 'PaymentModal', !isOpen);
 
-  // eslint-disable-next-line react/jsx-props-no-spreading
   return PaymentModal ? <PaymentModal {...props} /> : undefined;
 };
 

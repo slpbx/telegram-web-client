@@ -1,5 +1,6 @@
 import BigInt from 'big-integer';
 import { Api as GramJs } from '../../../lib/gramjs';
+import { RPCError } from '../../../lib/gramjs/errors';
 
 import type {
   ApiChat,
@@ -48,9 +49,9 @@ export async function validateRequestedInfo({
   requestInfo: GramJs.TypePaymentRequestedInfo;
   shouldSave?: boolean;
 }): Promise<{
-    id: string;
-    shippingOptions: any;
-  } | undefined> {
+  id: string;
+  shippingOptions: any;
+} | undefined> {
   const result = await invokeRequest(new GramJs.payments.ValidateRequestedInfo({
     invoice: buildInputInvoice(inputInvoice),
     save: shouldSave || undefined,
@@ -184,21 +185,14 @@ export async function getPaymentForm(inputInvoice: ApiRequestInputInvoice, theme
     }
 
     return buildApiPaymentForm(result);
-  } catch (err) {
-    if (err instanceof Error) {
-      // Can be removed if separate error handling is added to payment UI
-      sendApiUpdate({
-        '@type': 'error',
-        error: {
-          message: err.message,
-          hasErrorKey: true,
-        },
-      });
+  } catch (err: any) {
+    if (err instanceof RPCError) {
       return {
-        error: err.message,
+        error: err.errorMessage,
       };
+    } else {
+      throw err;
     }
-    return undefined;
   }
 }
 
@@ -264,7 +258,7 @@ export async function fetchMyBoosts() {
 export async function applyBoost({
   chat,
   slots,
-} : {
+}: {
   chat: ApiChat;
   slots: number[];
 }) {

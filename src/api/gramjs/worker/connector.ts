@@ -1,25 +1,27 @@
 import type { Api } from '../../../lib/gramjs';
-import type { TypedBroadcastChannel } from '../../../util/multitab';
+import type { TypedBroadcastChannel } from '../../../util/browser/multitab';
 import type { ApiInitialArgs, ApiOnProgress, OnApiUpdate } from '../../types';
 import type { LocalDb } from '../localDb';
 import type { MethodArgs, MethodResponse, Methods } from '../methods/types';
 import type { OriginPayload, ThenArg, WorkerMessageEvent } from './types';
 
-import { DATA_BROADCAST_CHANNEL_NAME, DEBUG, IGNORE_UNHANDLED_ERRORS } from '../../../config';
+import { DEBUG, IGNORE_UNHANDLED_ERRORS } from '../../../config';
 import { logDebugMessage } from '../../../util/debugConsole';
 import Deferred from '../../../util/Deferred';
 import { getCurrentTabId, subscribeToMasterChange } from '../../../util/establishMultitabRole';
 import generateUniqueId from '../../../util/generateUniqueId';
+import { ACCOUNT_SLOT, DATA_BROADCAST_CHANNEL_NAME } from '../../../util/multiaccount';
 import { pause, throttleWithTickEnd } from '../../../util/schedulers';
-import { IS_MULTITAB_SUPPORTED } from '../../../util/windowEnvironment';
 
 type RequestState = {
   messageId: string;
-  resolve: Function;
-  reject: Function;
+  resolve: AnyToVoidFunction;
+  reject: AnyToVoidFunction;
   callback?: AnyToVoidFunction;
   DEBUG_payload?: any;
 };
+
+type EnsurePromise<T> = Promise<Awaited<T>>;
 
 const HEALTH_CHECK_TIMEOUT = 150;
 const HEALTH_CHECK_MIN_DELAY = 5 * 1000; // 5 sec
@@ -48,9 +50,7 @@ subscribeToMasterChange((isMasterTabNew) => {
   isMasterTab = isMasterTabNew;
 });
 
-const channel = IS_MULTITAB_SUPPORTED
-  ? new BroadcastChannel(DATA_BROADCAST_CHANNEL_NAME) as TypedBroadcastChannel
-  : undefined;
+const channel = new BroadcastChannel(DATA_BROADCAST_CHANNEL_NAME) as TypedBroadcastChannel;
 
 const postMessagesOnTickEnd = throttleWithTickEnd(() => {
   const payloads = pendingPayloads;
@@ -64,8 +64,6 @@ function postMessageOnTickEnd(payload: OriginPayload) {
 }
 
 export function initApiOnMasterTab(initialArgs: ApiInitialArgs) {
-  if (!channel) return;
-
   channel.postMessage({
     type: 'initApi',
     token: getCurrentTabId(),
@@ -93,7 +91,14 @@ export function initApi(onUpdate: OnApiUpdate, initialArgs: ApiInitialArgs) {
       console.log('>>> START LOAD WORKER');
     }
 
-    worker = new Worker(new URL('./worker.ts', import.meta.url));
+    const params = new URLSearchParams();
+    if (ACCOUNT_SLOT) {
+      params.set('account', String(ACCOUNT_SLOT));
+    }
+
+    worker = new Worker(new URL('./worker.ts', import.meta.url), {
+      name: params.toString(),
+    });
     subscribeToWorker(onUpdate);
 
     if (initialArgs.platform === 'iOS') {
@@ -132,8 +137,6 @@ export function updateFullLocalDb(initial: LocalDb) {
 }
 
 export function callApiOnMasterTab(payload: any) {
-  if (!channel) return;
-
   channel.postMessage({
     type: 'callApi',
     token: getCurrentTabId(),
@@ -152,16 +155,18 @@ export function setShouldEnableDebugLog(value: boolean) {
  * Call a worker method on this tab's worker, without transferring to master tab
  * Mostly needed to disconnect worker when re-electing master
  */
-export function callApiLocal<T extends keyof Methods>(fnName: T, ...args: MethodArgs<T>) {
+export function callApiLocal<T extends keyof Methods>(
+  fnName: T, ...args: MethodArgs<T>
+): EnsurePromise<MethodResponse<T>> {
   if (!isInited) {
     if (NO_QUEUE_BEFORE_INIT.has(fnName)) {
-      return Promise.resolve(undefined) as MethodResponse<T>;
+      return Promise.resolve(undefined) as EnsurePromise<MethodResponse<T>>;
     }
 
     const deferred = new Deferred();
     localApiRequestsQueue.push({ fnName, args, deferred });
 
-    return deferred.promise as MethodResponse<T>;
+    return deferred.promise as EnsurePromise<MethodResponse<T>>;
   }
 
   const promise = makeRequest({
@@ -179,7 +184,7 @@ export function callApiLocal<T extends keyof Methods>(fnName: T, ...args: Method
           | (Api.VirtualClass<any> | undefined)[];
         type ForbiddenResponses =
           ForbiddenTypes
-          | (AnyLiteral & { [k: string]: ForbiddenTypes });
+          | (AnyLiteral & Record<string, ForbiddenTypes>);
 
         // Unwrap all chained promises
         const response = await promise;
@@ -193,19 +198,19 @@ export function callApiLocal<T extends keyof Methods>(fnName: T, ...args: Method
     })();
   }
 
-  return promise as MethodResponse<T>;
+  return promise as EnsurePromise<MethodResponse<T>>;
 }
 
-export function callApi<T extends keyof Methods>(fnName: T, ...args: MethodArgs<T>) {
+export function callApi<T extends keyof Methods>(fnName: T, ...args: MethodArgs<T>): EnsurePromise<MethodResponse<T>> {
   if (!isInited && isMasterTab) {
     if (NO_QUEUE_BEFORE_INIT.has(fnName)) {
-      return Promise.resolve(undefined) as MethodResponse<T>;
+      return Promise.resolve(undefined) as EnsurePromise<MethodResponse<T>>;
     }
 
     const deferred = new Deferred();
     apiRequestsQueue.push({ fnName, args, deferred });
 
-    return deferred.promise as MethodResponse<T>;
+    return deferred.promise as EnsurePromise<MethodResponse<T>>;
   }
 
   const promise = isMasterTab ? makeRequest({
@@ -226,7 +231,7 @@ export function callApi<T extends keyof Methods>(fnName: T, ...args: MethodArgs<
           | (Api.VirtualClass<any> | undefined)[];
         type ForbiddenResponses =
           ForbiddenTypes
-          | (AnyLiteral & { [k: string]: ForbiddenTypes });
+          | (AnyLiteral & Record<string, ForbiddenTypes>);
 
         // Unwrap all chained promises
         const response = await promise;
@@ -240,7 +245,7 @@ export function callApi<T extends keyof Methods>(fnName: T, ...args: MethodArgs<
     })();
   }
 
-  return promise as MethodResponse<T>;
+  return promise as EnsurePromise<MethodResponse<T>>;
 }
 
 export function cancelApiProgress(progressCallback: ApiOnProgress) {
@@ -254,8 +259,6 @@ export function cancelApiProgress(progressCallback: ApiOnProgress) {
   if (isMasterTab) {
     cancelApiProgressMaster(messageId);
   } else {
-    if (!channel) return;
-
     channel.postMessage({
       type: 'cancelApiProgress',
       token: getCurrentTabId(),
@@ -275,7 +278,6 @@ function subscribeToWorker(onUpdate: OnApiUpdate) {
   worker?.addEventListener('message', ({ data }: WorkerMessageEvent) => {
     data?.payloads.forEach((payload) => {
       if (payload.type === 'updates') {
-        // eslint-disable-next-line @typescript-eslint/naming-convention
         let DEBUG_startAt: number | undefined;
         if (DEBUG) {
           DEBUG_startAt = performance.now();
@@ -344,7 +346,7 @@ function makeRequestToMaster(message: {
   const requestState = { messageId } as RequestState;
 
   // Re-wrap type because of `postMessage`
-  const promise: Promise<MethodResponse<keyof Methods>> = new Promise((resolve, reject) => {
+  const promise = new Promise<MethodResponse<keyof Methods>>((resolve, reject) => {
     Object.assign(requestState, { resolve, reject });
   });
 
@@ -383,7 +385,7 @@ function makeRequest(message: OriginPayload) {
   const requestState = { messageId } as RequestState;
 
   // Re-wrap type because of `postMessage`
-  const promise: Promise<MethodResponse<keyof Methods>> = new Promise((resolve, reject) => {
+  const promise = new Promise<MethodResponse<keyof Methods>>((resolve, reject) => {
     Object.assign(requestState, { resolve, reject });
   });
 

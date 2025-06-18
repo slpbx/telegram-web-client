@@ -7,10 +7,11 @@ import type { ActionReturnType, GlobalState, TabArgs } from '../../types';
 import { GLOBAL_SEARCH_SLICE, GLOBAL_TOPIC_SEARCH_SLICE } from '../../../config';
 import { timestampPlusDay } from '../../../util/dates/dateFormat';
 import { isDeepLink, tryParseDeepLink } from '../../../util/deepLinkParser';
+import { toChannelId } from '../../../util/entities/ids';
 import { getCurrentTabId } from '../../../util/establishMultitabRole';
 import { throttle } from '../../../util/schedulers';
 import { callApi } from '../../../api/gramjs';
-import { isChatChannel, isChatGroup, toChannelId } from '../../helpers/chats';
+import { isChatChannel, isChatGroup } from '../../helpers/chats';
 import { isApiPeerChat } from '../../helpers/peers';
 import { addActionHandler, getGlobal, setGlobal } from '../../index';
 import {
@@ -28,16 +29,19 @@ import {
 const searchThrottled = throttle((cb) => cb(), 500, false);
 
 addActionHandler('setGlobalSearchQuery', (global, actions, payload): ActionReturnType => {
-  const { query, tabId = getCurrentTabId() } = payload!;
+  const { query, tabId = getCurrentTabId() } = payload;
   const { chatId } = selectTabState(global, tabId).globalSearch;
 
   if (query && !chatId) {
     void searchThrottled(async () => {
-      const result = await callApi('searchChats', { query });
+      const [searchResult, sponsoredResult] = await Promise.all([
+        callApi('searchChats', { query }),
+        callApi('fetchSponsoredPeer', { query }),
+      ]);
 
       global = getGlobal();
       const currentSearchQuery = selectCurrentGlobalSearchQuery(global, tabId);
-      if (!result || !currentSearchQuery || (query !== currentSearchQuery)) {
+      if (!searchResult || !currentSearchQuery || (query !== currentSearchQuery)) {
         global = updateGlobalSearchFetchingStatus(global, { chats: false }, tabId);
         setGlobal(global);
         return;
@@ -45,7 +49,7 @@ addActionHandler('setGlobalSearchQuery', (global, actions, payload): ActionRetur
 
       const {
         accountResultIds, globalResultIds,
-      } = result;
+      } = searchResult;
 
       global = updateGlobalSearchFetchingStatus(global, { chats: false }, tabId);
       global = updateGlobalSearch(global, {
@@ -56,6 +60,7 @@ addActionHandler('setGlobalSearchQuery', (global, actions, payload): ActionRetur
           ...selectTabState(global, tabId).globalSearch.globalResults,
           peerIds: globalResultIds,
         },
+        sponsoredPeer: sponsoredResult,
       }, tabId);
 
       setGlobal(global);
@@ -64,7 +69,7 @@ addActionHandler('setGlobalSearchQuery', (global, actions, payload): ActionRetur
 });
 
 addActionHandler('setGlobalSearchDate', (global, actions, payload): ActionReturnType => {
-  const { date, tabId = getCurrentTabId() } = payload!;
+  const { date, tabId = getCurrentTabId() } = payload;
   const maxDate = date ? timestampPlusDay(date) : date;
 
   global = updateGlobalSearch(global, {

@@ -1,5 +1,4 @@
 import type { FC } from '../../../lib/teact/teact';
-import React from '../../../lib/teact/teact';
 
 import type { OwnProps } from './PremiumMainModal';
 
@@ -11,7 +10,6 @@ const PremiumMainModalAsync: FC<OwnProps> = (props) => {
   const { isOpen } = props;
   const PremiumMainModal = useModuleLoader(Bundles.Extra, 'PremiumMainModal', !isOpen);
 
-  // eslint-disable-next-line react/jsx-props-no-spreading
   return PremiumMainModal ? <PremiumMainModal {...props} /> : undefined;
 };
 

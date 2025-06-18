@@ -1,10 +1,11 @@
 import type { FC, TeactNode } from '../../../../lib/teact/teact';
-import React, { memo, useMemo } from '../../../../lib/teact/teact';
+import { memo, useMemo, useState } from '../../../../lib/teact/teact';
 import { getActions, getGlobal, withGlobal } from '../../../../global';
 
 import type {
   ApiEmojiStatusType,
   ApiPeer,
+  ApiUser,
 } from '../../../../api/types';
 import type { TabState } from '../../../../global/types';
 
@@ -31,6 +32,7 @@ import AnimatedIconFromSticker from '../../../common/AnimatedIconFromSticker';
 import Avatar from '../../../common/Avatar';
 import BadgeButton from '../../../common/BadgeButton';
 import GiftMenuItems from '../../../common/gift/GiftMenuItems';
+import GiftTransferPreview from '../../../common/gift/GiftTransferPreview';
 import Icon from '../../../common/icons/Icon';
 import SafeLink from '../../../common/SafeLink';
 import Button from '../../../ui/Button';
@@ -55,6 +57,8 @@ type StateProps = {
   currentUserEmojiStatus?: ApiEmojiStatusType;
   collectibleEmojiStatuses?: ApiEmojiStatusType[];
   tonExplorerUrl?: string;
+  currentUser?: ApiUser;
+  recipientPeer?: ApiPeer;
 };
 
 const STICKER_SIZE = 120;
@@ -69,6 +73,8 @@ const GiftInfoModal = ({
   currentUserEmojiStatus,
   collectibleEmojiStatuses,
   tonExplorerUrl,
+  currentUser,
+  recipientPeer,
 }: OwnProps & StateProps) => {
   const {
     closeGiftInfoModal,
@@ -78,12 +84,15 @@ const GiftInfoModal = ({
     focusMessage,
     openGiftUpgradeModal,
     showNotification,
+    buyStarGift,
+    closeGiftModal,
   } = getActions();
 
   const [isConvertConfirmOpen, openConvertConfirm, closeConvertConfirm] = useFlag();
 
   const lang = useLang();
   const oldLang = useOldLang();
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState<boolean>(false);
 
   const isOpen = Boolean(modal);
   const renderingModal = useCurrentOrPrev(modal);
@@ -106,11 +115,23 @@ const GiftInfoModal = ({
   const hasConvertOption = canConvertDifference > 0 && Boolean(savedGift?.starsToConvert);
 
   const isGiftUnique = gift && gift.type === 'starGiftUnique';
+  const uniqueGift = isGiftUnique ? gift : undefined;
 
   const canFocusUpgrade = Boolean(savedGift?.upgradeMsgId);
   const canManage = !canFocusUpgrade && savedGift?.inputGift && (
     isTargetChat ? hasAdminRights : renderingTargetPeer?.id === currentUserId
   );
+
+  const resellPriceInStars = isGiftUnique ? gift.resellPriceInStars : undefined;
+  const canBuyGift = !canManage && Boolean(resellPriceInStars);
+
+  const giftOwnerTitle = (() => {
+    if (!isGiftUnique) return undefined;
+    const { ownerName, ownerId } = gift;
+    const global = getGlobal(); // Peer titles do not need to be reactive
+    const owner = ownerId ? selectPeer(global, ownerId) : undefined;
+    return owner ? getPeerTitle(lang, owner) : ownerName;
+  })();
 
   const handleClose = useLastCallback(() => {
     closeGiftInfoModal();
@@ -120,7 +141,7 @@ const GiftInfoModal = ({
     const giftChat = isSender ? renderingTargetPeer : renderingFromPeer;
     if (!savedGift?.upgradeMsgId || !giftChat) return;
     const { upgradeMsgId } = savedGift;
-    focusMessage({ chatId: giftChat.id, messageId: upgradeMsgId! });
+    focusMessage({ chatId: giftChat.id, messageId: upgradeMsgId });
     handleClose();
   });
 
@@ -142,26 +163,59 @@ const GiftInfoModal = ({
     openGiftUpgradeModal({ giftId: savedGift.gift.id, gift: savedGift });
   });
 
+  const handleBuyGift = useLastCallback(() => {
+    if (gift?.type !== 'starGiftUnique' || !gift.resellPriceInStars) return;
+    setIsConfirmModalOpen(true);
+  });
+
+  const closeConfirmModal = useLastCallback(() => {
+    setIsConfirmModalOpen(false);
+  });
+
+  const handleConfirmBuyGift = useLastCallback(() => {
+    const peer = recipientPeer || currentUser;
+    if (!peer || gift?.type !== 'starGiftUnique' || !gift.resellPriceInStars) return;
+    closeConfirmModal();
+    closeGiftModal();
+    buyStarGift({ peerId: peer.id, slug: gift.slug, stars: gift.resellPriceInStars });
+  });
+
   const giftAttributes = useMemo(() => {
     return gift && getGiftAttributes(gift);
   }, [gift]);
 
   const SettingsMenuButton: FC<{ onTrigger: () => void; isMenuOpen?: boolean }> = useMemo(() => {
-    return ({ onTrigger, isMenuOpen }) => (
-      <Button
-        round
-        size="smaller"
-        color="translucent-white"
-        className={isMenuOpen ? 'active' : ''}
+    return ({ onTrigger }) => (
+      <div
+        className={buildClassName(
+          styles.headerButton,
+          styles.left,
+        )}
+        tabIndex={0}
+        role="button"
+        aria-haspopup="menu"
+        aria-label={lang('AriaMoreButton')}
         onClick={onTrigger}
-        ariaLabel={lang('AriaMoreButton')}
       >
-        <Icon name="more" />
-      </Button>
+        <Icon
+          name="more"
+          className={styles.icon}
+        />
+      </div>
     );
   }, [lang]);
 
   const renderFooterButton = useLastCallback(() => {
+    if (canBuyGift) {
+      return (
+        <Button noForcedUpperCase size="smaller" onClick={handleBuyGift}>
+          {lang('ButtonBuyGift', {
+            stars: formatStarsAsIcon(lang, resellPriceInStars, { asFont: true }),
+          }, { withNodes: true })}
+        </Button>
+      );
+    }
+
     if (canFocusUpgrade) {
       return (
         <Button size="smaller" onClick={handleFocusUpgraded}>
@@ -312,17 +366,36 @@ const GiftInfoModal = ({
       <div
         className={styles.modalHeader}
       >
-        <Button
-          className={styles.modalCloseButton}
-          round
-          color="translucent-white"
-          size="smaller"
-          ariaLabel={lang('Close')}
-          onClick={handleClose}
-        >
-          <Icon name="close" />
-        </Button>
-        {isOpen && uniqueGiftContextMenu}
+        {Boolean(canManage && resellPriceInStars) && (
+          <div className={styles.giftResalePriceContainer}>
+            {formatStarsAsIcon(lang, resellPriceInStars!, {
+              asFont: true,
+              className: styles.giftResalePriceStar,
+            })}
+          </div>
+        )}
+        <div className={styles.headerSplitButton}>
+          {isOpen && uniqueGiftContextMenu}
+          <div
+            className={buildClassName(
+              styles.headerButton,
+              styles.right,
+            )}
+            tabIndex={0}
+            role="button"
+            aria-haspopup="menu"
+            aria-label={lang('Close')}
+            onClick={handleClose}
+          >
+            <Icon
+              name="close"
+              className={buildClassName(
+                styles.icon,
+                styles.moreIcon,
+              )}
+            />
+          </div>
+        </div>
       </div>
     );
 
@@ -348,7 +421,7 @@ const GiftInfoModal = ({
         <h1 className={styles.title}>
           {getTitle()}
         </h1>
-        {description && (
+        {Boolean(description) && (
           <p className={buildClassName(styles.description, !savedGift && gift?.type === 'starGift' && styles.soldOut)}>
             {description}
           </p>
@@ -471,7 +544,8 @@ const GiftInfoModal = ({
         tableData.push([
           lang('GiftAttributeModel'),
           <span className={styles.uniqueAttribute}>
-            {model.name}<BadgeButton>{formatPercent(model.rarityPercent)}</BadgeButton>
+            {model.name}
+            <BadgeButton>{formatPercent(model.rarityPercent)}</BadgeButton>
           </span>,
         ]);
       }
@@ -480,7 +554,8 @@ const GiftInfoModal = ({
         tableData.push([
           lang('GiftAttributeBackdrop'),
           <span className={styles.uniqueAttribute}>
-            {backdrop.name}<BadgeButton>{formatPercent(backdrop.rarityPercent)}</BadgeButton>
+            {backdrop.name}
+            <BadgeButton>{formatPercent(backdrop.rarityPercent)}</BadgeButton>
           </span>,
         ]);
       }
@@ -489,7 +564,8 @@ const GiftInfoModal = ({
         tableData.push([
           lang('GiftAttributeSymbol'),
           <span className={styles.uniqueAttribute}>
-            {pattern.name}<BadgeButton>{formatPercent(pattern.rarityPercent)}</BadgeButton>
+            {pattern.name}
+            <BadgeButton>{formatPercent(pattern.rarityPercent)}</BadgeButton>
           </span>,
         ]);
       }
@@ -518,7 +594,7 @@ const GiftInfoModal = ({
 
         const formattedDate = formatDateTimeToString(date * 1000, lang.code, true);
         const recipientLink = (
-          // eslint-disable-next-line react/jsx-no-bind
+
           <Link onClick={() => openChat(recipientId)} isPrimary>
             {getPeerTitle(lang, recipient)}
           </Link>
@@ -540,7 +616,7 @@ const GiftInfoModal = ({
           });
         } else {
           const senderLink = (
-            // eslint-disable-next-line react/jsx-no-bind
+
             <Link onClick={() => openChat(sender.id)} isPrimary>
               {getPeerTitle(lang, sender)}
             </Link>
@@ -574,7 +650,7 @@ const GiftInfoModal = ({
 
     const footer = (
       <div className={styles.footer}>
-        {(canManage || tonLink) && (
+        {(canManage || tonLink || canBuyGift) && (
           <div className={styles.footerDescription}>
             {tonLink && (
               <div>
@@ -596,9 +672,16 @@ const GiftInfoModal = ({
                 })}
               </div>
             )}
-            {isVisibleForMe && (
+            {!canBuyGift && isVisibleForMe && (
               <div>
                 {lang('GiftInfoSenderHidden')}
+              </div>
+            )}
+            {canBuyGift && giftOwnerTitle && (
+              <div>
+                {lang('GiftInfoBuyGift', {
+                  user: giftOwnerTitle,
+                }, { withNodes: true })}
               </div>
             )}
           </div>
@@ -617,8 +700,9 @@ const GiftInfoModal = ({
     typeGift, savedGift, renderingTargetPeer, giftSticker, lang,
     canManage, hasConvertOption, isSender, oldLang, tonExplorerUrl,
     gift, giftAttributes, renderFooterButton, isTargetChat,
-    SettingsMenuButton, isOpen, isGiftUnique, renderingModal,
+    SettingsMenuButton, isGiftUnique, renderingModal,
     collectibleEmojiStatuses, currentUserEmojiStatus, saleDateInfo,
+    canBuyGift, giftOwnerTitle, isOpen, resellPriceInStars,
   ]);
 
   return (
@@ -632,7 +716,51 @@ const GiftInfoModal = ({
         footer={modalData?.footer}
         className={styles.modal}
         onClose={handleClose}
+        withBalanceBar={Boolean(canBuyGift)}
+        isLowStackPriority
       />
+      {uniqueGift && currentUser && Boolean(resellPriceInStars) && (
+        <ConfirmDialog
+          isOpen={isConfirmModalOpen}
+          noDefaultTitle
+          onClose={closeConfirmModal}
+          confirmLabel={lang('ButtonBuyGift', {
+            stars: formatStarsAsIcon(lang, resellPriceInStars, { asFont: true }),
+          }, { withNodes: true })}
+          confirmHandler={handleConfirmBuyGift}
+        >
+
+          <GiftTransferPreview
+            peer={recipientPeer || currentUser}
+            gift={uniqueGift}
+          />
+          {!recipientPeer
+            && (
+              <p>
+                {lang('GiftBuyConfirmDescription', {
+                  gift: lang('GiftUnique', { title: uniqueGift.title, number: uniqueGift.number }),
+                  stars: formatStarsAsText(lang, resellPriceInStars),
+                }, {
+                  withNodes: true,
+                  withMarkdown: true,
+                })}
+              </p>
+            )}
+          {recipientPeer
+            && (
+              <p>
+                {lang('GiftBuyForPeerConfirmDescription', {
+                  gift: lang('GiftUnique', { title: uniqueGift.title, number: uniqueGift.number }),
+                  stars: formatStarsAsText(lang, resellPriceInStars),
+                  peer: getPeerTitle(lang, recipientPeer),
+                }, {
+                  withNodes: true,
+                  withMarkdown: true,
+                })}
+              </p>
+            )}
+        </ConfirmDialog>
+      )}
       {savedGift && (
         <ConfirmDialog
           isOpen={isConvertConfirmOpen}
@@ -679,6 +807,8 @@ export default memo(withGlobal<OwnProps>(
     const chat = targetPeer && isApiPeerChat(targetPeer) ? targetPeer : undefined;
     const hasAdminRights = chat && getHasAdminRight(chat, 'postMessages');
     const currentUser = selectUser(global, currentUserId!);
+    const recipientPeer = modal?.recipientId && currentUserId !== modal.recipientId
+      ? selectPeer(global, modal.recipientId) : undefined;
     const currentUserEmojiStatus = currentUser?.emojiStatus;
     const collectibleEmojiStatuses = global.collectibleEmojiStatuses?.statuses;
 
@@ -691,6 +821,8 @@ export default memo(withGlobal<OwnProps>(
       hasAdminRights,
       currentUserEmojiStatus,
       collectibleEmojiStatuses,
+      currentUser,
+      recipientPeer,
     };
   },
 )(GiftInfoModal));

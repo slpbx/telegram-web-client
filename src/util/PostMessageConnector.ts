@@ -42,9 +42,8 @@ export interface OriginMessageEvent {
   data: OriginMessageData;
 }
 
-export type ApiUpdate =
-  { type: string }
-  & any;
+// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
+export type ApiUpdate = { type: string } & any;
 
 export type WorkerPayload =
   {
@@ -85,8 +84,8 @@ export interface WorkerMessageEvent {
 
 interface RequestState {
   messageId: string;
-  resolve: Function;
-  reject: Function;
+  resolve: AnyToVoidFunction;
+  reject: AnyToVoidFunction;
   callback: AnyToVoidFunction;
 }
 
@@ -117,7 +116,6 @@ class ConnectorClass<T extends InputRequestTypes> {
   ) {
   }
 
-  // eslint-disable-next-line class-methods-use-this
   public destroy() {
   }
 
@@ -142,7 +140,7 @@ class ConnectorClass<T extends InputRequestTypes> {
     const requestState = { messageId } as RequestState;
 
     // Re-wrap type because of `postMessage`
-    const promise: Promise<any> = new Promise((resolve, reject) => {
+    const promise = new Promise<any>((resolve, reject) => {
       Object.assign(requestState, { resolve, reject });
     });
 

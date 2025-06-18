@@ -1,11 +1,11 @@
 import { animate } from '../../util/animation';
+import {
+  IS_ANDROID, IS_IOS, IS_SAFARI,
+} from '../../util/browser/windowEnvironment';
 import cycleRestrict from '../../util/cycleRestrict';
 import Deferred from '../../util/Deferred';
 import generateUniqueId from '../../util/generateUniqueId';
 import launchMediaWorkers, { MAX_WORKERS } from '../../util/launchMediaWorkers';
-import {
-  IS_ANDROID, IS_IOS, IS_SAFARI,
-} from '../../util/windowEnvironment';
 import { requestMeasure, requestMutation } from '../fasterdom/fasterdom';
 
 interface Params {
@@ -100,7 +100,6 @@ class RLottie {
     let instance = instancesByRenderId.get(renderId);
 
     if (!instance) {
-      // eslint-disable-next-line prefer-rest-params
       instance = new RLottie(...args);
       instancesByRenderId.set(renderId, instance);
     } else {
@@ -250,7 +249,7 @@ class RLottie {
     const frame = this.getFrame(this.prevFrameIndex) || this.getFrame(Math.round(this.approxFrameIndex));
 
     if (frame && frame !== WAITING) {
-      ctx.drawImage(frame, containerInfo.coords!.x, containerInfo.coords!.y);
+      ctx.drawImage(frame, containerInfo.coords.x, containerInfo.coords.y);
     }
   }
 

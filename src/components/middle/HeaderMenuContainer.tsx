@@ -1,10 +1,12 @@
 import type { FC } from '../../lib/teact/teact';
-import React, {
+import {
   memo, useEffect, useMemo, useState,
 } from '../../lib/teact/teact';
 import { getActions, withGlobal } from '../../global';
 
-import type { ApiBotCommand, ApiChat } from '../../api/types';
+import type {
+  ApiBotCommand, ApiChat, ApiDisallowedGifts,
+} from '../../api/types';
 import type { IAnchorPosition, ThreadId } from '../../types';
 import type { IconName } from '../../types/icons';
 import { MAIN_THREAD_ID } from '../../api/types';
@@ -18,7 +20,6 @@ import {
   isChatChannel,
   isChatGroup,
   isSystemBot,
-  isUserId,
   isUserRightBanned,
 } from '../../global/helpers';
 import { getIsChatMuted } from '../../global/helpers/notifications';
@@ -31,6 +32,7 @@ import {
   selectChatFullInfo,
   selectCurrentMessageList,
   selectIsChatWithSelf,
+  selectIsCurrentUserFrozen,
   selectIsRightColumnShown,
   selectNotifyDefaults,
   selectNotifyException,
@@ -39,10 +41,12 @@ import {
   selectUser,
   selectUserFullInfo,
 } from '../../global/selectors';
+import { isUserId } from '../../util/entities/ids';
 import { disableScrolling } from '../../util/scrollLock';
 
 import useAppLayout from '../../hooks/useAppLayout';
 import useFlag from '../../hooks/useFlag';
+import useLang from '../../hooks/useLang';
 import useLastCallback from '../../hooks/useLastCallback';
 import useOldLang from '../../hooks/useOldLang';
 import usePrevDuringAnimation from '../../hooks/usePrevDuringAnimation';
@@ -122,6 +126,8 @@ type StateProps = {
   isBot?: boolean;
   isChatWithSelf?: boolean;
   savedDialog?: ApiChat;
+  disallowedGifts?: ApiDisallowedGifts;
+  isAccountFrozen?: boolean;
 };
 
 const CLOSE_MENU_ANIMATION_DURATION = 200;
@@ -176,6 +182,8 @@ const HeaderMenuContainer: FC<OwnProps & StateProps> = ({
   onAsMessagesClick,
   onClose,
   onCloseAnimationEnd,
+  disallowedGifts,
+  isAccountFrozen,
 }) => {
   const {
     updateChatMutedState,
@@ -186,6 +194,7 @@ const HeaderMenuContainer: FC<OwnProps & StateProps> = ({
     createGroupCall,
     openLinkedChat,
     openAddContactDialog,
+    openFrozenAccountModal,
     requestMasterAndRequestCall,
     toggleStatistics,
     openMonetizationStatistics,
@@ -203,7 +212,11 @@ const HeaderMenuContainer: FC<OwnProps & StateProps> = ({
     setViewForumAsMessages,
     openBoostModal,
     reportMessages,
+    showNotification,
   } = getActions();
+
+  const oldLang = useOldLang();
+  const lang = useLang();
 
   const { isMobile } = useAppLayout();
   const [isMenuOpen, setIsMenuOpen] = useState(true);
@@ -218,20 +231,36 @@ const HeaderMenuContainer: FC<OwnProps & StateProps> = ({
     (!isChatInfoShown && isForum) ? true : undefined, CLOSE_MENU_ANIMATION_DURATION,
   );
 
+  const areAllGiftsDisallowed = useMemo(() => {
+    if (!disallowedGifts) {
+      return undefined;
+    }
+    return Object.values(disallowedGifts).every(Boolean);
+  }, [disallowedGifts]);
+
   const closeMuteModal = useLastCallback(() => {
     setIsMuteModalOpen(false);
     onClose();
   });
 
   const handleReport = useLastCallback(() => {
-    setIsMenuOpen(false);
-    reportMessages({ chatId, messageIds: [] });
+    if (isAccountFrozen) {
+      openFrozenAccountModal();
+    } else {
+      setIsMenuOpen(false);
+      reportMessages({ chatId, messageIds: [] });
+    }
     onClose();
   });
 
   const handleDelete = useLastCallback(() => {
+    if (isAccountFrozen) {
+      openFrozenAccountModal();
+      onClose();
+    } else {
+      setIsDeleteModalOpen(true);
+    }
     setIsMenuOpen(false);
-    setIsDeleteModalOpen(true);
   });
 
   const closeMenu = useLastCallback(() => {
@@ -251,39 +280,68 @@ const HeaderMenuContainer: FC<OwnProps & StateProps> = ({
   });
 
   const handleStartBot = useLastCallback(() => {
-    sendBotCommand({ command: '/start' });
+    if (isAccountFrozen) {
+      openFrozenAccountModal();
+    } else {
+      sendBotCommand({ command: '/start' });
+    }
   });
 
   const handleRestartBot = useLastCallback(() => {
-    restartBot({ chatId });
+    if (isAccountFrozen) {
+      openFrozenAccountModal();
+    } else {
+      restartBot({ chatId });
+    }
   });
 
   const handleUnmuteClick = useLastCallback(() => {
-    updateChatMutedState({ chatId, isMuted: false });
+    if (isAccountFrozen) {
+      openFrozenAccountModal();
+    } else {
+      updateChatMutedState({ chatId, isMuted: false });
+    }
     closeMenu();
   });
 
   const handleMuteClick = useLastCallback(() => {
-    markRenderMuteModal();
-    setIsMuteModalOpen(true);
+    if (isAccountFrozen) {
+      openFrozenAccountModal();
+      closeMenu();
+    } else {
+      markRenderMuteModal();
+      setIsMuteModalOpen(true);
+    }
     setIsMenuOpen(false);
   });
 
   const handleCreateTopicClick = useLastCallback(() => {
-    openCreateTopicPanel({ chatId });
-    setShouldCloseFast(!isRightColumnShown);
+    if (isAccountFrozen) {
+      openFrozenAccountModal();
+    } else {
+      openCreateTopicPanel({ chatId });
+      setShouldCloseFast(!isRightColumnShown);
+    }
     closeMenu();
   });
 
   const handleEditClick = useLastCallback(() => {
-    toggleManagement({ force: true });
-    setShouldCloseFast(!isRightColumnShown);
+    if (isAccountFrozen) {
+      openFrozenAccountModal();
+    } else {
+      toggleManagement({ force: true });
+      setShouldCloseFast(!isRightColumnShown);
+    }
     closeMenu();
   });
 
   const handleEditTopicClick = useLastCallback(() => {
-    openEditTopicPanel({ chatId, topicId: Number(threadId) });
-    setShouldCloseFast(!isRightColumnShown);
+    if (isAccountFrozen) {
+      openFrozenAccountModal();
+    } else {
+      openEditTopicPanel({ chatId, topicId: Number(threadId) });
+      setShouldCloseFast(!isRightColumnShown);
+    }
     closeMenu();
   });
 
@@ -294,7 +352,9 @@ const HeaderMenuContainer: FC<OwnProps & StateProps> = ({
   });
 
   const handleEnterVoiceChatClick = useLastCallback(() => {
-    if (canCreateVoiceChat) {
+    if (isAccountFrozen) {
+      openFrozenAccountModal();
+    } else if (canCreateVoiceChat) {
       // TODO Show popup to schedule
       createGroupCall({
         chatId,
@@ -313,27 +373,52 @@ const HeaderMenuContainer: FC<OwnProps & StateProps> = ({
   });
 
   const handleGiftClick = useLastCallback(() => {
+    if (areAllGiftsDisallowed && chat) {
+      showNotification({ message: lang('SendDisallowError') });
+      return;
+    }
     openGiftModal({ forUserId: chatId });
+    if (isAccountFrozen) {
+      openFrozenAccountModal();
+    } else {
+      openGiftModal({ forUserId: chatId });
+    }
     closeMenu();
   });
 
   const handleAddContactClick = useLastCallback(() => {
-    openAddContactDialog({ userId: chatId });
+    if (isAccountFrozen) {
+      openFrozenAccountModal();
+    } else {
+      openAddContactDialog({ userId: chatId });
+    }
     closeMenu();
   });
 
   const handleSubscribe = useLastCallback(() => {
-    onSubscribeChannel();
+    if (isAccountFrozen) {
+      openFrozenAccountModal();
+    } else {
+      onSubscribeChannel();
+    }
     closeMenu();
   });
 
   const handleVideoCall = useLastCallback(() => {
-    requestMasterAndRequestCall({ userId: chatId, isVideo: true });
+    if (isAccountFrozen) {
+      openFrozenAccountModal();
+    } else {
+      requestMasterAndRequestCall({ userId: chatId, isVideo: true });
+    }
     closeMenu();
   });
 
   const handleCall = useLastCallback(() => {
-    requestMasterAndRequestCall({ userId: chatId });
+    if (isAccountFrozen) {
+      openFrozenAccountModal();
+    } else {
+      requestMasterAndRequestCall({ userId: chatId });
+    }
     closeMenu();
   });
 
@@ -355,7 +440,9 @@ const HeaderMenuContainer: FC<OwnProps & StateProps> = ({
   });
 
   const handleBoostClick = useLastCallback(() => {
-    if (canViewBoosts) {
+    if (isAccountFrozen) {
+      openFrozenAccountModal();
+    } else if (canViewBoosts) {
       openBoostStatistics({ chatId });
       setShouldCloseFast(!isRightColumnShown);
     } else {
@@ -370,7 +457,11 @@ const HeaderMenuContainer: FC<OwnProps & StateProps> = ({
   });
 
   const handleSelectMessages = useLastCallback(() => {
-    enterMessageSelectMode();
+    if (isAccountFrozen) {
+      openFrozenAccountModal();
+    } else {
+      enterMessageSelectMode();
+    }
     closeMenu();
   });
 
@@ -380,18 +471,24 @@ const HeaderMenuContainer: FC<OwnProps & StateProps> = ({
   });
 
   const handleBlock = useLastCallback(() => {
-    blockUser({ userId: chatId });
+    if (isAccountFrozen) {
+      openFrozenAccountModal();
+    } else {
+      blockUser({ userId: chatId });
+    }
     closeMenu();
   });
 
   const handleUnblock = useLastCallback(() => {
-    unblockUser({ userId: chatId });
+    if (isAccountFrozen) {
+      openFrozenAccountModal();
+    } else {
+      unblockUser({ userId: chatId });
+    }
     closeMenu();
   });
 
   useEffect(disableScrolling, []);
-
-  const lang = useOldLang();
 
   const botButtons = useMemo(() => {
     const commandButtons = botCommands?.map(({ command }) => {
@@ -407,10 +504,10 @@ const HeaderMenuContainer: FC<OwnProps & StateProps> = ({
         <MenuItem
           key={command}
           icon={cmd.icon}
-          // eslint-disable-next-line react/jsx-no-bind
+
           onClick={handleClick}
         >
-          {lang(cmd.label)}
+          {oldLang(cmd.label)}
         </MenuItem>
       );
     });
@@ -420,44 +517,44 @@ const HeaderMenuContainer: FC<OwnProps & StateProps> = ({
     const privacyButton = isBot && (
       <MenuItem
         icon="privacy-policy"
-        // eslint-disable-next-line react/jsx-no-bind
+
         onClick={() => {
           if (hasPrivacyCommand && !botPrivacyPolicyUrl) {
             sendBotCommand({ command: '/privacy' });
           } else {
-            openUrl({ url: botPrivacyPolicyUrl || lang('BotDefaultPrivacyPolicy') });
+            openUrl({ url: botPrivacyPolicyUrl || oldLang('BotDefaultPrivacyPolicy') });
           }
           closeMenu();
         }}
       >
-        {lang('BotPrivacyPolicy')}
+        {oldLang('BotPrivacyPolicy')}
       </MenuItem>
     );
 
     return [...commandButtons || [], privacyButton].filter(Boolean);
-  }, [botCommands, lang, botPrivacyPolicyUrl, isBot]);
+  }, [botCommands, oldLang, botPrivacyPolicyUrl, isBot]);
 
   const deleteTitle = useMemo(() => {
     if (!chat) return undefined;
 
     if (savedDialog) {
-      return lang('Delete');
+      return oldLang('Delete');
     }
 
     if (isPrivate) {
-      return lang('DeleteChatUser');
+      return oldLang('DeleteChatUser');
     }
 
     if (canDeleteChat) {
-      return lang('GroupInfo.DeleteAndExit');
+      return oldLang('GroupInfo.DeleteAndExit');
     }
 
     if (isChannel) {
-      return lang('LeaveChannel');
+      return oldLang('LeaveChannel');
     }
 
-    return lang('Group.LeaveGroup');
-  }, [canDeleteChat, chat, isChannel, isPrivate, savedDialog, lang]);
+    return oldLang('Group.LeaveGroup');
+  }, [canDeleteChat, chat, isChannel, isPrivate, savedDialog, oldLang]);
 
   return (
     <Portal>
@@ -474,7 +571,7 @@ const HeaderMenuContainer: FC<OwnProps & StateProps> = ({
               icon="search"
               onClick={handleSearch}
             >
-              {lang('Search')}
+              {oldLang('Search')}
             </MenuItem>
           )}
           {withForumActions && canCreateTopic && (
@@ -483,7 +580,7 @@ const HeaderMenuContainer: FC<OwnProps & StateProps> = ({
                 icon="comments"
                 onClick={handleCreateTopicClick}
               >
-                {lang('lng_forum_create_topic')}
+                {oldLang('lng_forum_create_topic')}
               </MenuItem>
               <MenuSeparator />
             </>
@@ -493,7 +590,7 @@ const HeaderMenuContainer: FC<OwnProps & StateProps> = ({
               icon="info"
               onClick={handleViewGroupInfo}
             >
-              {isTopic ? lang('lng_context_view_topic') : lang('lng_context_view_group')}
+              {isTopic ? oldLang('lng_context_view_topic') : oldLang('lng_context_view_group')}
             </MenuItem>
           )}
           {canManage && !canEditTopic && (
@@ -501,7 +598,7 @@ const HeaderMenuContainer: FC<OwnProps & StateProps> = ({
               icon="edit"
               onClick={handleEditClick}
             >
-              {lang('Edit')}
+              {oldLang('Edit')}
             </MenuItem>
           )}
           {canEditTopic && (
@@ -509,7 +606,7 @@ const HeaderMenuContainer: FC<OwnProps & StateProps> = ({
               icon="edit"
               onClick={handleEditTopicClick}
             >
-              {lang('lng_forum_topic_edit')}
+              {oldLang('lng_forum_topic_edit')}
             </MenuItem>
           )}
           {isMobile && !withForumActions && isForum && !isTopic && (
@@ -517,7 +614,7 @@ const HeaderMenuContainer: FC<OwnProps & StateProps> = ({
               icon="forums"
               onClick={handleViewAsTopicsClick}
             >
-              {lang('Chat.ContextViewAsTopics')}
+              {oldLang('Chat.ContextViewAsTopics')}
             </MenuItem>
           )}
           {withForumActions && Boolean(pendingJoinRequests) && (
@@ -525,7 +622,7 @@ const HeaderMenuContainer: FC<OwnProps & StateProps> = ({
               icon="user"
               onClick={onJoinRequestsClick}
             >
-              {isChannel ? lang('SubscribeRequests') : lang('MemberRequests')}
+              {isChannel ? oldLang('SubscribeRequests') : oldLang('MemberRequests')}
               <div className="right-badge">{pendingJoinRequests}</div>
             </MenuItem>
           )}
@@ -534,7 +631,7 @@ const HeaderMenuContainer: FC<OwnProps & StateProps> = ({
               icon="message"
               onClick={handleOpenAsMessages}
             >
-              {lang('lng_forum_view_as_messages')}
+              {oldLang('lng_forum_view_as_messages')}
             </MenuItem>
           )}
           {withExtraActions && canStartBot && (
@@ -542,7 +639,7 @@ const HeaderMenuContainer: FC<OwnProps & StateProps> = ({
               icon="bots"
               onClick={handleStartBot}
             >
-              {lang('BotStart')}
+              {oldLang('BotStart')}
             </MenuItem>
           )}
           {withExtraActions && canSubscribe && (
@@ -550,7 +647,7 @@ const HeaderMenuContainer: FC<OwnProps & StateProps> = ({
               icon={isChannel ? 'channel' : 'group'}
               onClick={handleSubscribe}
             >
-              {lang(isChannel ? 'ProfileJoinChannel' : 'ProfileJoinGroup')}
+              {oldLang(isChannel ? 'ProfileJoinChannel' : 'ProfileJoinGroup')}
             </MenuItem>
           )}
           {canShowBoostModal && !canViewBoosts && (
@@ -558,7 +655,7 @@ const HeaderMenuContainer: FC<OwnProps & StateProps> = ({
               icon="boost-outline"
               onClick={handleBoostClick}
             >
-              {lang(isChannel ? 'BoostingBoostChannelMenu' : 'BoostingBoostGroupMenu')}
+              {oldLang(isChannel ? 'BoostingBoostChannelMenu' : 'BoostingBoostGroupMenu')}
             </MenuItem>
           )}
           {canAddContact && (
@@ -566,7 +663,7 @@ const HeaderMenuContainer: FC<OwnProps & StateProps> = ({
               icon="add-user"
               onClick={handleAddContactClick}
             >
-              {lang('AddContact')}
+              {oldLang('AddContact')}
             </MenuItem>
           )}
           {isMobile && canCall && (
@@ -574,7 +671,7 @@ const HeaderMenuContainer: FC<OwnProps & StateProps> = ({
               icon="phone"
               onClick={handleCall}
             >
-              {lang('Call')}
+              {oldLang('Call')}
             </MenuItem>
           )}
           {canCall && (
@@ -582,7 +679,7 @@ const HeaderMenuContainer: FC<OwnProps & StateProps> = ({
               icon="video-outlined"
               onClick={handleVideoCall}
             >
-              {lang('VideoCall')}
+              {oldLang('VideoCall')}
             </MenuItem>
           )}
           {canMute && (isMuted ? (
@@ -590,7 +687,7 @@ const HeaderMenuContainer: FC<OwnProps & StateProps> = ({
               icon="unmute"
               onClick={handleUnmuteClick}
             >
-              {lang('ChatsUnmute')}
+              {oldLang('ChatsUnmute')}
             </MenuItem>
           )
             : (
@@ -598,7 +695,8 @@ const HeaderMenuContainer: FC<OwnProps & StateProps> = ({
                 icon="mute"
                 onClick={handleMuteClick}
               >
-                {lang('ChatsMute')}...
+                {oldLang('ChatsMute')}
+                ...
               </MenuItem>
             )
           )}
@@ -607,7 +705,7 @@ const HeaderMenuContainer: FC<OwnProps & StateProps> = ({
               icon="voice-chat"
               onClick={handleEnterVoiceChatClick}
             >
-              {lang(canCreateVoiceChat ? 'StartVoipChat' : 'VoipGroupJoinCall')}
+              {oldLang(canCreateVoiceChat ? 'StartVoipChat' : 'VoipGroupJoinCall')}
             </MenuItem>
           )}
           {hasLinkedChat && (
@@ -615,7 +713,7 @@ const HeaderMenuContainer: FC<OwnProps & StateProps> = ({
               icon={isChannel ? 'comments' : 'channel'}
               onClick={handleLinkedChatClick}
             >
-              {lang(isChannel ? 'ViewDiscussion' : 'lng_profile_view_channel')}
+              {oldLang(isChannel ? 'ViewDiscussion' : 'lng_profile_view_channel')}
             </MenuItem>
           )}
           {!withForumActions && (
@@ -623,7 +721,7 @@ const HeaderMenuContainer: FC<OwnProps & StateProps> = ({
               icon="select"
               onClick={handleSelectMessages}
             >
-              {lang('ReportSelectMessages')}
+              {oldLang('ReportSelectMessages')}
             </MenuItem>
           )}
           {canViewBoosts && (
@@ -631,7 +729,7 @@ const HeaderMenuContainer: FC<OwnProps & StateProps> = ({
               icon="boost-outline"
               onClick={handleBoostClick}
             >
-              {lang('Boosts')}
+              {oldLang('Boosts')}
             </MenuItem>
           )}
           {canViewStatistics && (
@@ -639,7 +737,7 @@ const HeaderMenuContainer: FC<OwnProps & StateProps> = ({
               icon="stats"
               onClick={handleStatisticsClick}
             >
-              {lang('Statistics')}
+              {oldLang('Statistics')}
             </MenuItem>
           )}
           {isChannel && canViewMonetization && (
@@ -647,7 +745,7 @@ const HeaderMenuContainer: FC<OwnProps & StateProps> = ({
               icon="cash-circle"
               onClick={handleMonetizationClick}
             >
-              {lang('lng_channel_earn_title')}
+              {oldLang('lng_channel_earn_title')}
             </MenuItem>
           )}
           {canTranslate && (
@@ -655,7 +753,7 @@ const HeaderMenuContainer: FC<OwnProps & StateProps> = ({
               icon="language"
               onClick={handleEnableTranslations}
             >
-              {lang('lng_context_translate')}
+              {oldLang('lng_context_translate')}
             </MenuItem>
           )}
           {canReportChat && (
@@ -663,7 +761,7 @@ const HeaderMenuContainer: FC<OwnProps & StateProps> = ({
               icon="flag"
               onClick={handleReport}
             >
-              {lang('ReportPeer.Report')}
+              {oldLang('ReportPeer.Report')}
             </MenuItem>
           )}
           {botButtons}
@@ -672,7 +770,7 @@ const HeaderMenuContainer: FC<OwnProps & StateProps> = ({
               icon="gift"
               onClick={handleGiftClick}
             >
-              {lang('ProfileSendAGift')}
+              {oldLang('ProfileSendAGift')}
             </MenuItem>
           )}
           {isBot && (
@@ -680,7 +778,7 @@ const HeaderMenuContainer: FC<OwnProps & StateProps> = ({
               icon={isBlocked ? 'bots' : 'hand-stop'}
               onClick={isBlocked ? handleRestartBot : handleBlock}
             >
-              {isBlocked ? lang('BotRestart') : lang('Bot.Stop')}
+              {isBlocked ? oldLang('BotRestart') : oldLang('Bot.Stop')}
             </MenuItem>
           )}
           {isPrivate && !isChatWithSelf && !isBot && (
@@ -688,7 +786,7 @@ const HeaderMenuContainer: FC<OwnProps & StateProps> = ({
               icon={isBlocked ? 'user' : 'hand-stop'}
               onClick={isBlocked ? handleUnblock : handleBlock}
             >
-              {isBlocked ? lang('Unblock') : lang('BlockUser')}
+              {isBlocked ? oldLang('Unblock') : oldLang('BlockUser')}
             </MenuItem>
           )}
           {canLeave && (
@@ -756,6 +854,7 @@ export default memo(withGlobal<OwnProps>(
 
     const isSavedDialog = getIsSavedDialog(chatId, threadId, global.currentUserId);
     const savedDialog = isSavedDialog ? selectChat(global, String(threadId)) : undefined;
+    const isAccountFrozen = selectIsCurrentUserFrozen(global);
 
     return {
       chat,
@@ -782,6 +881,8 @@ export default memo(withGlobal<OwnProps>(
       isBot: Boolean(chatBot),
       isChatWithSelf,
       savedDialog,
+      disallowedGifts: userFullInfo?.disallowedGifts,
+      isAccountFrozen,
     };
   },
 )(HeaderMenuContainer));

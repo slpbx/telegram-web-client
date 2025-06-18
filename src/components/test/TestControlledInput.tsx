@@ -1,5 +1,6 @@
 import type { FC } from '../../lib/teact/teact';
-import React, { useState } from '../../lib/teact/teact';
+import type React from '../../lib/teact/teact';
+import { useState } from '../../lib/teact/teact';
 
 const Test: FC = () => {
   const [inputValue, setInputValue] = useState('Controlled');
@@ -32,23 +33,31 @@ const Test: FC = () => {
       </div>
 
       <div>
-        <div>Input value: {inputValue}</div>
+        <div>
+          Input value:
+          {inputValue}
+        </div>
         <input value={inputValue} onChange={removeVowels} teactExperimentControlled />
       </div>
 
       <div>—</div>
 
-      <div>Checkbox value: {String(isChecked)}</div>
+      <div>
+        Checkbox value:
+        {String(isChecked)}
+      </div>
       <div>
         <label>
           <input type="checkbox" defaultChecked={isCheckboxAllowed} onChange={handleAllowCheckbox} />
-          {' '}— Is allowed?
+          {' '}
+          — Is allowed?
         </label>
       </div>
       <div>
         <label>
           <input type="checkbox" checked={isChecked} onChange={handleCheck} />
-          {' '}— Is checked?
+          {' '}
+          — Is checked?
         </label>
       </div>
     </>

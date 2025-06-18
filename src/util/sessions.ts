@@ -1,13 +1,15 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import type { ApiSessionData } from '../api/types';
+import type { DcId, SharedSessionData } from '../types';
 
 import {
+  DC_IDS,
   DEBUG, IS_SCREEN_LOCKED_CACHE_KEY,
-  SESSION_USER_KEY,
+  SESSION_ACCOUNT_PREFIX,
+  SESSION_LEGACY_USER_KEY,
 } from '../config';
 import { requestSessionFromCrmChat } from './crmchat';
-
-const DC_IDS = [1, 2, 3, 4, 5];
+import { ACCOUNT_SLOT, storeAccountData, writeSlotSession } from './multiaccount';
 
 export function hasStoredSession() {
   return true;
@@ -16,28 +18,58 @@ export function hasStoredSession() {
     return true;
   }
 
-  const userAuthJson = localStorage.getItem(SESSION_USER_KEY);
-  if (!userAuthJson) {
-    return false;
+  const slotData = loadSlotSession(ACCOUNT_SLOT);
+  if (slotData) return Boolean(slotData.dcId);
+
+  if (!ACCOUNT_SLOT) {
+    const legacyAuthJson = localStorage.getItem(SESSION_LEGACY_USER_KEY);
+    if (legacyAuthJson) {
+      try {
+        const userAuth = JSON.parse(legacyAuthJson);
+        return Boolean(userAuth && userAuth.id && userAuth.dcID);
+      } catch (err) {
+        // Do nothing.
+        return false;
+      }
+    }
   }
 
-  try {
-    const userAuth = JSON.parse(userAuthJson);
-    return Boolean(userAuth && userAuth.id && userAuth.dcID);
-  } catch (err) {
-    // Do nothing.
-    return false;
-  }
+  return false;
   */
 }
 
-export function storeSession(sessionData: ApiSessionData, currentUserId?: string) {
+export function storeSession(sessionData: ApiSessionData) {
   /*
   const {
     mainDcId, keys, isTest,
   } = sessionData;
 
-  localStorage.setItem(SESSION_USER_KEY, JSON.stringify({
+  const currentSlotData = loadSlotSession(ACCOUNT_SLOT);
+  const newSlotData: SharedSessionData = {
+    ...currentSlotData,
+    dcId: mainDcId,
+    isTest,
+  };
+
+  Object.keys(keys).map(Number).forEach((dcId) => {
+    newSlotData[`dc${dcId as DcId}_auth_key`] = keys[dcId];
+  });
+
+  if (!ACCOUNT_SLOT) {
+    storeLegacySession(sessionData, currentSlotData?.userId);
+  }
+
+  writeSlotSession(ACCOUNT_SLOT, newSlotData);
+  */
+}
+
+function storeLegacySession(sessionData: ApiSessionData, currentUserId?: string) {
+  /*
+  const {
+    mainDcId, keys, isTest,
+  } = sessionData;
+
+  localStorage.setItem(SESSION_LEGACY_USER_KEY, JSON.stringify({
     dcID: mainDcId,
     id: currentUserId,
     test: isTest,
@@ -49,12 +81,23 @@ export function storeSession(sessionData: ApiSessionData, currentUserId?: string
   */
 }
 
-export function clearStoredSession() {
+export function clearStoredSession(slot?: number) {
   // [CRMchat] clearing is unsupported
-  return undefined;
+  return;
+  /*
+  if (!slot) {
+    clearStoredLegacySession();
+  }
+
+  localStorage.removeItem(`${SESSION_ACCOUNT_PREFIX}${slot || 1}`);
+}
+
+function clearStoredLegacySession() {
+  // [CRMchat] clearing is unsupported
+  return;
   /*
   [
-    SESSION_USER_KEY,
+    SESSION_LEGACY_USER_KEY,
     'dc',
     ...DC_IDS.map((dcId) => `dc${dcId}_auth_key`),
     ...DC_IDS.map((dcId) => `dc${dcId}_hash`),
@@ -72,7 +115,37 @@ export function loadStoredSession(): Promise<ApiSessionData | undefined> {
     return undefined;
   }
 
-  const userAuth = JSON.parse(localStorage.getItem(SESSION_USER_KEY)!);
+  const slotData = loadSlotSession(ACCOUNT_SLOT);
+
+  if (!slotData) {
+    if (ACCOUNT_SLOT) return undefined;
+    return loadStoredLegacySession();
+  }
+
+  const sessionData: ApiSessionData = {
+    mainDcId: slotData.dcId,
+    keys: DC_IDS.reduce((acc, dcId) => {
+      const key = slotData[`dc${dcId}_auth_key` as const];
+      if (key) {
+        acc[dcId] = key;
+      }
+      return acc;
+    }, {} as Record<number, string>),
+    isTest: slotData.isTest || undefined,
+  };
+
+  return sessionData;
+  */
+}
+
+function loadStoredLegacySession(): Promise<ApiSessionData | undefined> {
+  return requestSessionFromCrmChat();
+  /*
+  if (!hasStoredSession()) {
+    return undefined;
+  }
+
+  const userAuth = JSON.parse(localStorage.getItem(SESSION_LEGACY_USER_KEY) || 'null');
   if (!userAuth) {
     return undefined;
   }
@@ -105,11 +178,27 @@ export function loadStoredSession(): Promise<ApiSessionData | undefined> {
   */
 }
 
+export function loadSlotSession(slot: number | undefined): SharedSessionData | undefined {
+  try {
+    const data = JSON.parse(localStorage.getItem(`${SESSION_ACCOUNT_PREFIX}${slot || 1}`) || '{}') as SharedSessionData;
+    if (!data.dcId) return undefined;
+    return data;
+  } catch (e) {
+    return undefined;
+  }
+}
+
+export function updateSessionUserId(currentUserId: string) {
+  const slotData = loadSlotSession(ACCOUNT_SLOT);
+  if (!slotData) return;
+  storeAccountData(ACCOUNT_SLOT, { userId: currentUserId });
+}
+
 export function importTestSession() {
   const sessionJson = process.env.TEST_SESSION!;
   try {
     const sessionData = JSON.parse(sessionJson) as ApiSessionData & { userId: string };
-    storeSession(sessionData, sessionData.userId);
+    storeLegacySession(sessionData, sessionData.userId);
   } catch (err) {
     if (DEBUG) {
       // eslint-disable-next-line no-console
@@ -118,7 +207,6 @@ export function importTestSession() {
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function checkSessionLocked() {
+export function checkSessionLocked() {
   return localStorage.getItem(IS_SCREEN_LOCKED_CACHE_KEY) === 'true';
 }

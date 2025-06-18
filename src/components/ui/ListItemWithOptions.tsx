@@ -1,5 +1,5 @@
 import type { FC, TeactNode } from '../../lib/teact/teact';
-import React, { memo } from '../../lib/teact/teact';
+import { memo } from '../../lib/teact/teact';
 
 import type { CustomPeer } from '../../types';
 
@@ -72,7 +72,7 @@ const ListItemWithOptions: FC<OwnProps> = ({
       inactive={inactive}
       allowDisabledClick={allowDisabledClick}
       secondaryIcon={shouldRenderLockIcon ? 'lock-badge' : undefined}
-      // eslint-disable-next-line react/jsx-no-bind
+
       onClick={() => handleItemClick(key)}
       ripple={ripple}
     >

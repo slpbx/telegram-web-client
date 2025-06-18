@@ -1,5 +1,4 @@
 import type { FC } from '../../lib/teact/teact';
-import React from '../../lib/teact/teact';
 
 import type { OwnProps } from './BotTrustModal';
 
@@ -11,7 +10,6 @@ const BotTrustModalAsync: FC<OwnProps> = (props) => {
   const { bot } = props;
   const BotTrustModal = useModuleLoader(Bundles.Extra, 'BotTrustModal', !bot);
 
-  // eslint-disable-next-line react/jsx-props-no-spreading
   return BotTrustModal ? <BotTrustModal {...props} /> : undefined;
 };
 

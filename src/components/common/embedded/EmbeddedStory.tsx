@@ -1,5 +1,5 @@
 import type { FC } from '../../../lib/teact/teact';
-import React, { useRef } from '../../../lib/teact/teact';
+import { useRef } from '../../../lib/teact/teact';
 import { getActions } from '../../../global';
 
 import type { ApiPeer, ApiTypeStory } from '../../../api/types';
@@ -47,8 +47,7 @@ const EmbeddedStory: FC<OwnProps> = ({
 
   const lang = useOldLang();
 
-  // eslint-disable-next-line no-null/no-null
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLDivElement>();
   const isIntersecting = useIsIntersecting(ref, observeIntersectionForLoading);
   const isFullStory = story && 'content' in story;
   const isExpiredStory = story && 'isDeleted' in story;

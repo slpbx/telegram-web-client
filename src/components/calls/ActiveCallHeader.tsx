@@ -1,5 +1,5 @@
 import type { FC } from '../../lib/teact/teact';
-import React, { memo, useEffect } from '../../lib/teact/teact';
+import { memo, useEffect } from '../../lib/teact/teact';
 import { getActions, withGlobal } from '../../global';
 
 import type { ApiGroupCall, ApiUser } from '../../api/types';
@@ -29,11 +29,12 @@ const ActiveCallHeader: FC<StateProps> = ({
 
   useEffect(() => {
     document.body.classList.toggle('has-call-header', Boolean(isCallPanelVisible));
-    window.electron?.setTrafficLightPosition(isCallPanelVisible ? 'lowered' : 'standard');
+    const updateButtonPosition = window.electron?.setWindowButtonsPosition || window.electron?.setTrafficLightPosition;
+    updateButtonPosition?.(isCallPanelVisible ? 'lowered' : 'standard');
 
     return () => {
       document.body.classList.toggle('has-call-header', false);
-      window.electron?.setTrafficLightPosition('standard');
+      updateButtonPosition?.('standard');
     };
   }, [isCallPanelVisible]);
 

@@ -1,5 +1,5 @@
 import type { FC } from '../../lib/teact/teact';
-import React, { memo, useRef } from '../../lib/teact/teact';
+import { memo, useRef } from '../../lib/teact/teact';
 
 import type { IconName } from '../../types/icons';
 
@@ -7,6 +7,7 @@ import buildClassName from '../../util/buildClassName';
 import { formatIntegerCompact } from '../../util/textFormat';
 
 import useContextMenuHandlers from '../../hooks/useContextMenuHandlers';
+import useLang from '../../hooks/useLang';
 import useOldLang from '../../hooks/useOldLang';
 
 import Icon from '../common/icons/Icon';
@@ -33,10 +34,10 @@ const ScrollDownButton: FC<OwnProps> = ({
   onReadAll,
   className,
 }) => {
-  const lang = useOldLang();
+  const oldLang = useOldLang();
+  const lang = useLang();
 
-  // eslint-disable-next-line no-null/no-null
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLDivElement>();
   const {
     isContextMenuOpen,
     handleContextMenu,
@@ -52,11 +53,11 @@ const ScrollDownButton: FC<OwnProps> = ({
         className={styles.button}
         onClick={onClick}
         onContextMenu={handleContextMenu}
-        ariaLabel={lang(ariaLabelLang)}
+        ariaLabel={oldLang(ariaLabelLang)}
       >
         <Icon name={icon} className={styles.icon} />
       </Button>
-      {Boolean(unreadCount) && <div className={styles.unreadCount}>{formatIntegerCompact(unreadCount)}</div>}
+      {Boolean(unreadCount) && <div className={styles.unreadCount}>{formatIntegerCompact(lang, unreadCount)}</div>}
       {onReadAll && (
         <Menu
           isOpen={isContextMenuOpen}
@@ -66,7 +67,7 @@ const ScrollDownButton: FC<OwnProps> = ({
           positionX="right"
           positionY="bottom"
         >
-          <MenuItem icon="readchats" onClick={onReadAll}>{lang('MarkAllAsRead')}</MenuItem>
+          <MenuItem icon="readchats" onClick={onReadAll}>{oldLang('MarkAllAsRead')}</MenuItem>
         </Menu>
       )}
     </div>

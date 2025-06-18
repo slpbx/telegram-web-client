@@ -1,18 +1,17 @@
-/* eslint-disable eslint-multitab-tt/set-global-only-variable */
 import type { FC } from '../../lib/teact/teact';
-import React from '../../lib/teact/teact';
 import { getGlobal, setGlobal, withGlobal } from '../../global';
 
 import type { GlobalState } from '../../global/types';
 
 document.ondblclick = () => {
   const value = Math.random();
-  setGlobal({
-    ...getGlobal(),
-    // @ts-ignore
+  let global = getGlobal();
+  global = {
+    ...global,
     bValue: value,
     aValue: value,
-  });
+  } as any;
+  setGlobal(global);
 };
 
 type AStateProps = Pick<GlobalState, 'authState'> & {
@@ -36,13 +35,19 @@ const TestB: FC<BStateProps & BOwnProps> = ({ bValue, aValue, derivedAValue }) =
     <div className="TestB">
       <h2>B</h2>
       <div>
-        bValue = {bValue}
+        bValue =
+        {' '}
+        {bValue}
       </div>
       <div>
-        aValue = {aValue}
+        aValue =
+        {' '}
+        {aValue}
       </div>
       <div>
-        derivedAValue = {derivedAValue}
+        derivedAValue =
+        {' '}
+        {derivedAValue}
       </div>
       {bValue > 0.5 ? (
         <span key="hello" className="hello">Hello</span>
@@ -74,7 +79,9 @@ const TestA: FC<AStateProps> = ({ aValue }) => {
     <div>
       <h1>A</h1>
       <div>
-        aValue = {aValue}
+        aValue =
+        {' '}
+        {aValue}
       </div>
       <TestBContainer aValue={aValue} />
     </div>

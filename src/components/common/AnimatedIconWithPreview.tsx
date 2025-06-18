@@ -1,4 +1,4 @@
-import React, { memo } from '../../lib/teact/teact';
+import { memo } from '../../lib/teact/teact';
 
 import type { OwnProps as AnimatedIconProps } from './AnimatedIcon';
 
@@ -65,7 +65,6 @@ function AnimatedIconWithPreview(props: OwnProps) {
           onLoad={handlePreviewLoad}
         />
       )}
-      {/* eslint-disable-next-line react/jsx-props-no-spreading */}
       <AnimatedIcon {...otherProps} onLoad={handleAnimationReady} />
     </div>
   );

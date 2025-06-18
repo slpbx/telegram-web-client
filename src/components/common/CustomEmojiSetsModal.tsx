@@ -1,5 +1,5 @@
 import type { FC } from '../../lib/teact/teact';
-import React, {
+import {
   memo,
   useMemo,
   useRef,
@@ -42,8 +42,7 @@ const CustomEmojiSetsModal: FC<OwnProps & StateProps> = ({
     return customEmojiSetIds?.map((id) => getGlobal().stickers.setsById[id]);
   }, [customEmojiSetIds]);
 
-  // eslint-disable-next-line no-null/no-null
-  const customEmojiModalRef = useRef<HTMLDivElement>(null);
+  const customEmojiModalRef = useRef<HTMLDivElement>();
   const { observe: observeIntersectionForCovers } = useIntersectionObserver({
     rootRef: customEmojiModalRef, isDisabled: !customEmojiSets,
   });

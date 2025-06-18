@@ -1,5 +1,6 @@
 import type { FC } from '../../../../lib/teact/teact';
-import React, { memo } from '../../../../lib/teact/teact';
+import { memo } from '../../../../lib/teact/teact';
+import { getActions } from '../../../../global';
 
 import { SettingsScreens } from '../../../../types';
 
@@ -16,13 +17,13 @@ import lockPreviewUrl from '../../../../assets/lock.png';
 
 type OwnProps = {
   isActive?: boolean;
-  onScreenSelect: (screen: SettingsScreens) => void;
   onReset: () => void;
 };
 
 const SettingsTwoFaEnabled: FC<OwnProps> = ({
-  isActive, onReset, onScreenSelect,
+  isActive, onReset,
 }) => {
+  const { openSettingsScreen } = getActions();
   const lang = useOldLang();
 
   useHistoryBack({
@@ -48,22 +49,22 @@ const SettingsTwoFaEnabled: FC<OwnProps> = ({
       <div className="settings-item">
         <ListItem
           icon="edit"
-          // eslint-disable-next-line react/jsx-no-bind
-          onClick={() => onScreenSelect(SettingsScreens.TwoFaChangePasswordCurrent)}
+
+          onClick={() => openSettingsScreen({ screen: SettingsScreens.TwoFaChangePasswordCurrent })}
         >
           {lang('ChangePassword')}
         </ListItem>
         <ListItem
           icon="password-off"
-          // eslint-disable-next-line react/jsx-no-bind
-          onClick={() => onScreenSelect(SettingsScreens.TwoFaTurnOff)}
+
+          onClick={() => openSettingsScreen({ screen: SettingsScreens.TwoFaTurnOff })}
         >
           {lang('TurnPasswordOff')}
         </ListItem>
         <ListItem
           icon="email"
-          // eslint-disable-next-line react/jsx-no-bind
-          onClick={() => onScreenSelect(SettingsScreens.TwoFaRecoveryEmailCurrentPassword)}
+
+          onClick={() => openSettingsScreen({ screen: SettingsScreens.TwoFaRecoveryEmailCurrentPassword })}
         >
           {lang('SetRecoveryEmail')}
         </ListItem>

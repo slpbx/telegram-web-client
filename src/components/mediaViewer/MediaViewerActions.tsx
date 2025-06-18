@@ -1,5 +1,5 @@
 import type { FC } from '../../lib/teact/teact';
-import React, { memo, useMemo } from '../../lib/teact/teact';
+import { memo, useMemo } from '../../lib/teact/teact';
 import { getActions, withGlobal } from '../../global';
 
 import type { ApiChat } from '../../api/types';
@@ -13,7 +13,6 @@ import {
   getMediaFilename,
   getMediaFormat,
   getMediaHash,
-  isUserId,
 } from '../../global/helpers';
 import {
   selectActiveDownloads,
@@ -23,6 +22,7 @@ import {
   selectIsMessageProtected,
   selectTabState,
 } from '../../global/selectors';
+import { isUserId } from '../../util/entities/ids';
 import getViewableMedia from './helpers/getViewableMedia';
 
 import useAppLayout from '../../hooks/useAppLayout';
@@ -134,7 +134,7 @@ const MediaViewerActions: FC<OwnProps & StateProps> = ({
   const handleUpdate = useLastCallback(() => {
     if (item?.type !== 'avatar') return;
     const { avatarOwner, profilePhotos, mediaIndex } = item;
-    const avatarPhoto = profilePhotos?.photos[mediaIndex]!;
+    const avatarPhoto = profilePhotos?.photos[mediaIndex];
     if (isUserId(avatarOwner.id)) {
       updateProfilePhoto({ photo: avatarPhoto });
     } else {
@@ -175,7 +175,7 @@ const MediaViewerActions: FC<OwnProps & StateProps> = ({
         onClose={closeDeleteModal}
         onConfirm={onBeforeDelete}
         profileId={item.avatarOwner.id}
-        photo={item.profilePhotos.photos[item.mediaIndex!]}
+        photo={item.profilePhotos.photos[item.mediaIndex]}
       />
     ) : undefined;
   }

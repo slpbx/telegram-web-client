@@ -1,5 +1,5 @@
 import type { FC } from '../../../lib/teact/teact';
-import React, {
+import {
   memo,
   useMemo,
   useRef,
@@ -103,8 +103,7 @@ const LeftSearch: FC<OwnProps & StateProps> = ({
     onBack: onReset,
   });
 
-  // eslint-disable-next-line no-null/no-null
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>();
   const handleKeyDown = useKeyboardListNavigation(containerRef, isActive, undefined, '.ListItem-button', true);
 
   return (

@@ -1,5 +1,5 @@
 import type { FC } from '../../../lib/teact/teact';
-import React, {
+import {
   memo, useCallback, useMemo, useState,
 } from '../../../lib/teact/teact';
 import { getActions } from '../../../global';
@@ -21,25 +21,24 @@ type OwnProps = {
   currentScreen: SettingsScreens;
   editedFolderId?: number;
   onReset: () => void;
-  onScreenSelect: (screen: SettingsScreens) => void;
 };
 
 const SettingsHeader: FC<OwnProps> = ({
   currentScreen,
   editedFolderId,
   onReset,
-  onScreenSelect,
 }) => {
   const {
     signOut,
     openDeleteChatFolderModal,
+    openSettingsScreen,
   } = getActions();
 
   const { isMobile } = useAppLayout();
   const [isSignOutDialogOpen, setIsSignOutDialogOpen] = useState(false);
 
   const handleMultiClick = useMultiClick(5, () => {
-    onScreenSelect(SettingsScreens.Experimental);
+    openSettingsScreen({ screen: SettingsScreens.Experimental });
   });
 
   const openSignOutConfirmation = useCallback(() => {
@@ -251,7 +250,7 @@ const SettingsHeader: FC<OwnProps> = ({
           <h3>
             {oldLang(
               currentScreen === SettingsScreens.FoldersIncludedChats
-                  || currentScreen === SettingsScreens.FoldersIncludedChatsFromChatList
+              || currentScreen === SettingsScreens.FoldersIncludedChatsFromChatList
                 ? 'FilterInclude' : 'FilterExclude',
             )}
           </h3>
@@ -269,8 +268,8 @@ const SettingsHeader: FC<OwnProps> = ({
               ripple={!isMobile}
               size="smaller"
               color="translucent"
-              // eslint-disable-next-line react/jsx-no-bind
-              onClick={() => onScreenSelect(SettingsScreens.EditProfile)}
+
+              onClick={() => openSettingsScreen({ screen: SettingsScreens.EditProfile })}
               ariaLabel={oldLang('lng_settings_information')}
             >
               <Icon name="edit" />

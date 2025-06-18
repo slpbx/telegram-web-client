@@ -1,4 +1,4 @@
-import React, { type TeactNode } from '../../../../lib/teact/teact';
+import { type TeactNode } from '../../../../lib/teact/teact';
 import { getActions } from '../../../../global';
 
 import type { ApiMessage } from '../../../../api/types';
@@ -14,8 +14,8 @@ import type {
 import type { LangFn } from '../../../../util/localization';
 
 import { getMessageContent } from '../../../../global/helpers';
+import { IS_SAFARI } from '../../../../util/browser/windowEnvironment';
 import buildClassName from '../../../../util/buildClassName';
-import { IS_SAFARI } from '../../../../util/windowEnvironment';
 import renderText from '../../../common/helpers/renderText';
 
 import Link from '../../../ui/Link';
@@ -83,7 +83,7 @@ export function renderPeerLink(peerId: string | undefined, text: string, asPrevi
   return (
     <Link
       className={buildClassName(styles.peerLink, styles.strong)}
-      // eslint-disable-next-line react/jsx-no-bind
+
       onClick={(e) => {
         e.stopPropagation();
         getActions().openChat({ id: peerId });
@@ -101,7 +101,7 @@ export function renderMessageLink(targetMessage: ApiMessage, text: TeactNode, as
   return (
     <Link
       className={styles.messageLink}
-      // eslint-disable-next-line react/jsx-no-bind
+
       onClick={(e) => {
         e.stopPropagation();
         getActions().focusMessage({ chatId: targetMessage.chatId, messageId: targetMessage.id });

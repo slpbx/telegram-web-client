@@ -1,5 +1,5 @@
 import type { FC, TeactNode } from '../../../lib/teact/teact';
-import React, { memo, useMemo } from '../../../lib/teact/teact';
+import { memo, useMemo } from '../../../lib/teact/teact';
 
 import type { ApiKeyboardButton, ApiMessage } from '../../../api/types';
 import type { ActionPayloads } from '../../../global/types';
@@ -64,7 +64,7 @@ const InlineButtons: FC<OwnProps> = ({ message, onClick }) => {
               size="tiny"
               ripple
               disabled={button.type === 'unsupported'}
-              // eslint-disable-next-line react/jsx-no-bind
+
               onClick={() => onClick({ chatId: message.chatId, messageId: message.id, button })}
             >
               <span className="inline-button-text">

@@ -1,5 +1,5 @@
 import type { FC } from '../../../lib/teact/teact';
-import React, {
+import {
   memo, useCallback, useRef, useState,
 } from '../../../lib/teact/teact';
 import { getActions } from '../../../global';
@@ -24,8 +24,7 @@ const RatePhoneCallModal: FC<OwnProps> = ({
 }) => {
   const { closeCallRatingModal, setCallRating } = getActions();
 
-  // eslint-disable-next-line no-null/no-null
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>();
 
   const lang = useOldLang();
   const [rating, setRating] = useState<number | undefined>();

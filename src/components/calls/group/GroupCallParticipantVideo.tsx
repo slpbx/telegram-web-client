@@ -1,5 +1,5 @@
 import type { FC } from '../../../lib/teact/teact';
-import React, {
+import {
   memo, useCallback, useEffect, useMemo, useRef, useState,
 } from '../../../lib/teact/teact';
 import { withGlobal } from '../../../global';
@@ -14,9 +14,9 @@ import { requestMutation } from '../../../lib/fasterdom/fasterdom';
 import { getUserStreams, THRESHOLD } from '../../../lib/secret-sauce';
 import { selectChat, selectUser } from '../../../global/selectors';
 import { animate } from '../../../util/animation';
+import { IS_CANVAS_FILTER_SUPPORTED } from '../../../util/browser/windowEnvironment';
 import buildClassName from '../../../util/buildClassName';
 import { fastRaf } from '../../../util/schedulers';
-import { IS_CANVAS_FILTER_SUPPORTED } from '../../../util/windowEnvironment';
 import formatGroupCallVolume from './helpers/formatGroupCallVolume';
 
 import useInterval from '../../../hooks/schedulers/useInterval';
@@ -63,12 +63,9 @@ const GroupCallParticipantVideo: FC<OwnProps & StateProps> = ({
 }) => {
   const lang = useOldLang();
 
-  // eslint-disable-next-line no-null/no-null
-  const thumbnailRef = useRef<HTMLCanvasElement>(null);
-  // eslint-disable-next-line no-null/no-null
-  const videoRef = useRef<HTMLVideoElement>(null);
-  // eslint-disable-next-line no-null/no-null
-  const videoFallbackRef = useRef<HTMLCanvasElement>(null);
+  const thumbnailRef = useRef<HTMLCanvasElement>();
+  const videoRef = useRef<HTMLVideoElement>();
+  const videoFallbackRef = useRef<HTMLCanvasElement>();
 
   const {
     x, y, width, height, noAnimate, isRemoved,
@@ -202,10 +199,8 @@ const GroupCallParticipantVideo: FC<OwnProps & StateProps> = ({
     };
   }, [stream]);
 
-  // eslint-disable-next-line no-null/no-null
-  const ref = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line no-null/no-null
-  const menuRef = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLDivElement>();
+  const menuRef = useRef<HTMLDivElement>();
 
   const {
     isContextMenuOpen,

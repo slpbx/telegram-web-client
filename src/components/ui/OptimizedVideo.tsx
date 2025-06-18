@@ -1,4 +1,6 @@
-import React, { memo, useMemo, useRef } from '../../lib/teact/teact';
+import type { ElementRef } from '../../lib/teact/teact';
+import type React from '../../lib/teact/teact';
+import { memo, useMemo, useRef } from '../../lib/teact/teact';
 
 import useBuffering from '../../hooks/useBuffering';
 import useLastCallback from '../../hooks/useLastCallback';
@@ -10,7 +12,7 @@ type VideoProps = React.DetailedHTMLProps<React.VideoHTMLAttributes<HTMLVideoEle
 
 type OwnProps =
   {
-    ref?: React.RefObject<HTMLVideoElement>;
+    ref?: ElementRef<HTMLVideoElement>;
     isPriority?: boolean;
     canPlay: boolean;
     children?: React.ReactNode;
@@ -29,8 +31,7 @@ function OptimizedVideo({
   onTimeUpdate,
   ...restProps
 }: OwnProps) {
-  // eslint-disable-next-line no-null/no-null
-  const localRef = useRef<HTMLVideoElement>(null);
+  const localRef = useRef<HTMLVideoElement>();
   if (!ref) {
     ref = localRef;
   }
@@ -79,7 +80,7 @@ function OptimizedVideo({
   useVideoCleanup(ref, mergedOtherBufferingHandlers);
 
   return (
-    // eslint-disable-next-line react/jsx-props-no-spreading
+
     <video ref={ref} autoPlay {...restProps} {...mergedOtherBufferingHandlers} onPlaying={handlePlaying}>
       {children}
     </video>

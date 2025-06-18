@@ -1,4 +1,5 @@
-import React from '../../../lib/teact/teact';
+import type { ElementRef } from '../../../lib/teact/teact';
+import type React from '../../../lib/teact/teact';
 import { getActions } from '../../../global';
 
 import type { ApiFormattedText, ApiMessageEntity } from '../../../api/types';
@@ -46,7 +47,6 @@ export function renderTextWithEntities({
   cacheBuster,
   forcePlayback,
   noCustomEmojiPlayback,
-  focusedQuote,
   isInSelectMode,
   chatId,
   messageId,
@@ -64,12 +64,11 @@ export function renderTextWithEntities({
   observeIntersectionForLoading?: ObserveFn;
   observeIntersectionForPlaying?: ObserveFn;
   withTranslucentThumbs?: boolean;
-  sharedCanvasRef?: React.RefObject<HTMLCanvasElement>;
-  sharedCanvasHqRef?: React.RefObject<HTMLCanvasElement>;
+  sharedCanvasRef?: ElementRef<HTMLCanvasElement>;
+  sharedCanvasHqRef?: ElementRef<HTMLCanvasElement>;
   cacheBuster?: string;
   forcePlayback?: boolean;
   noCustomEmojiPlayback?: boolean;
-  focusedQuote?: string;
   isInSelectMode?: boolean;
   chatId?: string;
   messageId?: number;
@@ -80,7 +79,6 @@ export function renderTextWithEntities({
     return renderMessagePart({
       content: text,
       highlight,
-      focusedQuote,
       emojiSize,
       shouldRenderAsHtml,
       asPreview,
@@ -115,11 +113,10 @@ export function renderTextWithEntities({
         renderResult.push(...renderMessagePart({
           content: textBefore,
           highlight,
-          focusedQuote,
           emojiSize,
           shouldRenderAsHtml,
           asPreview,
-        }) as TextPart[]);
+        }));
       }
     }
 
@@ -166,7 +163,6 @@ export function renderTextWithEntities({
         entityContent,
         nestedEntityContent,
         highlight,
-        focusedQuote,
         containerId,
         asPreview,
         isProtected,
@@ -203,11 +199,10 @@ export function renderTextWithEntities({
         renderResult.push(...renderMessagePart({
           content: textAfter,
           highlight,
-          focusedQuote,
           emojiSize,
           shouldRenderAsHtml,
           asPreview,
-        }) as TextPart[]);
+        }));
       }
     }
 
@@ -245,7 +240,7 @@ export function getTextWithEntitiesAsHtml(formattedText?: ApiFormattedText) {
     text,
     entities,
     shouldRenderAsHtml: true,
-  });
+  }) as string[];
 
   if (Array.isArray(result)) {
     return result.join('');
@@ -261,7 +256,7 @@ function renderMessagePart({
   emojiSize,
   shouldRenderAsHtml,
   asPreview,
-} : {
+}: {
   content: TextPart | TextPart[];
   highlight?: string;
   focusedQuote?: string;
@@ -302,17 +297,67 @@ function renderMessagePart({
     filters.push('highlight');
     params.highlight = highlight;
   }
-  if (focusedQuote) {
-    filters.push('quote');
-    params.quote = focusedQuote;
-  }
 
   return renderText(content, filters, params);
 }
 
+export function insertTextEntity(entities: ApiMessageEntity[], newEntity: ApiMessageEntity) {
+  const resultEntities: ApiMessageEntity[] = [];
+
+  const newEntityStart = newEntity.offset;
+  const newEntityEnd = newEntity.offset + newEntity.length;
+
+  for (const existingEntity of entities) {
+    const existingEntityStart = existingEntity.offset;
+    const existingEntityEnd = existingEntity.offset + existingEntity.length;
+    // Push as is if edges do not overlap
+    if (existingEntityEnd <= newEntityStart
+      || existingEntityStart > newEntityEnd
+      || (existingEntityStart > newEntityStart
+        && existingEntityEnd < newEntityEnd)
+      || (existingEntityStart === newEntityStart && existingEntityEnd === newEntityEnd)) {
+      resultEntities.push(existingEntity);
+      continue;
+    }
+
+    // If start edge overlaps
+    if (existingEntityStart < newEntityStart && existingEntityEnd > newEntityStart) {
+      // Split entity in two
+      resultEntities.push({
+        ...existingEntity,
+        length: newEntityStart - existingEntityStart,
+      });
+      resultEntities.push({
+        ...existingEntity,
+        offset: newEntityStart,
+        length: existingEntityEnd - newEntityStart,
+      });
+    }
+
+    // If end edge overlaps
+    if (existingEntityStart < newEntityEnd
+      && existingEntityEnd > newEntityEnd) {
+      // Split entity in two
+      resultEntities.push({
+        ...existingEntity,
+        offset: newEntityEnd,
+        length: existingEntityEnd - newEntityStart - newEntity.length,
+      });
+      resultEntities.push({
+        ...existingEntity,
+        length: newEntityEnd - existingEntityStart,
+      });
+    }
+  }
+
+  resultEntities.push(newEntity);
+  // Sort entities by offset, longer entities first
+  return resultEntities.sort((a, b) => a.offset - b.offset || b.length - a.length);
+}
+
 // Organize entities in a tree-like structure to better represent how the text will be displayed
 function organizeEntities(entities: ApiMessageEntity[]) {
-  const organizedEntityIndexes: Set<number> = new Set();
+  const organizedEntityIndexes = new Set<number>();
   const organizedEntities: IOrganizedEntity[] = [];
 
   entities.forEach((entity, index) => {
@@ -381,7 +426,6 @@ function processEntity({
   entityContent,
   nestedEntityContent,
   highlight,
-  focusedQuote,
   containerId,
   asPreview,
   isProtected,
@@ -399,7 +443,7 @@ function processEntity({
   messageId,
   threadId,
   maxTimestamp,
-} : {
+}: {
   entity: ApiMessageEntity;
   entityContent: TextPart;
   nestedEntityContent: TextPart[];
@@ -412,8 +456,8 @@ function processEntity({
   observeIntersectionForPlaying?: ObserveFn;
   withTranslucentThumbs?: boolean;
   emojiSize?: number;
-  sharedCanvasRef?: React.RefObject<HTMLCanvasElement>;
-  sharedCanvasHqRef?: React.RefObject<HTMLCanvasElement>;
+  sharedCanvasRef?: ElementRef<HTMLCanvasElement>;
+  sharedCanvasHqRef?: ElementRef<HTMLCanvasElement>;
   cacheBuster?: string;
   forcePlayback?: boolean;
   noCustomEmojiPlayback?: boolean;
@@ -430,7 +474,6 @@ function processEntity({
     return renderMessagePart({
       content: renderedContent,
       highlight,
-      focusedQuote,
       emojiSize,
       asPreview,
     });
@@ -613,6 +656,10 @@ function processEntity({
           noPlay={noCustomEmojiPlayback}
         />
       );
+    case ApiMessageEntityTypes.QuoteFocus:
+      return (
+        <span className="matching-text-highlight is-quote">{renderNestedMessagePart()}</span>
+      );
     default:
       return renderNestedMessagePart();
   }
@@ -629,8 +676,8 @@ function processEntityAsHtml(
   const content = entity.type === ApiMessageEntityTypes.Pre ? (entityContent as string).trimEnd() : entityContent;
 
   const renderedContent = nestedEntityContent.length
-    ? nestedEntityContent.join('')
-    : renderText(content, ['escape_html', 'emoji_html', 'br_html']).join('');
+    ? (nestedEntityContent as string[]).join('')
+    : (renderText(content, ['escape_html', 'emoji_html', 'br_html']) as string[]).join('');
 
   if (!rawEntityText) {
     return renderedContent;
@@ -646,7 +693,8 @@ function processEntityAsHtml(
     case ApiMessageEntityTypes.Code:
       return `<code class="text-entity-code">${renderedContent}</code>`;
     case ApiMessageEntityTypes.Pre:
-      return `\`\`\`${renderText(entity.language || '', ['escape_html'])}<br/>${renderedContent}<br/>\`\`\`<br/>`;
+      // eslint-disable-next-line @stylistic/max-len
+      return `\`\`\`${renderText(entity.language || '', ['escape_html'])[0] as string}<br/>${renderedContent}<br/>\`\`\`<br/>`;
     case ApiMessageEntityTypes.Strike:
       return `<del>${renderedContent}</del>`;
     case ApiMessageEntityTypes.MentionName:

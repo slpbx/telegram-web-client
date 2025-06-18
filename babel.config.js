@@ -1,22 +1,27 @@
-const isTest = process.env.APP_ENV === 'test';
-const isMocked = Boolean(process.env.APP_MOCKED_CLIENT);
+export default function (api) {
+  api.cache(true);
 
-module.exports = {
-  presets: [
-    [
-      '@babel/typescript',
-    ],
-    [
-      '@babel/preset-env',
-    ],
+  const isTest = process.env.APP_ENV === 'test';
+  const isMocked = Boolean(process.env.APP_MOCKED_CLIENT);
+
+  const presets = [
+    '@babel/typescript',
+    '@babel/preset-env',
     [
       '@babel/preset-react',
+      {
+        runtime: 'automatic',
+        importSource: '@teact',
+      },
     ],
-  ],
-  plugins: [
-    '@babel/plugin-transform-class-properties',
-    '@babel/plugin-syntax-nullish-coalescing-operator',
-    '@babel/plugin-transform-logical-assignment-operators',
+  ];
+
+  const plugins = [
     ...(isTest && !isMocked ? ['babel-plugin-transform-import-meta'] : []),
-  ],
-};
+  ];
+
+  return {
+    presets,
+    plugins,
+  };
+}

@@ -1,6 +1,6 @@
 import type { ChangeEvent } from 'react';
 import type { FC } from '../../../lib/teact/teact';
-import React, {
+import {
   memo, useEffect, useMemo, useRef, useState,
 } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
@@ -167,11 +167,10 @@ const ManageBot: FC<OwnProps & StateProps> = ({
   });
 
   const handleChangeSettings = useLastCallback(() => {
-    startBotFatherConversation({ param: `${username}` });
+    startBotFatherConversation({ param: username! });
   });
 
-  // eslint-disable-next-line no-null/no-null
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>();
   const isSuggestRef = useRef(false);
 
   const handleSelectAvatar = useLastCallback((file: File) => {

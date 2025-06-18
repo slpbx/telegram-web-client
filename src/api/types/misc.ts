@@ -23,6 +23,7 @@ export interface ApiInitialArgs {
   shouldDebugExportedSenders?: boolean;
   langCode: string;
   isTestServerRequested?: boolean;
+  accountIds?: string[];
 }
 
 export interface ApiOnProgress {
@@ -102,7 +103,7 @@ export interface ApiWebSession {
 
 export interface ApiSessionData {
   mainDcId: number;
-  keys: Record<number, string | number[]>;
+  keys: Record<number, string>;
   isTest?: true;
 }
 
@@ -242,6 +243,12 @@ export interface ApiAppConfig {
   starRefStartPrefixes?: string[];
   tonExplorerUrl?: string;
   savedGiftPinLimit?: number;
+  freezeSinceDate?: number;
+  freezeUntilDate?: number;
+  freezeAppealUrl?: string;
+  starsStargiftResaleAmountMin?: number;
+  starsStargiftResaleAmountMax?: number;
+  starsStargiftResaleCommissionPermille?: number;
 }
 
 export interface ApiConfig {
@@ -259,13 +266,11 @@ export interface ApiConfig {
 export type ApiPeerColorSet = string[];
 
 export interface ApiPeerColors {
-  general: {
-    [key: number]: {
-      isHidden?: true;
-      colors?: ApiPeerColorSet;
-      darkColors?: ApiPeerColorSet;
-    };
-  };
+  general: Record<number, {
+    isHidden?: true;
+    colors?: ApiPeerColorSet;
+    darkColors?: ApiPeerColorSet;
+  }>;
   generalHash?: number;
 }
 
@@ -343,10 +348,11 @@ export type ApiLimitType =
   | 'chatlistInvites'
   | 'chatlistJoined'
   | 'recommendedChannels'
-  | 'savedDialogsPinned';
+  | 'savedDialogsPinned'
+  | 'moreAccounts';
 
 export type ApiLimitTypeWithModal = Exclude<ApiLimitType, (
-  'captionLength' | 'aboutLength' | 'stickersFaved' | 'savedGifs' | 'recommendedChannels'
+  'captionLength' | 'aboutLength' | 'stickersFaved' | 'savedGifs' | 'recommendedChannels' | 'moreAccounts'
 )>;
 
 export type ApiLimitTypeForPromo = Exclude<ApiLimitType,

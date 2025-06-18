@@ -4,6 +4,11 @@ import type { LangCode } from '../../../types';
 import type { ActionReturnType, GlobalState } from '../../types';
 
 import { requestMutation } from '../../../lib/fasterdom/fasterdom';
+import { IS_MULTIACCOUNT_SUPPORTED } from '../../../util/browser/globalEnvironment';
+import {
+  IS_ANDROID, IS_ELECTRON, IS_IOS, IS_LINUX,
+  IS_MAC_OS, IS_SAFARI, IS_TOUCH_ENV, IS_WINDOWS,
+} from '../../../util/browser/windowEnvironment';
 import { getCurrentTabId } from '../../../util/establishMultitabRole';
 import { subscribe, unsubscribe } from '../../../util/notifications';
 import { oldSetLanguage } from '../../../util/oldLangProvider';
@@ -13,14 +18,10 @@ import { hasStoredSession, storeSession } from '../../../util/sessions';
 import switchTheme from '../../../util/switchTheme';
 import { getSystemTheme, setSystemThemeChangeCallback } from '../../../util/systemTheme';
 import { startWebsync, stopWebsync } from '../../../util/websync';
-import {
-  IS_ANDROID, IS_ELECTRON, IS_IOS, IS_LINUX,
-  IS_MAC_OS, IS_SAFARI, IS_TOUCH_ENV, IS_WINDOWS,
-} from '../../../util/windowEnvironment';
 import { callApi } from '../../../api/gramjs';
 import { clearCaching, setupCaching } from '../../cache';
 import { addActionHandler, getGlobal, setGlobal } from '../../index';
-import { replaceSettings } from '../../reducers';
+import { updateSharedSettings } from '../../reducers';
 import { updateTabState } from '../../reducers/tabs';
 import {
   selectCanAnimateInterface,
@@ -29,16 +30,17 @@ import {
   selectTabState,
   selectTheme,
 } from '../../selectors';
+import { selectSharedSettings } from '../../selectors/sharedState';
+import { destroySharedStatePort, initSharedState } from '../../shared/sharedStateConnector';
 
 const HISTORY_ANIMATION_DURATION = 450;
 
 setSystemThemeChangeCallback((theme) => {
-  // eslint-disable-next-line eslint-multitab-tt/no-immediate-global
   let global = getGlobal();
 
-  if (!global.isInited || !global.settings.byKey.shouldUseSystemTheme) return;
+  if (!global.isInited || !selectSharedSettings(global).shouldUseSystemTheme) return;
 
-  global = replaceSettings(global, { theme });
+  global = updateSharedSettings(global, { theme });
   setGlobal(global);
 });
 
@@ -59,13 +61,14 @@ addActionHandler('switchMultitabRole', async (global, actions, payload): Promise
     void unsubscribe();
     actions.destroyConnection();
     stopWebsync();
+    destroySharedStatePort();
     clearCaching();
     actions.onSomeTabSwitchedMultitabRole();
   } else {
     if (global.passcode.hasPasscode && !global.passcode.isScreenLocked) {
       const { sessionJson } = await decryptSessionByCurrentHash();
       const session = JSON.parse(sessionJson);
-      storeSession(session, session.userId);
+      storeSession(session);
     }
 
     if (hasStoredSession()) {
@@ -85,6 +88,9 @@ addActionHandler('switchMultitabRole', async (global, actions, payload): Promise
     }
 
     startWebsync();
+    if (IS_MULTIACCOUNT_SUPPORTED) {
+      initSharedState(global.sharedState);
+    }
   }
 });
 
@@ -92,7 +98,7 @@ addActionHandler('onSomeTabSwitchedMultitabRole', async (global): Promise<void> 
   if (global.passcode.hasPasscode && !global.passcode.isScreenLocked) {
     const { sessionJson } = await decryptSessionByCurrentHash();
     const session = JSON.parse(sessionJson);
-    storeSession(session, session.userId);
+    storeSession(session);
   }
 
   callApi('broadcastLocalDbUpdateFull');
@@ -130,7 +136,7 @@ addCallback((global: GlobalState) => {
     shouldInit: false,
   }, tabState.id);
 
-  const { messageTextSize, language } = global.settings.byKey;
+  const { messageTextSize, language, shouldUseSystemTheme } = selectSharedSettings(global);
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const globalTheme = selectTheme(global);
@@ -175,7 +181,7 @@ addCallback((global: GlobalState) => {
 
   switchTheme(theme, canAnimate);
   // Make sure global has the latest theme. Will cause `switchTheme` on change
-  global = replaceSettings(global, { theme });
+  global = updateSharedSettings(global, { theme });
 
   startWebsync();
 
@@ -192,7 +198,7 @@ addActionHandler('setInstallPrompt', (global, actions, payload): ActionReturnTyp
 });
 
 addActionHandler('setIsUiReady', (global, actions, payload): ActionReturnType => {
-  const { uiReadyState, tabId = getCurrentTabId() } = payload!;
+  const { uiReadyState, tabId = getCurrentTabId() } = payload;
 
   if (uiReadyState === 2) {
     requestMutation(() => {
@@ -206,7 +212,7 @@ addActionHandler('setIsUiReady', (global, actions, payload): ActionReturnType =>
 });
 
 addActionHandler('setAuthPhoneNumber', (global, actions, payload): ActionReturnType => {
-  const { phoneNumber } = payload!;
+  const { phoneNumber } = payload;
 
   return {
     ...global,
@@ -217,7 +223,7 @@ addActionHandler('setAuthPhoneNumber', (global, actions, payload): ActionReturnT
 addActionHandler('setAuthRememberMe', (global, actions, payload): ActionReturnType => {
   return {
     ...global,
-    authRememberMe: Boolean(payload),
+    authRememberMe: Boolean(payload.value),
   };
 });
 

@@ -1,5 +1,5 @@
 import type { FC } from '../../../lib/teact/teact';
-import React, {
+import {
   memo, useEffect, useMemo, useState,
 } from '../../../lib/teact/teact';
 import { getActions, getGlobal, withGlobal } from '../../../global';
@@ -39,7 +39,6 @@ import {
   isChatGroup,
   isMessageLocal,
   isOwnMessage,
-  isUserId,
   isUserRightBanned,
 } from '../../../global/helpers';
 import {
@@ -74,6 +73,7 @@ import {
 } from '../../../global/selectors';
 import buildClassName from '../../../util/buildClassName';
 import { copyTextToClipboard } from '../../../util/clipboard';
+import { isUserId } from '../../../util/entities/ids';
 import { getSelectionAsFormattedText } from './helpers/getSelectionAsFormattedText';
 import { isSelectionRangeInsideMessage } from './helpers/isSelectionRangeInsideMessage';
 
@@ -159,6 +159,7 @@ type StateProps = {
 };
 
 const selection = window.getSelection();
+const UNQUOTABLE_OFFSET = -1;
 
 const ContextMenuContainer: FC<OwnProps & StateProps> = ({
   threadId,
@@ -272,7 +273,7 @@ const ContextMenuContainer: FC<OwnProps & StateProps> = ({
   const [isMenuOpen, setIsMenuOpen] = useState(true);
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
   const [isClosePollDialogOpen, openClosePollDialog, closeClosePollDialog] = useFlag();
-  const [canQuoteSelection, setCanQuoteSelection] = useState(false);
+  const [selectionQuoteOffset, setSelectionQuoteOffset] = useState(UNQUOTABLE_OFFSET);
   const [requestCalendar, calendar] = useSchedule(canScheduleUntilOnline, onClose, message.date);
 
   // `undefined` indicates that emoji are present and loading
@@ -349,7 +350,7 @@ const ContextMenuContainer: FC<OwnProps & StateProps> = ({
 
   useEffect(() => {
     if (isMessageTranslated) {
-      setCanQuoteSelection(false);
+      setSelectionQuoteOffset(UNQUOTABLE_OFFSET);
       return;
     }
 
@@ -359,18 +360,22 @@ const ContextMenuContainer: FC<OwnProps & StateProps> = ({
       && isSelectionRangeInsideMessage(selectionRange);
 
     if (!isMessageTextSelected) {
-      setCanQuoteSelection(false);
+      setSelectionQuoteOffset(UNQUOTABLE_OFFSET);
       return;
     }
 
     const selectionText = getSelectionAsFormattedText(selectionRange);
 
-    const messageText = message.content.text!.text!.replace(/\u00A0/g, ' ');
+    const messageText = message.content.text!.text.replace(/\u00A0/g, ' ');
 
-    setCanQuoteSelection(
-      selectionText.text.trim().length > 0
-      && messageText.includes(selectionText.text),
-    );
+    const canQuote = selectionText.text.trim().length > 0
+      && messageText.includes(selectionText.text);
+    if (!canQuote) {
+      setSelectionQuoteOffset(UNQUOTABLE_OFFSET);
+      return;
+    }
+
+    setSelectionQuoteOffset(selectionRange.startOffset);
   }, [
     selectionRange, selectionRange?.collapsed, selectionRange?.startOffset, selectionRange?.endOffset,
     isMessageTranslated, message.content.text,
@@ -400,13 +405,17 @@ const ContextMenuContainer: FC<OwnProps & StateProps> = ({
   });
 
   const handleReply = useLastCallback(() => {
-    const quoteText = canQuoteSelection && selectionRange ? getSelectionAsFormattedText(selectionRange) : undefined;
+    const quoteText = selectionQuoteOffset !== UNQUOTABLE_OFFSET && selectionRange
+      ? getSelectionAsFormattedText(selectionRange) : undefined;
     if (!canReplyInChat) {
-      openReplyMenu({ fromChatId: message.chatId, messageId: message.id, quoteText });
+      openReplyMenu({
+        fromChatId: message.chatId, messageId: message.id, quoteText, quoteOffset: selectionQuoteOffset,
+      });
     } else {
       updateDraftReplyInfo({
         replyToMsgId: message.id,
         quoteText,
+        quoteOffset: selectionQuoteOffset,
         replyToPeerId: undefined,
       });
     }
@@ -647,7 +656,7 @@ const ContextMenuContainer: FC<OwnProps & StateProps> = ({
         canSendNow={canSendNow}
         canReschedule={canReschedule}
         canReply={canReply}
-        canQuote={canQuoteSelection}
+        canQuote={selectionQuoteOffset !== UNQUOTABLE_OFFSET}
         canDelete={canDelete}
         canPin={canPin}
         canReport={canReport}
@@ -798,7 +807,7 @@ export default memo(withGlobal<OwnProps>(
     const canSendText = chat && !isUserRightBanned(chat, 'sendPlain', chatFullInfo);
 
     const canReplyInChat = chat && threadId ? getCanPostInChat(chat, topic, isMessageThread, chatFullInfo)
-     && canSendText : false;
+      && canSendText : false;
 
     const isLocal = isMessageLocal(message);
     const hasTtl = hasMessageTtl(message);

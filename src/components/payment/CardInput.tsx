@@ -1,5 +1,5 @@
 import type { FC } from '../../lib/teact/teact';
-import React, {
+import {
   memo, useCallback, useEffect,
   useRef, useState,
 } from '../../lib/teact/teact';
@@ -26,10 +26,9 @@ export type OwnProps = {
   onChange: (value: string) => void;
 };
 
-const CardInput : FC<OwnProps> = ({ value, error, onChange }) => {
+const CardInput: FC<OwnProps> = ({ value, error, onChange }) => {
   const lang = useOldLang();
-  // eslint-disable-next-line no-null/no-null
-  const cardNumberRef = useRef<HTMLInputElement>(null);
+  const cardNumberRef = useRef<HTMLInputElement>();
 
   useFocusAfterAnimation(cardNumberRef);
 

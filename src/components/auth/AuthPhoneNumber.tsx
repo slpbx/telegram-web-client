@@ -1,7 +1,8 @@
 import type { ChangeEvent } from 'react';
 import type { FC } from '../../lib/teact/teact';
-import React, {
-  memo, useCallback, useEffect, useLayoutEffect, useRef, useState,
+import type React from '../../lib/teact/teact';
+import {
+  memo, useEffect, useLayoutEffect, useMemo, useRef, useState,
 } from '../../lib/teact/teact';
 import { getActions, withGlobal } from '../../global';
 
@@ -9,18 +10,23 @@ import type { ApiCountryCode } from '../../api/types';
 import type { GlobalState } from '../../global/types';
 
 import { requestMeasure } from '../../lib/fasterdom/fasterdom';
+import { IS_SAFARI, IS_TOUCH_ENV } from '../../util/browser/windowEnvironment';
 import { preloadImage } from '../../util/files';
 import preloadFonts from '../../util/fonts';
 import { pick } from '../../util/iteratees';
+import { getAccountSlotUrl } from '../../util/multiaccount';
 import { oldSetLanguage } from '../../util/oldLangProvider';
 import { formatPhoneNumber, getCountryCodeByIso, getCountryFromPhoneNumber } from '../../util/phoneNumber';
-import { IS_SAFARI, IS_TOUCH_ENV } from '../../util/windowEnvironment';
+import { navigateBack } from './helpers/backNavigation';
 import { getSuggestedLanguage } from './helpers/getSuggestedLanguage';
 
 import useFlag from '../../hooks/useFlag';
 import useLang from '../../hooks/useLang';
 import useLangString from '../../hooks/useLangString';
+import useLastCallback from '../../hooks/useLastCallback';
+import useMultiaccountInfo from '../../hooks/useMultiaccountInfo';
 
+import Icon from '../common/icons/Icon';
 import Button from '../ui/Button';
 import Checkbox from '../ui/Checkbox';
 import InputText from '../ui/InputText';
@@ -37,6 +43,7 @@ type StateProps = Pick<GlobalState, (
 )> & {
   language?: string;
   phoneCodeList: ApiCountryCode[];
+  isTestServer?: boolean;
 };
 
 const MIN_NUMBER_LENGTH = 7;
@@ -54,6 +61,7 @@ const AuthPhoneNumber: FC<StateProps> = ({
   authNearestCountry,
   phoneCodeList,
   language,
+  isTestServer,
 }) => {
   const {
     setAuthPhoneNumber,
@@ -62,12 +70,11 @@ const AuthPhoneNumber: FC<StateProps> = ({
     loadCountryList,
     clearAuthErrorKey,
     goToAuthQrCode,
-    setSettingOption,
+    setSharedSettingOption,
   } = getActions();
 
   const lang = useLang();
-  // eslint-disable-next-line no-null/no-null
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>();
   const suggestedLanguage = getSuggestedLanguage();
 
   const isConnected = connectionState === 'connectionStateReady';
@@ -77,6 +84,17 @@ const AuthPhoneNumber: FC<StateProps> = ({
   const [isTouched, setIsTouched] = useState(false);
   const [lastSelection, setLastSelection] = useState<[number, number] | undefined>();
   const [isLoading, markIsLoading, unmarkIsLoading] = useFlag();
+
+  const accountsInfo = useMultiaccountInfo();
+  const hasActiveAccount = Object.values(accountsInfo).length > 0;
+  const phoneNumberSlots = useMemo(() => (
+    Object.entries(accountsInfo)
+      .filter(([, info]) => info.isTest === isTestServer)
+      .reduce((acc, [key, { phone }]) => {
+        if (phone) acc[phone] = Number(key);
+        return acc;
+      }, {} as Record<string, number>)
+  ), [accountsInfo, isTestServer]);
 
   const fullNumber = country ? `+${country.countryCode} ${phoneNumber || ''}` : phoneNumber;
   const canSubmit = fullNumber && fullNumber.replace(/[^\d]+/g, '').length >= MIN_NUMBER_LENGTH;
@@ -105,7 +123,7 @@ const AuthPhoneNumber: FC<StateProps> = ({
     }
   }, [country, authNearestCountry, isTouched, phoneCodeList]);
 
-  const parseFullNumber = useCallback((newFullNumber: string) => {
+  const parseFullNumber = useLastCallback((newFullNumber: string) => {
     if (!newFullNumber.length) {
       setPhoneNumber('');
     }
@@ -114,8 +132,8 @@ const AuthPhoneNumber: FC<StateProps> = ({
 
     // Any phone numbers should be allowed, in some cases ignoring formatting
     const selectedCountry = !country
-    || (suggestedCountry && suggestedCountry.iso2 !== country.iso2)
-    || (!suggestedCountry && newFullNumber.length)
+      || (suggestedCountry && suggestedCountry.iso2 !== country.iso2)
+      || (!suggestedCountry && newFullNumber.length)
       ? suggestedCountry
       : country;
 
@@ -123,17 +141,17 @@ const AuthPhoneNumber: FC<StateProps> = ({
       setCountry(selectedCountry);
     }
     setPhoneNumber(formatPhoneNumber(newFullNumber, selectedCountry));
-  }, [phoneCodeList, country]);
+  });
 
-  const handleLangChange = useCallback(() => {
+  const handleLangChange = useLastCallback(() => {
     markIsLoading();
 
     void oldSetLanguage(suggestedLanguage, () => {
       unmarkIsLoading();
 
-      setSettingOption({ language: suggestedLanguage });
+      setSharedSettingOption({ language: suggestedLanguage });
     });
-  }, [markIsLoading, setSettingOption, suggestedLanguage, unmarkIsLoading]);
+  });
 
   useEffect(() => {
     if (phoneNumber === undefined && authPhoneNumber) {
@@ -148,19 +166,23 @@ const AuthPhoneNumber: FC<StateProps> = ({
   }, [lastSelection]);
 
   const isJustPastedRef = useRef(false);
-  const handlePaste = useCallback(() => {
+  const handlePaste = useLastCallback(() => {
     isJustPastedRef.current = true;
     requestMeasure(() => {
       isJustPastedRef.current = false;
     });
-  }, []);
+  });
 
-  const handleCountryChange = useCallback((value: ApiCountryCode) => {
+  const handleBackNavigation = useLastCallback(() => {
+    navigateBack();
+  });
+
+  const handleCountryChange = useLastCallback((value: ApiCountryCode) => {
     setCountry(value);
     setPhoneNumber('');
-  }, []);
+  });
 
-  const handlePhoneNumberChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
+  const handlePhoneNumberChange = useLastCallback((e: ChangeEvent<HTMLInputElement>) => {
     if (authErrorKey) {
       clearAuthErrorKey();
     }
@@ -185,12 +207,12 @@ const AuthPhoneNumber: FC<StateProps> = ({
       IS_SAFARI && country && fullNumber !== undefined
       && value.length - fullNumber.length > 1 && !isJustPastedRef.current
     );
-    parseFullNumber(shouldFixSafariAutoComplete ? `${country!.countryCode} ${value}` : value);
-  }, [authErrorKey, country, fullNumber, parseFullNumber]);
+    parseFullNumber(shouldFixSafariAutoComplete ? `${country.countryCode} ${value}` : value);
+  });
 
-  const handleKeepSessionChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
-    setAuthRememberMe(e.target.checked);
-  }, [setAuthRememberMe]);
+  const handleKeepSessionChange = useLastCallback((e: ChangeEvent<HTMLInputElement>) => {
+    setAuthRememberMe({ value: e.target.checked });
+  });
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -199,19 +221,30 @@ const AuthPhoneNumber: FC<StateProps> = ({
       return;
     }
 
+    const adaptedPhoneNumber = fullNumber?.replace(/[^\d]/g, '');
+    if (adaptedPhoneNumber && phoneNumberSlots[adaptedPhoneNumber]) {
+      window.location.replace(getAccountSlotUrl(phoneNumberSlots[adaptedPhoneNumber]));
+      return;
+    }
+
     if (canSubmit) {
       setAuthPhoneNumber({ phoneNumber: fullNumber });
     }
   }
 
-  const handleGoToAuthQrCode = useCallback(() => {
+  const handleGoToAuthQrCode = useLastCallback(() => {
     goToAuthQrCode();
-  }, [goToAuthQrCode]);
+  });
 
   const isAuthReady = authState === 'authorizationStateWaitPhoneNumber';
 
   return (
     <div id="auth-phone-number-form" className="custom-scroll">
+      {hasActiveAccount && (
+        <Button size="smaller" round color="translucent" className="auth-close" onClick={handleBackNavigation}>
+          <Icon name="close" />
+        </Button>
+      )}
       <div className="auth-form">
         <div id="logo" />
         <h1>{lang('AuthTitle')}</h1>
@@ -263,8 +296,9 @@ const AuthPhoneNumber: FC<StateProps> = ({
 export default memo(withGlobal(
   (global): StateProps => {
     const {
-      settings: { byKey: { language } },
+      sharedState: { settings: { language } },
       countryList: { phoneCodes: phoneCodeList },
+      config,
     } = global;
 
     return {
@@ -280,6 +314,7 @@ export default memo(withGlobal(
       ]),
       language,
       phoneCodeList,
+      isTestServer: config?.isTestServer,
     };
   },
 )(AuthPhoneNumber));

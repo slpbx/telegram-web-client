@@ -1,5 +1,6 @@
 import type { FC } from '../../lib/teact/teact';
-import React, {
+import type React from '../../lib/teact/teact';
+import {
   memo, useRef,
 } from '../../lib/teact/teact';
 import { getActions, withGlobal } from '../../global';
@@ -18,7 +19,6 @@ import {
 } from '../../config';
 import {
   getIsSavedDialog,
-  isUserId,
 } from '../../global/helpers';
 import {
   selectChat,
@@ -26,6 +26,7 @@ import {
   selectIsChatWithSelf,
   selectIsInSelectMode,
   selectIsRightColumnShown,
+  selectPeer,
   selectPinnedIds,
   selectScheduledIds,
   selectTabState,
@@ -33,6 +34,7 @@ import {
   selectThreadParam,
 } from '../../global/selectors';
 import buildClassName from '../../util/buildClassName';
+import { isUserId } from '../../util/entities/ids';
 
 import useAppLayout from '../../hooks/useAppLayout';
 import useConnectionStatus from '../../hooks/useConnectionStatus';
@@ -136,8 +138,7 @@ const MiddleHeader: FC<OwnProps & StateProps> = ({
   const isLeftColumnHideable = windowWidth <= MIN_SCREEN_WIDTH_FOR_STATIC_LEFT_COLUMN;
   const shouldShowCloseButton = isTablet && isLeftColumnShown;
 
-  // eslint-disable-next-line no-null/no-null
-  const componentRef = useRef<HTMLDivElement>(null);
+  const componentRef = useRef<HTMLDivElement>();
 
   const handleOpenSearch = useLastCallback(() => {
     updateMiddleSearch({ chatId, threadId, update: {} });
@@ -377,6 +378,7 @@ export default memo(withGlobal<OwnProps>(
       isLeftColumnShown, shouldSkipHistoryAnimations, audioPlayer, messageLists,
     } = selectTabState(global);
     const chat = selectChat(global, chatId);
+    const peer = selectPeer(global, chatId);
 
     const { chatId: audioChatId, messageId: audioMessageId } = audioPlayer;
     const audioMessage = audioChatId && audioMessageId
@@ -397,7 +399,7 @@ export default memo(withGlobal<OwnProps>(
 
     const typingStatus = selectThreadParam(global, chatId, threadId, 'typingStatus');
 
-    const emojiStatus = chat?.emojiStatus;
+    const emojiStatus = peer?.emojiStatus;
     const emojiStatusSticker = emojiStatus && global.customEmojis.byId[emojiStatus.documentId];
     const emojiStatusSlug = emojiStatus?.type === 'collectible' ? emojiStatus.slug : undefined;
 

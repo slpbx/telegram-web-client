@@ -1,11 +1,11 @@
 import type { FC } from '../../../lib/teact/teact';
-import React, {
+import {
   memo, useEffect, useMemo, useRef,
 } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
 import type { GlobalState } from '../../../global/types';
-import type { ISettings } from '../../../types';
+import type { ThemeKey } from '../../../types';
 import { LeftColumnContent, SettingsScreens } from '../../../types';
 
 import {
@@ -20,10 +20,11 @@ import {
   selectTabState,
   selectTheme,
 } from '../../../global/selectors';
+import { selectSharedSettings } from '../../../global/selectors/sharedState';
+import { IS_APP, IS_ELECTRON, IS_MAC_OS } from '../../../util/browser/windowEnvironment';
 import buildClassName from '../../../util/buildClassName';
 import captureEscKeyListener from '../../../util/captureEscKeyListener';
 import { formatDateToString } from '../../../util/dates/dateFormat';
-import { IS_APP, IS_ELECTRON, IS_MAC_OS } from '../../../util/windowEnvironment';
 
 import useAppLayout from '../../../hooks/useAppLayout';
 import useConnectionStatus from '../../../hooks/useConnectionStatus';
@@ -68,10 +69,10 @@ type StateProps =
     isLoading: boolean;
     globalSearchChatId?: string;
     searchDate?: number;
-    theme: ISettings['theme'];
+    theme: ThemeKey;
     isMessageListOpen: boolean;
     isCurrentUserPremium?: boolean;
-    isConnectionStatusMinimized: ISettings['isConnectionStatusMinimized'];
+    isConnectionStatusMinimized?: boolean;
     areChatsLoaded?: boolean;
     hasPasscode?: boolean;
     canSetPasscode?: boolean;
@@ -109,10 +110,10 @@ const LeftMainHeader: FC<OwnProps & StateProps> = ({
 }) => {
   const {
     setGlobalSearchDate,
-    setSettingOption,
+    setSharedSettingOption,
     setGlobalSearchChatId,
     lockScreen,
-    requestNextSettingsScreen,
+    openSettingsScreen,
   } = getActions();
 
   const oldLang = useOldLang();
@@ -145,7 +146,7 @@ const LeftMainHeader: FC<OwnProps & StateProps> = ({
     if (hasPasscode) {
       lockScreen();
     } else {
-      requestNextSettingsScreen({ screen: SettingsScreens.PasscodeDisabled });
+      openSettingsScreen({ screen: SettingsScreens.PasscodeDisabled });
     }
   });
 
@@ -164,7 +165,7 @@ const LeftMainHeader: FC<OwnProps & StateProps> = ({
         size="smaller"
         color="translucent"
         className={isOpen ? 'active' : ''}
-        // eslint-disable-next-line react/jsx-no-bind
+
         onClick={hasMenu ? onTrigger : () => onReset()}
         ariaLabel={hasMenu ? oldLang('AccDescrOpenMenu2') : 'Return to chat list'}
       >
@@ -185,7 +186,7 @@ const LeftMainHeader: FC<OwnProps & StateProps> = ({
   });
 
   const toggleConnectionStatus = useLastCallback(() => {
-    setSettingOption({ isConnectionStatusMinimized: !isConnectionStatusMinimized });
+    setSharedSettingOption({ isConnectionStatusMinimized: !isConnectionStatusMinimized });
   });
 
   const handleLockScreen = useLastCallback(() => {
@@ -214,8 +215,7 @@ const LeftMainHeader: FC<OwnProps & StateProps> = ({
     handleDropdownMenuTransitionEnd,
   } = useLeftHeaderButtonRtlForumTransition(shouldHideSearch);
 
-  // eslint-disable-next-line no-null/no-null
-  const headerRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>();
   useElectronDrag(headerRef);
 
   const withStoryToggler = !isSearchFocused
@@ -340,7 +340,7 @@ export default memo(withGlobal<OwnProps>(
     const {
       connectionState, isSyncing, isFetchingDifference,
     } = global;
-    const { isConnectionStatusMinimized } = global.settings.byKey;
+    const { isConnectionStatusMinimized } = selectSharedSettings(global);
 
     return {
       searchQuery,

@@ -1,4 +1,4 @@
-import React, {
+import {
   memo, useMemo, useRef,
 } from '../../lib/teact/teact';
 
@@ -10,7 +10,7 @@ import { ApiMessageEntityTypes } from '../../api/types';
 import { CONTENT_NOT_SUPPORTED } from '../../config';
 import { extractMessageText, stripCustomEmoji } from '../../global/helpers';
 import trimText from '../../util/trimText';
-import { renderTextWithEntities } from './helpers/renderTextWithEntities';
+import { insertTextEntity, renderTextWithEntities } from './helpers/renderTextWithEntities';
 
 import useSyncEffect from '../../hooks/useSyncEffect';
 import useUniqueId from '../../hooks/useUniqueId';
@@ -32,6 +32,7 @@ interface OwnProps {
   inChatList?: boolean;
   forcePlayback?: boolean;
   focusedQuote?: string;
+  focusedQuoteOffset?: number;
   isInSelectMode?: boolean;
   canBeEmpty?: boolean;
   maxTimestamp?: number;
@@ -55,15 +56,14 @@ function MessageText({
   inChatList,
   forcePlayback,
   focusedQuote,
+  focusedQuoteOffset,
   isInSelectMode,
   canBeEmpty,
   maxTimestamp,
   threadId,
 }: OwnProps) {
-  // eslint-disable-next-line no-null/no-null
-  const sharedCanvasRef = useRef<HTMLCanvasElement>(null);
-  // eslint-disable-next-line no-null/no-null
-  const sharedCanvasHqRef = useRef<HTMLCanvasElement>(null);
+  const sharedCanvasRef = useRef<HTMLCanvasElement>();
+  const sharedCanvasHqRef = useRef<HTMLCanvasElement>();
 
   const textCacheBusterRef = useRef(0);
 
@@ -71,21 +71,39 @@ function MessageText({
   const adaptedFormattedText = isForAnimation && formattedText ? stripCustomEmoji(formattedText) : formattedText;
   const { text, entities } = adaptedFormattedText || {};
 
+  const entitiesWithFocusedQuote = useMemo(() => {
+    if (!text || !focusedQuote) return entities;
+
+    const offsetIndex = text.indexOf(focusedQuote, focusedQuoteOffset);
+    const index = offsetIndex >= 0 ? offsetIndex : text.indexOf(focusedQuote); // Fallback to first occurrence
+    const lendth = focusedQuote.length;
+    if (index >= 0) {
+      return insertTextEntity(entities || [], {
+        offset: index,
+        length: lendth,
+        type: ApiMessageEntityTypes.QuoteFocus,
+      });
+    }
+
+    return entities;
+  }, [text, entities, focusedQuote, focusedQuoteOffset]);
+
   const containerId = useUniqueId();
 
   useSyncEffect(() => {
     textCacheBusterRef.current += 1;
-  }, [text, entities]);
+  }, [text, entitiesWithFocusedQuote]);
 
   const withSharedCanvas = useMemo(() => {
-    const hasSpoilers = entities?.some((e) => e.type === ApiMessageEntityTypes.Spoiler);
+    const hasSpoilers = entitiesWithFocusedQuote?.some((e) => e.type === ApiMessageEntityTypes.Spoiler);
     if (hasSpoilers) {
       return false;
     }
 
-    const customEmojisCount = entities?.filter((e) => e.type === ApiMessageEntityTypes.CustomEmoji).length || 0;
+    const customEmojisCount = entitiesWithFocusedQuote
+      ?.filter((e) => e.type === ApiMessageEntityTypes.CustomEmoji).length || 0;
     return customEmojisCount >= MIN_CUSTOM_EMOJIS_FOR_SHARED_CANVAS;
-  }, [entities]) || 0;
+  }, [entitiesWithFocusedQuote]) || 0;
 
   if (!text && !canBeEmpty) {
     return <span className="content-unsupported">{CONTENT_NOT_SUPPORTED}</span>;
@@ -98,7 +116,7 @@ function MessageText({
         withSharedCanvas && <canvas ref={sharedCanvasHqRef} className="shared-canvas" />,
         renderTextWithEntities({
           text: trimText(text!, truncateLength),
-          entities,
+          entities: entitiesWithFocusedQuote,
           highlight,
           emojiSize,
           shouldRenderAsHtml,
@@ -112,7 +130,6 @@ function MessageText({
           sharedCanvasHqRef,
           cacheBuster: textCacheBusterRef.current.toString(),
           forcePlayback,
-          focusedQuote,
           isInSelectMode,
           maxTimestamp,
           chatId: 'chatId' in messageOrStory ? messageOrStory.chatId : undefined,

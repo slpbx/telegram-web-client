@@ -1,5 +1,6 @@
 import type { FC } from '../../../lib/teact/teact';
-import React, {
+import type React from '../../../lib/teact/teact';
+import {
   memo, useCallback, useEffect, useMemo, useState,
 } from '../../../lib/teact/teact';
 import { getActions, getGlobal, withGlobal } from '../../../global';
@@ -170,7 +171,7 @@ const ManageGroupAdminRights: FC<OwnProps & StateProps> = ({
       return false;
     }
 
-    return !chat.adminRights![key];
+    return !chat.adminRights[key];
   }, [chat, isFormFullyDisabled]);
 
   const memberStatus = useMemo(() => {

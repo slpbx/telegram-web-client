@@ -1,4 +1,3 @@
-import React from '../lib/teact/teact';
 import { getActions, getGlobal, setGlobal } from '../global';
 
 import type {
@@ -29,13 +28,13 @@ import {
   selectUser,
 } from '../global/selectors';
 import { callApi } from '../api/gramjs';
+import { IS_ELECTRON, IS_SERVICE_WORKER_SUPPORTED, IS_TOUCH_ENV } from './browser/windowEnvironment';
 import jsxToHtml from './element/jsxToHtml';
 import { buildCollectionByKey } from './iteratees';
 import * as mediaLoader from './mediaLoader';
 import { oldTranslate } from './oldLangProvider';
 import { debounce } from './schedulers';
 import { getServerTime } from './serverTime';
-import { IS_ELECTRON, IS_SERVICE_WORKER_SUPPORTED, IS_TOUCH_ENV } from './windowEnvironment';
 
 import MessageSummary from '../components/common/MessageSummary';
 
@@ -153,7 +152,6 @@ export async function requestPermission() {
 }
 
 async function unsubscribeFromPush(subscription: PushSubscription | null) {
-  const global = getGlobal();
   const { deleteDeviceToken } = getActions();
   if (subscription) {
     try {
@@ -169,6 +167,7 @@ async function unsubscribeFromPush(subscription: PushSubscription | null) {
       }
     }
   }
+  const global = getGlobal();
   if (global.push) {
     await callApi('unregisterDevice', global.push.deviceToken);
     deleteDeviceToken();
@@ -237,7 +236,7 @@ export async function subscribe() {
       console.log('[PUSH] Received push subscription: ', deviceToken);
     }
     await callApi('registerDevice', deviceToken);
-    setDeviceToken(deviceToken);
+    setDeviceToken({ token: deviceToken });
     hasPushNotifications = true;
     hasWebNotifications = true;
   } catch (error: any) {
@@ -282,7 +281,7 @@ function checkIfShouldNotify(chat: ApiChat, message: Partial<ApiMessage>) {
 
   const shouldNotifyAboutMessage = message.content?.action?.type !== 'phoneCall';
   if ((isMuted && !shouldIgnoreMute) || !shouldNotifyAboutMessage
-     || chat.isNotJoined || !chat.isListed || selectIsChatWithSelf(global, chat.id)) {
+    || chat.isNotJoined || !chat.isListed || selectIsChatWithSelf(global, chat.id)) {
     return false;
   }
   // On touch devices show notifications when chat is not active
@@ -319,7 +318,8 @@ function getNotificationContent(chat: ApiChat, message: ApiMessage, reaction?: A
     const isChat = chat && (isChatChannel(chat) || message.senderId === message.chatId);
 
     // TODO[forums] Support ApiChat
-    const senderName = getMessageSenderName(oldTranslate, chat.id, isChat ? messageSenderChat : messageSenderUser);
+    const sender = isChat ? messageSenderChat : messageSenderUser;
+    const senderName = sender ? getMessageSenderName(oldTranslate, chat.id, sender) : undefined;
     let summary = jsxToHtml(<span><MessageSummary message={message} /></span>)[0].textContent || '';
 
     if (hasReaction) {
@@ -359,7 +359,6 @@ function getReactionEmoji(reaction: ApiPeerReaction) {
   }
 
   if (reaction.reaction.type === 'custom') {
-    // eslint-disable-next-line eslint-multitab-tt/no-immediate-global
     emoji = getGlobal().customEmojis.byId[reaction.reaction.documentId]?.emoji;
   }
   return emoji || '❤️';

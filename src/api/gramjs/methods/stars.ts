@@ -1,15 +1,17 @@
 import bigInt from 'big-integer';
 import { Api as GramJs } from '../../../lib/gramjs';
 
-import type { GiftProfileFilterOptions } from '../../../types';
+import type { GiftProfileFilterOptions, ResaleGiftsFilterOptions } from '../../../types';
 import type {
   ApiChat,
   ApiPeer,
   ApiRequestInputSavedStarGift,
+  ApiStarGiftAttributeId,
   ApiStarGiftRegular,
 } from '../../types';
 
-import { buildApiSavedStarGift, buildApiStarGift, buildApiStarGiftAttribute } from '../apiBuilders/gifts';
+import { buildApiResaleGifts, buildApiSavedStarGift, buildApiStarGift,
+  buildApiStarGiftAttribute, buildInputResaleGiftsAttributes } from '../apiBuilders/gifts';
 import {
   buildApiStarsAmount,
   buildApiStarsGiftOptions,
@@ -18,7 +20,7 @@ import {
   buildApiStarsTransaction,
   buildApiStarTopupOption,
 } from '../apiBuilders/payments';
-import { buildInputPeer, buildInputSavedStarGift } from '../gramjsBuilders';
+import { buildInputPeer, buildInputSavedStarGift, buildInputUser } from '../gramjsBuilders';
 import { checkErrorType, wrapError } from '../helpers/misc';
 import { invokeRequest } from './client';
 import { getPassword } from './twoFaSettings';
@@ -44,6 +46,48 @@ export async function fetchStarGifts() {
   return result.gifts.map(buildApiStarGift).filter((gift): gift is ApiStarGiftRegular => gift.type === 'starGift');
 }
 
+export async function fetchResaleGifts({
+  giftId,
+  offset = '',
+  limit,
+  attributesHash = '0',
+  filter,
+}: {
+  giftId: string;
+  offset?: string;
+  limit?: number;
+  attributesHash?: string;
+  filter?: ResaleGiftsFilterOptions;
+}) {
+   type GetResaleStarGifts = ConstructorParameters<typeof GramJs.payments.GetResaleStarGifts>[0];
+
+   const attributes: ApiStarGiftAttributeId[] = [
+     ...(filter?.backdropAttributes ?? []),
+     ...(filter?.modelAttributes ?? []),
+     ...(filter?.patternAttributes ?? []),
+   ];
+
+   const params: GetResaleStarGifts = {
+     giftId: bigInt(giftId),
+     offset,
+     limit,
+     attributesHash: attributesHash ? bigInt(attributesHash) : undefined,
+     attributes: buildInputResaleGiftsAttributes(attributes),
+     ...(filter && {
+       sortByPrice: filter.sortType === 'byPrice' || undefined,
+       sortByNum: filter.sortType === 'byNumber' || undefined,
+     } satisfies GetResaleStarGifts),
+   };
+
+   const result = await invokeRequest(new GramJs.payments.GetResaleStarGifts(params));
+
+   if (!result) {
+     return undefined;
+   }
+
+   return buildApiResaleGifts(result);
+}
+
 export async function fetchSavedStarGifts({
   peer,
   offset = '',
@@ -57,7 +101,7 @@ export async function fetchSavedStarGifts({
 }) {
   type GetSavedStarGiftsParams = ConstructorParameters<typeof GramJs.payments.GetSavedStarGifts>[0];
 
-  const params : GetSavedStarGiftsParams = {
+  const params: GetSavedStarGiftsParams = {
     peer: buildInputPeer(peer.id, peer.accessHash),
     offset,
     limit,
@@ -114,7 +158,7 @@ export async function getStarsGiftOptions({
   chat?: ApiChat;
 }) {
   const result = await invokeRequest(new GramJs.payments.GetStarsGiftOptions({
-    userId: chat && buildInputPeer(chat.id, chat.accessHash),
+    userId: chat && buildInputUser(chat.id, chat.accessHash),
   }));
 
   if (!result) {
@@ -326,6 +370,21 @@ export function toggleSavedGiftPinned({
   return invokeRequest(new GramJs.payments.ToggleStarGiftsPinnedToTop({
     stargift: inputSavedGifts.map(buildInputSavedStarGift),
     peer: buildInputPeer(peer.id, peer.accessHash),
+  }), {
+    shouldReturnTrue: true,
+  });
+}
+
+export function updateStarGiftPrice({
+  inputSavedGift,
+  price,
+}: {
+  inputSavedGift: ApiRequestInputSavedStarGift;
+  price: number;
+}) {
+  return invokeRequest(new GramJs.payments.UpdateStarGiftPrice({
+    stargift: buildInputSavedStarGift(inputSavedGift),
+    resellStars: bigInt(price),
   }), {
     shouldReturnTrue: true,
   });

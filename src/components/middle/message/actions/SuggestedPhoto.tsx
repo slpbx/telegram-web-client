@@ -1,4 +1,4 @@
-import React, { memo, useMemo, useState } from '../../../../lib/teact/teact';
+import { memo, useMemo, useState } from '../../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../../global';
 
 import type { ApiMessageActionSuggestProfilePhoto } from '../../../../api/types/messageActions';
@@ -38,7 +38,7 @@ const SuggestedPhotoAction = ({
   action,
   peer,
   observeIntersection,
-} : OwnProps & StateProps) => {
+}: OwnProps & StateProps) => {
   const { openMediaViewer, uploadProfilePhoto, showNotification } = getActions();
   const { isOutgoing } = message;
   const photo = action.photo;
@@ -67,7 +67,7 @@ const SuggestedPhotoAction = ({
       title: lang('ActionSuggestedPhotoUpdatedTitle'),
       message: lang('ActionSuggestedPhotoUpdatedDescription'),
       action: {
-        action: 'requestNextSettingsScreen',
+        action: 'openSettingsScreen',
         payload: {
           screen: SettingsScreens.Main,
         },

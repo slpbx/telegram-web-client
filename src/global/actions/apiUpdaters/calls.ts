@@ -1,10 +1,10 @@
 import type { ActionReturnType } from '../../types';
 
+import { ARE_CALLS_SUPPORTED } from '../../../util/browser/windowEnvironment';
 import { getCurrentTabId } from '../../../util/establishMultitabRole';
 import { omit } from '../../../util/iteratees';
 import { notifyAboutCall } from '../../../util/notifications';
 import { onTickEnd } from '../../../util/schedulers';
-import { ARE_CALLS_SUPPORTED } from '../../../util/windowEnvironment';
 import { addActionHandler, getGlobal } from '../../index';
 import { updateChat, updateChatFullInfo } from '../../reducers';
 import { removeGroupCall, updateGroupCall, updateGroupCallParticipant } from '../../reducers/calls';
@@ -107,9 +107,11 @@ addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
       if (!isOutgoing && call.state === 'requested') {
         onTickEnd(() => {
           global = getGlobal();
+          const user = selectPhoneCallUser(global);
+          if (!user) return;
           notifyAboutCall({
             call,
-            user: selectPhoneCallUser(global)!,
+            user,
           });
         });
 

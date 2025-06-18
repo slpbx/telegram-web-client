@@ -1,12 +1,13 @@
 import type { FC } from '../../../lib/teact/teact';
-import React, { memo, useCallback, useEffect } from '../../../lib/teact/teact';
+import { memo, useCallback, useEffect } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
 import type { ApiChat } from '../../../api/types';
 
 import { STICKER_SIZE_JOIN_REQUESTS } from '../../../config';
-import { isChatChannel, isUserId } from '../../../global/helpers';
+import { isChatChannel } from '../../../global/helpers';
 import { selectChat } from '../../../global/selectors';
+import { isUserId } from '../../../util/entities/ids';
 import { LOCAL_TGS_URLS } from '../../common/helpers/animatedAssets';
 
 import useFlag from '../../../hooks/useFlag';

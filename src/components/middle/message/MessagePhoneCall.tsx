@@ -1,13 +1,13 @@
 import type { FC } from '../../../lib/teact/teact';
-import React, { memo, useMemo } from '../../../lib/teact/teact';
+import { memo, useMemo } from '../../../lib/teact/teact';
 import { getActions } from '../../../global';
 
 import type { ApiMessage } from '../../../api/types';
 import type { ApiMessageActionPhoneCall } from '../../../api/types/messageActions';
 
+import { ARE_CALLS_SUPPORTED } from '../../../util/browser/windowEnvironment';
 import buildClassName from '../../../util/buildClassName';
 import { formatTime, formatTimeDuration } from '../../../util/dates/dateFormat';
-import { ARE_CALLS_SUPPORTED } from '../../../util/windowEnvironment';
 import { getCallMessageKey } from './helpers/messageActions';
 
 import useLastCallback from '../../../hooks/useLastCallback';

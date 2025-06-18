@@ -1,5 +1,5 @@
 import type { FC, TeactNode } from '../../lib/teact/teact';
-import React, {
+import {
   memo, useEffect, useMemo, useRef,
 } from '../../lib/teact/teact';
 
@@ -15,11 +15,11 @@ import {
   isAnonymousForwardsChat,
   isChatWithRepliesBot,
   isDeletedUser,
-  isUserId,
 } from '../../global/helpers';
+import { IS_CANVAS_FILTER_SUPPORTED } from '../../util/browser/windowEnvironment';
 import buildClassName from '../../util/buildClassName';
+import { isUserId } from '../../util/entities/ids';
 import { getFirstLetters } from '../../util/textFormat';
-import { IS_CANVAS_FILTER_SUPPORTED } from '../../util/windowEnvironment';
 import { getPeerColorClass } from './helpers/peerColor';
 import renderText from './helpers/renderText';
 
@@ -55,8 +55,7 @@ const ProfilePhoto: FC<OwnProps> = ({
   canPlayVideo,
   onClick,
 }) => {
-  // eslint-disable-next-line no-null/no-null
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const videoRef = useRef<HTMLVideoElement>();
 
   const lang = useOldLang();
   const { isMobile } = useAppLayout();

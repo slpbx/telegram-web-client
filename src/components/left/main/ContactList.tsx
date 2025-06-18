@@ -1,5 +1,5 @@
 import type { FC } from '../../../lib/teact/teact';
-import React, { memo, useCallback, useMemo } from '../../../lib/teact/teact';
+import { memo, useCallback, useMemo } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
 import type { ApiUser, ApiUserStatus } from '../../../api/types';
@@ -76,7 +76,6 @@ const ContactList: FC<OwnProps & StateProps> = ({
           <ListItem
             key={id}
             className="chat-item-clickable contact-list-item"
-            // eslint-disable-next-line react/jsx-no-bind
             onClick={() => handleClick(id)}
           >
             <PrivateChatInfo

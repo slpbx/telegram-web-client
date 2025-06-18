@@ -1,28 +1,28 @@
 import { addCallback } from '../../../lib/teact/teactn';
 
 import type { ActionReturnType, GlobalState } from '../../types';
-import { type LangCode, SettingsScreens } from '../../../types';
+import { type LangCode, LeftColumnContent, SettingsScreens } from '../../../types';
 
 import { requestMutation } from '../../../lib/fasterdom/fasterdom';
+import { IS_IOS } from '../../../util/browser/windowEnvironment';
 import { disableDebugConsole, initDebugConsole } from '../../../util/debugConsole';
 import { getCurrentTabId } from '../../../util/establishMultitabRole';
 import { oldSetLanguage, setTimeFormat } from '../../../util/oldLangProvider';
 import { applyPerformanceSettings } from '../../../util/perfomanceSettings';
 import switchTheme from '../../../util/switchTheme';
 import { updatePeerColors } from '../../../util/theme';
-import { IS_IOS } from '../../../util/windowEnvironment';
 import { callApi, setShouldEnableDebugLog } from '../../../api/gramjs';
 import {
-  addActionHandler, getActions, getGlobal, setGlobal,
+  addActionHandler, getActions, setGlobal,
 } from '../../index';
-import { replaceSettings, replaceThemeSettings } from '../../reducers';
+import { replaceSettings, updateSharedSettings, updateThemeSettings } from '../../reducers';
 import { updateTabState } from '../../reducers/tabs';
-import { selectCanAnimateInterface, selectChatFolder } from '../../selectors';
+import { selectCanAnimateInterface, selectChatFolder, selectTabState } from '../../selectors';
+import { selectSharedSettings } from '../../selectors/sharedState';
 
 let prevGlobal: GlobalState | undefined;
 
 addCallback((global: GlobalState) => {
-  // eslint-disable-next-line eslint-multitab-tt/no-getactions-in-actions
   const { updatePageTitle, updateShouldDebugExportedSenders, updateShouldEnableDebugLog } = getActions();
 
   const oldGlobal = prevGlobal;
@@ -30,10 +30,11 @@ addCallback((global: GlobalState) => {
 
   if (!oldGlobal) return;
 
-  const settings = global.settings.byKey;
-  const prevSettings = oldGlobal.settings.byKey;
-  const performance = global.settings.performance;
-  const prevPerformance = oldGlobal.settings.performance;
+  const oldSharedSettings = selectSharedSettings(oldGlobal);
+  const sharedSettings = selectSharedSettings(global);
+
+  const performance = sharedSettings.performance;
+  const prevPerformance = oldSharedSettings.performance;
   const peerColors = global.peerColors;
   const prevPeerColors = oldGlobal.peerColors;
 
@@ -47,68 +48,60 @@ addCallback((global: GlobalState) => {
     });
   }
 
-  if (settings.theme !== prevSettings.theme) {
+  if (sharedSettings.theme !== oldSharedSettings.theme) {
     const withAnimation = document.hasFocus() ? selectCanAnimateInterface(global) : false;
-    switchTheme(settings.theme, withAnimation);
+    switchTheme(sharedSettings.theme, withAnimation);
   }
 
-  if (settings.language !== prevSettings.language) {
-    oldSetLanguage(settings.language as LangCode);
+  if (sharedSettings.language !== oldSharedSettings.language) {
+    oldSetLanguage(sharedSettings.language as LangCode);
   }
 
-  if (settings.timeFormat !== prevSettings.timeFormat) {
-    setTimeFormat(settings.timeFormat);
+  if (sharedSettings.timeFormat !== oldSharedSettings.timeFormat) {
+    setTimeFormat(sharedSettings.timeFormat);
   }
 
-  if (settings.messageTextSize !== prevSettings.messageTextSize) {
+  if (sharedSettings.messageTextSize !== oldSharedSettings.messageTextSize) {
     document.documentElement.style.setProperty(
-      '--composer-text-size', `${Math.max(settings.messageTextSize, IS_IOS ? 16 : 15)}px`,
+      '--composer-text-size', `${Math.max(sharedSettings.messageTextSize, IS_IOS ? 16 : 15)}px`,
     );
     document.documentElement.style.setProperty('--message-meta-height',
-      `${Math.floor(settings.messageTextSize * 1.3125)}px`);
-    document.documentElement.style.setProperty('--message-text-size', `${settings.messageTextSize}px`);
-    document.documentElement.setAttribute('data-message-text-size', settings.messageTextSize.toString());
+      `${Math.floor(sharedSettings.messageTextSize * 1.3125)}px`);
+    document.documentElement.style.setProperty('--message-text-size', `${sharedSettings.messageTextSize}px`);
+    document.documentElement.setAttribute('data-message-text-size', sharedSettings.messageTextSize.toString());
   }
 
-  if (settings.canDisplayChatInTitle !== prevSettings.canDisplayChatInTitle) {
+  if (sharedSettings.canDisplayChatInTitle !== oldSharedSettings.canDisplayChatInTitle) {
     updatePageTitle();
   }
 
-  if (settings.shouldForceHttpTransport !== prevSettings.shouldForceHttpTransport) {
-    callApi('setForceHttpTransport', Boolean(settings.shouldForceHttpTransport));
+  if (sharedSettings.shouldForceHttpTransport !== oldSharedSettings.shouldForceHttpTransport) {
+    callApi('setForceHttpTransport', Boolean(sharedSettings.shouldForceHttpTransport));
   }
 
-  if (settings.shouldAllowHttpTransport !== prevSettings.shouldAllowHttpTransport) {
-    callApi('setAllowHttpTransport', Boolean(settings.shouldAllowHttpTransport));
-    if (!settings.shouldAllowHttpTransport && settings.shouldForceHttpTransport) {
-      global = getGlobal();
-      global = {
-        ...global,
-        settings: {
-          ...global.settings,
-          byKey: {
-            ...global.settings.byKey,
-            shouldForceHttpTransport: false,
-          },
-        },
-      };
+  if (sharedSettings.shouldAllowHttpTransport !== oldSharedSettings.shouldAllowHttpTransport) {
+    callApi('setAllowHttpTransport', Boolean(sharedSettings.shouldAllowHttpTransport));
+    if (!sharedSettings.shouldAllowHttpTransport && sharedSettings.shouldForceHttpTransport) {
+      global = updateSharedSettings(global, {
+        shouldForceHttpTransport: false,
+      });
       setGlobal(global);
     }
   }
 
-  if (settings.shouldDebugExportedSenders !== prevSettings.shouldDebugExportedSenders) {
+  if (sharedSettings.shouldDebugExportedSenders !== oldSharedSettings.shouldDebugExportedSenders) {
     updateShouldDebugExportedSenders();
   }
 
-  if (settings.shouldCollectDebugLogs !== prevSettings.shouldCollectDebugLogs) {
+  if (sharedSettings.shouldCollectDebugLogs !== oldSharedSettings.shouldCollectDebugLogs) {
     updateShouldEnableDebugLog();
   }
 });
 
 addActionHandler('updateShouldEnableDebugLog', (global): ActionReturnType => {
-  const { settings } = global;
+  const settings = selectSharedSettings(global);
 
-  if (settings.byKey.shouldCollectDebugLogs) {
+  if (settings.shouldCollectDebugLogs) {
     setShouldEnableDebugLog(true);
     initDebugConsole();
   } else {
@@ -118,25 +111,26 @@ addActionHandler('updateShouldEnableDebugLog', (global): ActionReturnType => {
 });
 
 addActionHandler('updateShouldDebugExportedSenders', (global): ActionReturnType => {
-  const { settings } = global;
-  callApi('setShouldDebugExportedSenders', Boolean(settings.byKey.shouldDebugExportedSenders));
+  const settings = selectSharedSettings(global);
+  callApi('setShouldDebugExportedSenders', Boolean(settings.shouldDebugExportedSenders));
 });
 
 addActionHandler('setSettingOption', (global, actions, payload): ActionReturnType => {
   return replaceSettings(global, payload);
 });
 
+addActionHandler('setSharedSettingOption', (global, actions, payload): ActionReturnType => {
+  return updateSharedSettings(global, payload);
+});
+
 addActionHandler('updatePerformanceSettings', (global, actions, payload): ActionReturnType => {
-  global = {
-    ...global,
-    settings: {
-      ...global.settings,
-      performance: {
-        ...global.settings.performance,
-        ...payload,
-      },
+  const settings = selectSharedSettings(global);
+  global = updateSharedSettings(global, {
+    performance: {
+      ...settings.performance,
+      ...payload,
     },
-  };
+  });
 
   return global;
 });
@@ -144,14 +138,37 @@ addActionHandler('updatePerformanceSettings', (global, actions, payload): Action
 addActionHandler('setThemeSettings', (global, actions, payload): ActionReturnType => {
   const { theme, ...settings } = payload;
 
-  return replaceThemeSettings(global, theme, settings);
+  return updateThemeSettings(global, theme, settings);
 });
 
-addActionHandler('requestNextSettingsScreen', (global, actions, payload): ActionReturnType => {
-  const { screen, foldersAction, tabId = getCurrentTabId() } = payload;
+addActionHandler('requestNextFoldersAction', (global, actions, payload): ActionReturnType => {
+  const { foldersAction, tabId = getCurrentTabId() } = payload;
   return updateTabState(global, {
-    nextSettingsScreen: screen,
     nextFoldersAction: foldersAction,
+  }, tabId);
+});
+
+addActionHandler('openLeftColumnContent', (global, actions, payload): ActionReturnType => {
+  const { contentKey = LeftColumnContent.ChatList, tabId = getCurrentTabId() } = payload;
+  const tabState = selectTabState(global, tabId);
+  return updateTabState(global, {
+    leftColumn: {
+      ...tabState.leftColumn,
+      contentKey,
+    },
+  }, tabId);
+});
+
+addActionHandler('openSettingsScreen', (global, actions, payload): ActionReturnType => {
+  const { screen = SettingsScreens.Main, tabId = getCurrentTabId() } = payload;
+  const tabState = selectTabState(global, tabId);
+  // Force settings only if new screen is passed, do not on resets
+  if (payload.screen) actions.openLeftColumnContent({ contentKey: LeftColumnContent.Settings, tabId });
+  return updateTabState(global, {
+    leftColumn: {
+      ...tabState.leftColumn,
+      settingsScreen: screen,
+    },
   }, tabId);
 });
 
@@ -161,8 +178,11 @@ addActionHandler('openEditChatFolder', (global, actions, payload): ActionReturnT
   const chatFolder = selectChatFolder(global, folderId);
   if (!chatFolder) return;
 
-  actions.requestNextSettingsScreen({
+  actions.openSettingsScreen({
     screen: isOnlyInvites ? SettingsScreens.FoldersEditFolderInvites : SettingsScreens.FoldersEditFolderFromChatList,
+    tabId,
+  });
+  actions.requestNextFoldersAction({
     foldersAction: {
       type: 'editFolder',
       payload: chatFolder,
@@ -183,7 +203,7 @@ addActionHandler('openShareChatFolderModal', (global, actions, payload): ActionR
     return undefined;
   }
 
-  if (!noRequestNextScreen) actions.requestNextSettingsScreen({ screen: SettingsScreens.FoldersShare, tabId });
+  if (!noRequestNextScreen) actions.openSettingsScreen({ screen: SettingsScreens.FoldersShare, tabId });
 
   return updateTabState(global, {
     shareFolderScreen: {
@@ -197,7 +217,7 @@ addActionHandler('openShareChatFolderModal', (global, actions, payload): ActionR
 addActionHandler('closeShareChatFolderModal', (global, actions, payload): ActionReturnType => {
   const { tabId = getCurrentTabId() } = payload || {};
 
-  actions.requestNextSettingsScreen({ screen: undefined, tabId });
+  actions.openSettingsScreen({ screen: undefined, tabId });
 
   return updateTabState(global, {
     shareFolderScreen: undefined,

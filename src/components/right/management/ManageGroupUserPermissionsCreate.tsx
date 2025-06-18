@@ -1,5 +1,5 @@
 import type { FC } from '../../../lib/teact/teact';
-import React, { memo, useCallback, useMemo } from '../../../lib/teact/teact';
+import { memo, useCallback, useMemo } from '../../../lib/teact/teact';
 import { withGlobal } from '../../../global';
 
 import type { ApiChatMember, ApiUser, ApiUserStatus } from '../../../api/types';
@@ -71,7 +71,7 @@ const ManageGroupUserPermissionsCreate: FC<OwnProps & StateProps> = ({
                 key={id}
                 teactOrderKey={i}
                 className="chat-item-clickable scroll-item"
-                // eslint-disable-next-line react/jsx-no-bind
+
                 onClick={() => handleExceptionMemberClick(id)}
               >
                 <PrivateChatInfo userId={id} forceShowSelf />

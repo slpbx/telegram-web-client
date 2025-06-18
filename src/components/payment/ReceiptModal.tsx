@@ -1,5 +1,5 @@
 import type { FC } from '../../lib/teact/teact';
-import React, { memo, useEffect, useMemo } from '../../lib/teact/teact';
+import { memo, useEffect, useMemo } from '../../lib/teact/teact';
 import { withGlobal } from '../../global';
 
 import type { ApiReceiptRegular, ApiShippingAddress } from '../../api/types';
@@ -69,7 +69,11 @@ const ReceiptModal: FC<OwnProps & StateProps> = ({
             >
               <Icon name="close" />
             </Button>
-            <h3> {lang('PaymentReceipt')} </h3>
+            <h3>
+              {' '}
+              {lang('PaymentReceipt')}
+              {' '}
+            </h3>
           </div>
           <div className="receipt-content custom-scroll">
             <Checkout

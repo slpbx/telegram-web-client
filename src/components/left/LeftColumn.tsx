@@ -1,5 +1,6 @@
-import type { RefObject } from 'react';
-import React, {
+import type {
+  ElementRef } from '../../lib/teact/teact';
+import {
   memo, useEffect, useMemo, useState,
 } from '../../lib/teact/teact';
 import { getActions, withGlobal } from '../../global';
@@ -9,12 +10,14 @@ import type { FoldersActions } from '../../hooks/reducers/useFoldersReducer';
 import type { ReducerAction } from '../../hooks/useReducer';
 import { LeftColumnContent, SettingsScreens } from '../../types';
 
-import { selectCurrentChat, selectIsForumPanelOpen, selectTabState } from '../../global/selectors';
-import captureEscKeyListener from '../../util/captureEscKeyListener';
-import { captureControlledSwipe } from '../../util/swipeController';
+import {
+  selectCurrentChat, selectIsCurrentUserFrozen, selectIsForumPanelOpen, selectTabState,
+} from '../../global/selectors';
 import {
   IS_APP, IS_FIREFOX, IS_MAC_OS, IS_TOUCH_ENV, LAYERS_ANIMATION_NAME,
-} from '../../util/windowEnvironment';
+} from '../../util/browser/windowEnvironment';
+import captureEscKeyListener from '../../util/captureEscKeyListener';
+import { captureControlledSwipe } from '../../util/swipeController';
 
 import useFoldersReducer from '../../hooks/reducers/useFoldersReducer';
 import { useHotkeys } from '../../hooks/useHotkeys';
@@ -32,17 +35,18 @@ import Settings from './settings/Settings.async';
 import './LeftColumn.scss';
 
 interface OwnProps {
-  ref: RefObject<HTMLDivElement>;
+  ref: ElementRef<HTMLDivElement>;
 }
 
 type StateProps = {
+  contentKey: LeftColumnContent;
+  settingsScreen: SettingsScreens;
   searchQuery?: string;
   searchDate?: number;
   isFirstChatFolderActive: boolean;
   shouldSkipHistoryAnimations?: boolean;
   currentUserId?: string;
   hasPasscode?: boolean;
-  nextSettingsScreen?: SettingsScreens;
   nextFoldersAction?: ReducerAction<FoldersActions>;
   isChatOpen: boolean;
   isAppUpdateAvailable?: boolean;
@@ -52,16 +56,17 @@ type StateProps = {
   isClosingSearch?: boolean;
   archiveSettings: GlobalState['archiveSettings'];
   isArchivedStoryRibbonShown?: boolean;
+  isAccountFrozen?: boolean;
 };
 
 enum ContentType {
   Main,
-  // eslint-disable-next-line @typescript-eslint/no-shadow
+
   Settings,
   Archived,
-  // eslint-disable-next-line no-shadow
+
   NewGroup,
-  // eslint-disable-next-line no-shadow
+
   NewChannel,
 }
 
@@ -70,13 +75,14 @@ const RESET_TRANSITION_DELAY_MS = 250;
 
 function LeftColumn({
   ref,
+  contentKey,
+  settingsScreen,
   searchQuery,
   searchDate,
   isFirstChatFolderActive,
   shouldSkipHistoryAnimations,
   currentUserId,
   hasPasscode,
-  nextSettingsScreen,
   nextFoldersAction,
   isChatOpen,
   isAppUpdateAvailable,
@@ -86,6 +92,7 @@ function LeftColumn({
   isClosingSearch,
   archiveSettings,
   isArchivedStoryRibbonShown,
+  isAccountFrozen,
 }: OwnProps & StateProps) {
   const {
     setGlobalSearchQuery,
@@ -96,11 +103,10 @@ function LeftColumn({
     loadPasswordInfo,
     clearTwoFaError,
     openChat,
-    requestNextSettingsScreen,
+    openLeftColumnContent,
+    openSettingsScreen,
   } = getActions();
 
-  const [content, setContent] = useState<LeftColumnContent>(LeftColumnContent.ChatList);
-  const [settingsScreen, setSettingsScreen] = useState(SettingsScreens.Main);
   const [contactsFilter, setContactsFilter] = useState<string>('');
   const [foldersState, foldersDispatch] = useFoldersReducer();
 
@@ -108,7 +114,7 @@ function LeftColumn({
   const [lastResetTime, setLastResetTime] = useState<number>(0);
 
   let contentType: ContentType = ContentType.Main;
-  switch (content) {
+  switch (contentKey) {
     case LeftColumnContent.Archived:
       contentType = ContentType.Archived;
       break;
@@ -127,8 +133,8 @@ function LeftColumn({
 
   const handleReset = useLastCallback((forceReturnToChatList?: true | Event) => {
     function fullReset() {
-      setContent(LeftColumnContent.ChatList);
-      setSettingsScreen(SettingsScreens.Main);
+      openLeftColumnContent({ contentKey: undefined });
+      openSettingsScreen({ screen: undefined });
       setContactsFilter('');
       setGlobalSearchClosing({ isClosing: true });
       resetChatCreation();
@@ -146,24 +152,24 @@ function LeftColumn({
       return;
     }
 
-    if (content === LeftColumnContent.NewGroupStep2) {
-      setContent(LeftColumnContent.NewGroupStep1);
+    if (contentKey === LeftColumnContent.NewGroupStep2) {
+      openLeftColumnContent({ contentKey: LeftColumnContent.NewGroupStep1 });
       return;
     }
 
-    if (content === LeftColumnContent.NewChannelStep2) {
-      setContent(LeftColumnContent.NewChannelStep1);
+    if (contentKey === LeftColumnContent.NewChannelStep2) {
+      openLeftColumnContent({ contentKey: LeftColumnContent.NewChannelStep1 });
       return;
     }
 
-    if (content === LeftColumnContent.NewGroupStep1) {
+    if (contentKey === LeftColumnContent.NewGroupStep1) {
       const pickerSearchInput = document.getElementById('new-group-picker-search');
       if (pickerSearchInput) {
         pickerSearchInput.blur();
       }
     }
 
-    if (content === LeftColumnContent.Settings) {
+    if (contentKey === LeftColumnContent.Settings) {
       switch (settingsScreen) {
         case SettingsScreens.EditProfile:
         case SettingsScreens.Folders:
@@ -176,14 +182,14 @@ function LeftColumn({
         case SettingsScreens.Language:
         case SettingsScreens.Stickers:
         case SettingsScreens.Experimental:
-          setSettingsScreen(SettingsScreens.Main);
+          openSettingsScreen({ screen: SettingsScreens.Main });
           return;
 
         case SettingsScreens.GeneralChatBackground:
-          setSettingsScreen(SettingsScreens.General);
+          openSettingsScreen({ screen: SettingsScreens.General });
           return;
         case SettingsScreens.GeneralChatBackgroundColor:
-          setSettingsScreen(SettingsScreens.GeneralChatBackground);
+          openSettingsScreen({ screen: SettingsScreens.GeneralChatBackground });
           return;
 
         case SettingsScreens.PrivacyPhoneNumber:
@@ -207,141 +213,143 @@ function LeftColumn({
         case SettingsScreens.PasscodeDisabled:
         case SettingsScreens.PasscodeEnabled:
         case SettingsScreens.PasscodeCongratulations:
-          setSettingsScreen(SettingsScreens.Privacy);
+          openSettingsScreen({ screen: SettingsScreens.Privacy });
           return;
 
         case SettingsScreens.PasscodeNewPasscode:
-          setSettingsScreen(hasPasscode ? SettingsScreens.PasscodeEnabled : SettingsScreens.PasscodeDisabled);
+          openSettingsScreen({
+            screen: hasPasscode ? SettingsScreens.PasscodeEnabled : SettingsScreens.PasscodeDisabled,
+          });
           return;
 
         case SettingsScreens.PasscodeChangePasscodeCurrent:
         case SettingsScreens.PasscodeTurnOff:
-          setSettingsScreen(SettingsScreens.PasscodeEnabled);
+          openSettingsScreen({ screen: SettingsScreens.PasscodeEnabled });
           return;
 
         case SettingsScreens.PasscodeNewPasscodeConfirm:
-          setSettingsScreen(SettingsScreens.PasscodeNewPasscode);
+          openSettingsScreen({ screen: SettingsScreens.PasscodeNewPasscode });
           return;
 
         case SettingsScreens.PasscodeChangePasscodeNew:
-          setSettingsScreen(SettingsScreens.PasscodeChangePasscodeCurrent);
+          openSettingsScreen({ screen: SettingsScreens.PasscodeChangePasscodeCurrent });
           return;
 
         case SettingsScreens.PasscodeChangePasscodeConfirm:
-          setSettingsScreen(SettingsScreens.PasscodeChangePasscodeNew);
+          openSettingsScreen({ screen: SettingsScreens.PasscodeChangePasscodeNew });
           return;
 
         case SettingsScreens.PrivacyPhoneNumberAllowedContacts:
         case SettingsScreens.PrivacyPhoneNumberDeniedContacts:
-          setSettingsScreen(SettingsScreens.PrivacyPhoneNumber);
+          openSettingsScreen({ screen: SettingsScreens.PrivacyPhoneNumber });
           return;
         case SettingsScreens.PrivacyLastSeenAllowedContacts:
         case SettingsScreens.PrivacyLastSeenDeniedContacts:
-          setSettingsScreen(SettingsScreens.PrivacyLastSeen);
+          openSettingsScreen({ screen: SettingsScreens.PrivacyLastSeen });
           return;
         case SettingsScreens.PrivacyProfilePhotoAllowedContacts:
         case SettingsScreens.PrivacyProfilePhotoDeniedContacts:
-          setSettingsScreen(SettingsScreens.PrivacyProfilePhoto);
+          openSettingsScreen({ screen: SettingsScreens.PrivacyProfilePhoto });
           return;
         case SettingsScreens.PrivacyBioAllowedContacts:
         case SettingsScreens.PrivacyBioDeniedContacts:
-          setSettingsScreen(SettingsScreens.PrivacyBio);
+          openSettingsScreen({ screen: SettingsScreens.PrivacyBio });
           return;
         case SettingsScreens.PrivacyBirthdayAllowedContacts:
         case SettingsScreens.PrivacyBirthdayDeniedContacts:
-          setSettingsScreen(SettingsScreens.PrivacyBirthday);
+          openSettingsScreen({ screen: SettingsScreens.PrivacyBirthday });
           return;
         case SettingsScreens.PrivacyGiftsAllowedContacts:
         case SettingsScreens.PrivacyGiftsDeniedContacts:
-          setSettingsScreen(SettingsScreens.PrivacyGifts);
+          openSettingsScreen({ screen: SettingsScreens.PrivacyGifts });
           return;
         case SettingsScreens.PrivacyPhoneCallAllowedContacts:
         case SettingsScreens.PrivacyPhoneCallDeniedContacts:
-          setSettingsScreen(SettingsScreens.PrivacyPhoneCall);
+          openSettingsScreen({ screen: SettingsScreens.PrivacyPhoneCall });
           return;
         case SettingsScreens.PrivacyPhoneP2PAllowedContacts:
         case SettingsScreens.PrivacyPhoneP2PDeniedContacts:
-          setSettingsScreen(SettingsScreens.PrivacyPhoneP2P);
+          openSettingsScreen({ screen: SettingsScreens.PrivacyPhoneP2P });
           return;
         case SettingsScreens.PrivacyForwardingAllowedContacts:
         case SettingsScreens.PrivacyForwardingDeniedContacts:
-          setSettingsScreen(SettingsScreens.PrivacyForwarding);
+          openSettingsScreen({ screen: SettingsScreens.PrivacyForwarding });
           return;
         case SettingsScreens.PrivacyVoiceMessagesAllowedContacts:
         case SettingsScreens.PrivacyVoiceMessagesDeniedContacts:
-          setSettingsScreen(SettingsScreens.PrivacyVoiceMessages);
+          openSettingsScreen({ screen: SettingsScreens.PrivacyVoiceMessages });
           return;
         case SettingsScreens.PrivacyGroupChatsAllowedContacts:
         case SettingsScreens.PrivacyGroupChatsDeniedContacts:
-          setSettingsScreen(SettingsScreens.PrivacyGroupChats);
+          openSettingsScreen({ screen: SettingsScreens.PrivacyGroupChats });
           return;
         case SettingsScreens.TwoFaNewPassword:
-          setSettingsScreen(SettingsScreens.TwoFaDisabled);
+          openSettingsScreen({ screen: SettingsScreens.TwoFaDisabled });
           return;
         case SettingsScreens.TwoFaNewPasswordConfirm:
-          setSettingsScreen(SettingsScreens.TwoFaNewPassword);
+          openSettingsScreen({ screen: SettingsScreens.TwoFaNewPassword });
           return;
         case SettingsScreens.TwoFaNewPasswordHint:
-          setSettingsScreen(SettingsScreens.TwoFaNewPasswordConfirm);
+          openSettingsScreen({ screen: SettingsScreens.TwoFaNewPasswordConfirm });
           return;
         case SettingsScreens.TwoFaNewPasswordEmail:
-          setSettingsScreen(SettingsScreens.TwoFaNewPasswordHint);
+          openSettingsScreen({ screen: SettingsScreens.TwoFaNewPasswordHint });
           return;
         case SettingsScreens.TwoFaNewPasswordEmailCode:
-          setSettingsScreen(SettingsScreens.TwoFaNewPasswordEmail);
+          openSettingsScreen({ screen: SettingsScreens.TwoFaNewPasswordEmail });
           return;
         case SettingsScreens.TwoFaChangePasswordCurrent:
         case SettingsScreens.TwoFaTurnOff:
         case SettingsScreens.TwoFaRecoveryEmailCurrentPassword:
-          setSettingsScreen(SettingsScreens.TwoFaEnabled);
+          openSettingsScreen({ screen: SettingsScreens.TwoFaEnabled });
           return;
         case SettingsScreens.TwoFaChangePasswordNew:
-          setSettingsScreen(SettingsScreens.TwoFaChangePasswordCurrent);
+          openSettingsScreen({ screen: SettingsScreens.TwoFaChangePasswordCurrent });
           return;
         case SettingsScreens.TwoFaChangePasswordConfirm:
-          setSettingsScreen(SettingsScreens.TwoFaChangePasswordNew);
+          openSettingsScreen({ screen: SettingsScreens.TwoFaChangePasswordNew });
           return;
         case SettingsScreens.TwoFaChangePasswordHint:
-          setSettingsScreen(SettingsScreens.TwoFaChangePasswordConfirm);
+          openSettingsScreen({ screen: SettingsScreens.TwoFaChangePasswordConfirm });
           return;
         case SettingsScreens.TwoFaRecoveryEmail:
-          setSettingsScreen(SettingsScreens.TwoFaRecoveryEmailCurrentPassword);
+          openSettingsScreen({ screen: SettingsScreens.TwoFaRecoveryEmailCurrentPassword });
           return;
         case SettingsScreens.TwoFaRecoveryEmailCode:
-          setSettingsScreen(SettingsScreens.TwoFaRecoveryEmail);
+          openSettingsScreen({ screen: SettingsScreens.TwoFaRecoveryEmail });
           return;
 
         case SettingsScreens.FoldersCreateFolder:
         case SettingsScreens.FoldersEditFolder:
-          setSettingsScreen(SettingsScreens.Folders);
+          openSettingsScreen({ screen: SettingsScreens.Folders });
           return;
 
         case SettingsScreens.FoldersShare:
-          setSettingsScreen(SettingsScreens.FoldersEditFolder);
+          openSettingsScreen({ screen: SettingsScreens.FoldersEditFolder });
           return;
 
         case SettingsScreens.FoldersIncludedChatsFromChatList:
         case SettingsScreens.FoldersExcludedChatsFromChatList:
-          setSettingsScreen(SettingsScreens.FoldersEditFolderFromChatList);
+          openSettingsScreen({ screen: SettingsScreens.FoldersEditFolderFromChatList });
           return;
 
         case SettingsScreens.FoldersEditFolderFromChatList:
         case SettingsScreens.FoldersEditFolderInvites:
-          setContent(LeftColumnContent.ChatList);
-          setSettingsScreen(SettingsScreens.Main);
+          openLeftColumnContent({ contentKey: LeftColumnContent.ChatList });
+          openSettingsScreen({ screen: SettingsScreens.Main });
           return;
 
         case SettingsScreens.QuickReaction:
         case SettingsScreens.CustomEmoji:
-          setSettingsScreen(SettingsScreens.Stickers);
+          openSettingsScreen({ screen: SettingsScreens.Stickers });
           return;
 
         case SettingsScreens.DoNotTranslate:
-          setSettingsScreen(SettingsScreens.Language);
+          openSettingsScreen({ screen: SettingsScreens.Language });
           return;
 
         case SettingsScreens.PrivacyNoPaidMessages:
-          setSettingsScreen(SettingsScreens.PrivacyMessages);
+          openSettingsScreen({ screen: SettingsScreens.PrivacyMessages });
           return;
 
         default:
@@ -349,8 +357,8 @@ function LeftColumn({
       }
     }
 
-    if (content === LeftColumnContent.ChatList && isFirstChatFolderActive) {
-      setContent(LeftColumnContent.GlobalSearch);
+    if (contentKey === LeftColumnContent.ChatList && isFirstChatFolderActive) {
+      openLeftColumnContent({ contentKey: LeftColumnContent.GlobalSearch });
 
       return;
     }
@@ -359,12 +367,12 @@ function LeftColumn({
   });
 
   const handleSearchQuery = useLastCallback((query: string) => {
-    if (content === LeftColumnContent.Contacts) {
+    if (contentKey === LeftColumnContent.Contacts) {
       setContactsFilter(query);
       return;
     }
 
-    setContent(LeftColumnContent.GlobalSearch);
+    openLeftColumnContent({ contentKey: LeftColumnContent.GlobalSearch });
 
     if (query !== searchQuery) {
       setGlobalSearchQuery({ query });
@@ -372,15 +380,15 @@ function LeftColumn({
   });
 
   const handleTopicSearch = useLastCallback(() => {
-    setContent(LeftColumnContent.GlobalSearch);
+    openLeftColumnContent({ contentKey: LeftColumnContent.GlobalSearch });
     setGlobalSearchQuery({ query: '' });
     setGlobalSearchChatId({ id: forumPanelChatId });
   });
 
   useEffect(
     () => {
-      const isArchived = content === LeftColumnContent.Archived;
-      const isChatList = content === LeftColumnContent.ChatList;
+      const isArchived = contentKey === LeftColumnContent.Archived;
+      const isChatList = contentKey === LeftColumnContent.ChatList;
       const noChatOrForumOpen = !isChatOpen && !isForumPanelOpen;
       // We listen for escape key only in these cases:
       // 1. When we are in archived chats and no chat or forum is open.
@@ -395,16 +403,16 @@ function LeftColumn({
         return undefined;
       }
     },
-    [isFirstChatFolderActive, content, handleReset, isChatOpen, isForumPanelOpen],
+    [isFirstChatFolderActive, contentKey, handleReset, isChatOpen, isForumPanelOpen],
   );
 
   const handleHotkeySearch = useLastCallback((e: KeyboardEvent) => {
-    if (content === LeftColumnContent.GlobalSearch) {
+    if (contentKey === LeftColumnContent.GlobalSearch) {
       return;
     }
 
     e.preventDefault();
-    setContent(LeftColumnContent.GlobalSearch);
+    openLeftColumnContent({ contentKey: LeftColumnContent.GlobalSearch });
   });
 
   const handleHotkeySavedMessages = useLastCallback((e: KeyboardEvent) => {
@@ -414,12 +422,12 @@ function LeftColumn({
 
   const handleArchivedChats = useLastCallback((e: KeyboardEvent) => {
     e.preventDefault();
-    setContent(LeftColumnContent.Archived);
+    openLeftColumnContent({ contentKey: LeftColumnContent.Archived });
   });
 
   const handleHotkeySettings = useLastCallback((e: KeyboardEvent) => {
     e.preventDefault();
-    setContent(LeftColumnContent.Settings);
+    openLeftColumnContent({ contentKey: LeftColumnContent.Settings });
   });
 
   useHotkeys(useMemo(() => ({
@@ -444,21 +452,10 @@ function LeftColumn({
   }, [clearTwoFaError, loadPasswordInfo, settingsScreen]);
 
   useSyncEffect(() => {
-    if (nextSettingsScreen !== undefined) {
-      setContent(LeftColumnContent.Settings);
-      setSettingsScreen(nextSettingsScreen);
-      requestNextSettingsScreen({ screen: undefined });
-    }
-
     if (nextFoldersAction) {
       foldersDispatch(nextFoldersAction);
     }
-  }, [foldersDispatch, nextFoldersAction, nextSettingsScreen, requestNextSettingsScreen]);
-
-  const handleSettingsScreenSelect = useLastCallback((screen: SettingsScreens) => {
-    setContent(LeftColumnContent.Settings);
-    setSettingsScreen(screen);
-  });
+  }, [foldersDispatch, nextFoldersAction]);
 
   const prevSettingsScreenRef = useStateRef(usePrevious(contentType === ContentType.Settings ? settingsScreen : -1));
 
@@ -472,8 +469,8 @@ function LeftColumn({
       selectorToPreventScroll: '#Settings .custom-scroll',
       onSwipeRightStart: handleReset,
       onCancel: () => {
-        setContent(LeftColumnContent.Settings);
-        handleSettingsScreenSelect(prevSettingsScreenRef.current!);
+        openLeftColumnContent({ contentKey: LeftColumnContent.Settings });
+        openSettingsScreen({ screen: prevSettingsScreenRef.current! });
       },
     });
   }, [prevSettingsScreenRef, ref]);
@@ -487,8 +484,6 @@ function LeftColumn({
             onReset={handleReset}
             onTopicSearch={handleTopicSearch}
             foldersDispatch={foldersDispatch}
-            onSettingsScreenSelect={handleSettingsScreenSelect}
-            onLeftColumnContentChange={setContent}
             isForumPanelOpen={isForumPanelOpen}
             archiveSettings={archiveSettings}
             isStoryRibbonShown={isArchivedStoryRibbonShown}
@@ -502,7 +497,6 @@ function LeftColumn({
             foldersState={foldersState}
             foldersDispatch={foldersDispatch}
             shouldSkipTransition={shouldSkipHistoryAnimations}
-            onScreenSelect={handleSettingsScreenSelect}
             onReset={handleReset}
           />
         );
@@ -512,8 +506,7 @@ function LeftColumn({
             key={lastResetTime}
             isActive={isActive}
             isChannel
-            content={content}
-            onContentChange={setContent}
+            content={contentKey}
             onReset={handleReset}
           />
         );
@@ -522,29 +515,27 @@ function LeftColumn({
           <NewChat
             key={lastResetTime}
             isActive={isActive}
-            content={content}
-            onContentChange={setContent}
+            content={contentKey}
             onReset={handleReset}
           />
         );
       default:
         return (
           <LeftMain
-            content={content}
+            content={contentKey}
             isClosingSearch={isClosingSearch}
             searchQuery={searchQuery}
             searchDate={searchDate}
             contactsFilter={contactsFilter}
             foldersDispatch={foldersDispatch}
-            onContentChange={setContent}
             onSearchQuery={handleSearchQuery}
-            onSettingsScreenSelect={handleSettingsScreenSelect}
             onReset={handleReset}
             shouldSkipTransition={shouldSkipHistoryAnimations}
             isAppUpdateAvailable={isAppUpdateAvailable}
             isElectronUpdateAvailable={isElectronUpdateAvailable}
             isForumPanelOpen={isForumPanelOpen}
             onTopicSearch={handleTopicSearch}
+            isAccountFrozen={isAccountFrozen}
           />
         );
     }
@@ -578,7 +569,7 @@ export default memo(withGlobal<OwnProps>(
       },
       shouldSkipHistoryAnimations,
       activeChatFolder,
-      nextSettingsScreen,
+      leftColumn,
       nextFoldersAction,
       storyViewer: {
         isArchivedRibbonShown,
@@ -598,6 +589,7 @@ export default memo(withGlobal<OwnProps>(
     const isChatOpen = Boolean(currentChat?.id);
     const isForumPanelOpen = selectIsForumPanelOpen(global);
     const forumPanelChatId = tabState.forumPanelChatId;
+    const isAccountFrozen = selectIsCurrentUserFrozen(global);
 
     return {
       searchQuery: query,
@@ -606,7 +598,6 @@ export default memo(withGlobal<OwnProps>(
       shouldSkipHistoryAnimations,
       currentUserId,
       hasPasscode,
-      nextSettingsScreen,
       nextFoldersAction,
       isChatOpen,
       isAppUpdateAvailable,
@@ -616,6 +607,9 @@ export default memo(withGlobal<OwnProps>(
       isClosingSearch: tabState.globalSearch.isClosing,
       archiveSettings,
       isArchivedStoryRibbonShown: isArchivedRibbonShown,
+      isAccountFrozen,
+      contentKey: leftColumn.contentKey,
+      settingsScreen: leftColumn.settingsScreen,
     };
   },
 )(LeftColumn));

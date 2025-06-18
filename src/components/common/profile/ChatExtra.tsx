@@ -1,5 +1,5 @@
 import type { FC } from '../../../lib/teact/teact';
-import React, {
+import {
   memo, useMemo,
 } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
@@ -281,7 +281,7 @@ const ChatExtra: FC<OwnProps & StateProps> = ({
     const [mainUsername, ...otherUsernames] = usernameList;
 
     const usernameLinks = otherUsernames.length
-      ? (oldLang('UsernameAlso', '%USERNAMES%') as string)
+      ? (oldLang('UsernameAlso', '%USERNAMES%'))
         .split('%')
         .map((s) => {
           return (s === 'USERNAMES' ? (
@@ -316,7 +316,7 @@ const ChatExtra: FC<OwnProps & StateProps> = ({
         multiline
         narrow
         ripple
-        // eslint-disable-next-line react/jsx-no-bind
+
         onClick={() => {
           handleUsernameClick(mainUsername, isChat);
         }}
@@ -351,7 +351,7 @@ const ChatExtra: FC<OwnProps & StateProps> = ({
         </div>
       )}
       {Boolean(formattedNumber?.length) && (
-        // eslint-disable-next-line react/jsx-no-bind
+
         <ListItem icon="phone" multiline narrow ripple onClick={handlePhoneClick}>
           <span className="title" dir={lang.isRtl ? 'rtl' : undefined}>{formattedNumber}</span>
           <span className="subtitle">{oldLang('Phone')}</span>
@@ -385,7 +385,7 @@ const ChatExtra: FC<OwnProps & StateProps> = ({
           multiline
           narrow
           ripple
-          // eslint-disable-next-line react/jsx-no-bind
+
           onClick={() => copy(link, oldLang('SetUrlPlaceholder'))}
         >
           <div className="title">{link}</div>
@@ -395,7 +395,7 @@ const ChatExtra: FC<OwnProps & StateProps> = ({
       {birthday && (
         <UserBirthday key={peerId} birthday={birthday} user={user!} isInSettings={isInSettings} />
       )}
-      { hasMainMiniApp && (
+      {hasMainMiniApp && (
         <ListItem
           multiline
           isStatic

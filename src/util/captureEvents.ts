@@ -1,7 +1,7 @@
+import { IS_IOS, IS_WINDOWS } from './browser/windowEnvironment';
 import { Lethargy } from './lethargy';
 import { clamp, round } from './math';
 import { debounce } from './schedulers';
-import { IS_IOS, IS_WINDOWS } from './windowEnvironment';
 import windowSize from './windowSize';
 
 export enum SwipeDirection {
@@ -218,8 +218,8 @@ export function captureEvents(element: HTMLElement, options: CaptureOptions) {
         } else if (e.type === 'mouseup') {
           if (options.onDoubleClick && Date.now() - lastClickTime < 300) {
             options.onDoubleClick(e, {
-              centerX: captureEvent!.pageX!,
-              centerY: captureEvent!.pageY!,
+              centerX: captureEvent.pageX!,
+              centerY: captureEvent.pageY!,
             });
           } else if (options.onClick && (!('button' in e) || e.button === 0)) {
             options.onClick(e);

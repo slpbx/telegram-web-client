@@ -1,5 +1,6 @@
 import type { FC } from '../../lib/teact/teact';
-import React, {
+import type React from '../../lib/teact/teact';
+import {
   memo, useEffect, useRef, useState,
 } from '../../lib/teact/teact';
 
@@ -7,8 +8,8 @@ import type { ApiVideo } from '../../api/types';
 import type { ObserveFn } from '../../hooks/useIntersectionObserver';
 
 import { getVideoMediaHash, getVideoPreviewMediaHash } from '../../global/helpers';
+import { IS_TOUCH_ENV } from '../../util/browser/windowEnvironment';
 import buildClassName from '../../util/buildClassName';
-import { IS_TOUCH_ENV } from '../../util/windowEnvironment';
 import { preventMessageInputBlurWithBubbling } from '../middle/helpers/preventMessageInputBlur';
 
 import useBuffering from '../../hooks/useBuffering';
@@ -47,8 +48,7 @@ const GifButton: FC<OwnProps> = ({
   onUnsaveClick,
   isSavedMessages,
 }) => {
-  // eslint-disable-next-line no-null/no-null
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLDivElement>();
 
   const lang = useOldLang();
 
@@ -169,7 +169,7 @@ const GifButton: FC<OwnProps> = ({
           disablePictureInPicture
           playsInline
           preload="none"
-          // eslint-disable-next-line react/jsx-props-no-spreading
+
           {...bufferingHandlers}
         />
       )}

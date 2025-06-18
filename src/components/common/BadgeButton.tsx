@@ -1,4 +1,4 @@
-import React from '../../lib/teact/teact';
+import type React from '../../lib/teact/teact';
 
 import buildClassName from '../../util/buildClassName';
 
@@ -8,15 +8,21 @@ type OwnProps = {
   children: React.ReactNode;
   className?: string;
   onClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
+  onMouseDown?: (e: React.MouseEvent<HTMLDivElement>) => void;
 };
 
 const BadgeButton = ({
   children,
   className,
   onClick,
+  onMouseDown,
 }: OwnProps) => {
   return (
-    <div className={buildClassName(styles.root, onClick && styles.clickable, className)} onClick={onClick}>
+    <div
+      className={buildClassName(styles.root, onClick && styles.clickable, className)}
+      onClick={onClick}
+      onMouseDown={onMouseDown}
+    >
       {children}
     </div>
   );

@@ -1,5 +1,5 @@
 import type { FC } from '../../lib/teact/teact';
-import React, {
+import {
   memo, useMemo, useRef, useState,
 } from '../../lib/teact/teact';
 import { getActions, withGlobal } from '../../global';
@@ -13,7 +13,7 @@ import {
   getHasAdminRight,
   getIsSavedDialog,
   isAnonymousForwardsChat,
-  isChatBasicGroup, isChatChannel, isChatSuperGroup, isUserId,
+  isChatBasicGroup, isChatChannel, isChatSuperGroup,
 } from '../../global/helpers';
 import {
   selectBot,
@@ -23,6 +23,7 @@ import {
   selectChatFullInfo,
   selectIsChatBotNotStarted,
   selectIsChatWithSelf,
+  selectIsCurrentUserFrozen,
   selectIsInSelectMode,
   selectIsRightColumnShown,
   selectIsUserBlocked,
@@ -31,7 +32,8 @@ import {
   selectTranslationLanguage,
   selectUserFullInfo,
 } from '../../global/selectors';
-import { ARE_CALLS_SUPPORTED, IS_APP } from '../../util/windowEnvironment';
+import { ARE_CALLS_SUPPORTED, IS_APP } from '../../util/browser/windowEnvironment';
+import { isUserId } from '../../util/entities/ids';
 
 import { useHotkeys } from '../../hooks/useHotkeys';
 import useLastCallback from '../../hooks/useLastCallback';
@@ -82,6 +84,7 @@ interface StateProps {
   language: string;
   detectedChatLanguage?: string;
   doNotTranslate: string[];
+  isAccountFrozen?: boolean;
 }
 
 // Chrome breaks layout when focusing input during transition
@@ -121,6 +124,7 @@ const HeaderActions: FC<OwnProps & StateProps> = ({
   detectedChatLanguage,
   doNotTranslate,
   onTopicSearch,
+  isAccountFrozen,
 }) => {
   const {
     joinChannel,
@@ -137,9 +141,9 @@ const HeaderActions: FC<OwnProps & StateProps> = ({
     setSettingOption,
     unblockUser,
     setViewForumAsMessages,
+    openFrozenAccountModal,
   } = getActions();
-  // eslint-disable-next-line no-null/no-null
-  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>();
   const lang = useOldLang();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<IAnchorPosition | undefined>(undefined);
@@ -219,6 +223,10 @@ const HeaderActions: FC<OwnProps & StateProps> = ({
   });
 
   const handleRequestCall = useLastCallback(() => {
+    if (isAccountFrozen) {
+      openFrozenAccountModal();
+      return;
+    }
     requestMasterAndRequestCall({ userId: chatId });
   });
 
@@ -513,6 +521,7 @@ export default memo(withGlobal<OwnProps>(
 
     const isTranslating = Boolean(selectRequestedChatTranslationLanguage(global, chatId));
     const canTranslate = selectCanTranslateChat(global, chatId) && !fullInfo?.isTranslationDisabled;
+    const isAccountFrozen = selectIsCurrentUserFrozen(global);
 
     return {
       noMenu: false,
@@ -542,6 +551,7 @@ export default memo(withGlobal<OwnProps>(
       doNotTranslate,
       detectedChatLanguage: chat.detectedLanguage,
       canUnblock,
+      isAccountFrozen,
     };
   },
 )(HeaderActions));

@@ -1,16 +1,16 @@
-import type { RefObject } from 'react';
+import type { ElementRef } from '../lib/teact/teact';
 import { useEffect } from '../lib/teact/teact';
 
 import { DEBUG } from '../config';
 import { requestMutation } from '../lib/fasterdom/fasterdom';
 import { applyStyles } from '../util/animation';
 import unloadVideo from '../util/browser/unloadVideo';
+import { IS_SAFARI } from '../util/browser/windowEnvironment';
 import { makeProgressiveLoader } from '../util/progressiveLoader';
-import { IS_SAFARI } from '../util/windowEnvironment';
 
 const VIDEO_REVEAL_DELAY = 100;
 
-export function useStreaming(videoRef: RefObject<HTMLVideoElement>, url?: string, mimeType?: string) {
+export function useStreaming(videoRef: ElementRef<HTMLVideoElement>, url?: string, mimeType?: string) {
   useEffect(() => {
     if (!url || !videoRef.current) return undefined;
     const MediaSourceClass = getMediaSource();

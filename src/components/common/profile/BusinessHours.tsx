@@ -1,16 +1,17 @@
-import React, {
+import type React from '../../../lib/teact/teact';
+import {
   memo, useEffect, useMemo, useRef,
 } from '../../../lib/teact/teact';
 
 import type { ApiBusinessWorkHours } from '../../../api/types';
 
 import { requestMeasure, requestMutation } from '../../../lib/fasterdom/fasterdom';
+import { IS_TOUCH_ENV } from '../../../util/browser/windowEnvironment';
 import buildClassName from '../../../util/buildClassName';
 import { formatTime, formatWeekday } from '../../../util/dates/dateFormat';
 import {
   getUtcOffset, getWeekStart, shiftTimeRanges, splitDays,
 } from '../../../util/dates/workHours';
-import { IS_TOUCH_ENV } from '../../../util/windowEnvironment';
 
 import useSelectorSignal from '../../../hooks/data/useSelectorSignal';
 import useInterval from '../../../hooks/schedulers/useInterval';
@@ -35,8 +36,7 @@ type OwnProps = {
 const BusinessHours = ({
   businessHours,
 }: OwnProps) => {
-  // eslint-disable-next-line no-null/no-null
-  const transitionRef = useRef<HTMLDivElement>(null);
+  const transitionRef = useRef<HTMLDivElement>();
   const [isExpanded, expand, collapse] = useFlag(false);
   const [isMyTime, showInMyTime, showInLocalTime] = useFlag(false);
   const lang = useOldLang();

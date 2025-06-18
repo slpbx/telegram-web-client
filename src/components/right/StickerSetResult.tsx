@@ -1,5 +1,5 @@
 import type { FC } from '../../lib/teact/teact';
-import React, {
+import {
   memo, useCallback, useEffect, useMemo, useRef,
 } from '../../lib/teact/teact';
 import { getActions, withGlobal } from '../../global';
@@ -37,8 +37,7 @@ const StickerSetResult: FC<OwnProps & StateProps> = ({
 }) => {
   const { loadStickers, toggleStickerSet, openStickerSet } = getActions();
 
-  // eslint-disable-next-line no-null/no-null
-  const sharedCanvasRef = useRef<HTMLCanvasElement>(null);
+  const sharedCanvasRef = useRef<HTMLCanvasElement>();
 
   const lang = useOldLang();
   const isAdded = set && !set.isArchived && Boolean(set.installedDate);

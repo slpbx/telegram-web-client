@@ -1,5 +1,5 @@
 import type { FC } from '../../lib/teact/teact';
-import React, {
+import {
   memo,
   useEffect,
   useMemo,
@@ -17,7 +17,6 @@ import {
   isChatChannel,
   isChatSuperGroup,
   isSystemBot,
-  isUserId,
 } from '../../global/helpers';
 import { getPeerTitle } from '../../global/helpers/peers';
 import {
@@ -31,6 +30,7 @@ import {
   selectUser,
 } from '../../global/selectors';
 import buildClassName from '../../util/buildClassName';
+import { isUserId } from '../../util/entities/ids';
 import { buildCollectionByCallback, unique } from '../../util/iteratees';
 import { MEMO_EMPTY_ARRAY } from '../../util/memo';
 import renderText from './helpers/renderText';
@@ -116,9 +116,9 @@ const DeleteMessageModal: FC<OwnProps & StateProps> = ({
     permissions, havePermissionChanged, handlePermissionChange, resetPermissions,
   } = useManagePermissions(chat?.defaultBannedRights);
 
-  const [peerIdsToDeleteAll, setPeerIdsToDeleteAll] = useState<string[] | undefined>(undefined);
-  const [peerIdsToBan, setPeerIdsToBan] = useState<string[] | undefined>(undefined);
-  const [peerIdsToReportSpam, setPeerIdsToReportSpam] = useState<string[] | undefined>(undefined);
+  const [peerIdsToDeleteAll, setPeerIdsToDeleteAll] = useState<string[]>([]);
+  const [peerIdsToBan, setPeerIdsToBan] = useState<string[]>([]);
+  const [peerIdsToReportSpam, setPeerIdsToReportSpam] = useState<string[]>([]);
   const [isMediaDropdownOpen, setIsMediaDropdownOpen] = useState(false);
   const [isAdditionalOptionsVisible, setIsAdditionalOptionsVisible] = useState(false);
   const [shouldDeleteForAll, setShouldDeleteForAll] = useState(true);
@@ -136,7 +136,7 @@ const DeleteMessageModal: FC<OwnProps & StateProps> = ({
   const buildNestedOptionListWithAvatars = useLastCallback(() => {
     return peerList.map((member) => {
       return {
-        value: `${member.id}`,
+        value: member.id,
         label: getPeerTitle(lang, member) || '',
         leftElement: <Avatar size="small" peer={member} />,
       };
@@ -282,7 +282,7 @@ const DeleteMessageModal: FC<OwnProps & StateProps> = ({
       if (peerIdsToReportSpam) {
         const global = getGlobal();
         const peerIdList = peerIdsToReportSpam.filter((option) => !Number.isNaN(Number(option)));
-        const messageList = messageIds!.reduce<Record<string, number[]>>((acc, msgId) => {
+        const messageList = messageIds.reduce<Record<string, number[]>>((acc, msgId) => {
           const peer = selectSenderFromMessage(global, chat.id, msgId);
           if (peer && peerIdList.includes(peer.id)) {
             if (!acc[peer.id]) {
@@ -304,7 +304,7 @@ const DeleteMessageModal: FC<OwnProps & StateProps> = ({
       if (peerIdsToBan && !havePermissionChanged) {
         const peerIdList = peerIdsToBan.filter((option) => !Number.isNaN(Number(option)));
         handleDeleteMember(peerIdList);
-        const filteredMessageIdList = filterMessageIdByPeerId(peerIdList, messageIds!);
+        const filteredMessageIdList = filterMessageIdByPeerId(peerIdList, messageIds);
         handleDeleteMessages(filteredMessageIdList);
       }
 
@@ -330,9 +330,9 @@ const DeleteMessageModal: FC<OwnProps & StateProps> = ({
 
   useEffect(() => {
     if (!isOpen && prevIsOpen) {
-      setPeerIdsToReportSpam(undefined);
-      setPeerIdsToDeleteAll(undefined);
-      setPeerIdsToBan(undefined);
+      setPeerIdsToReportSpam([]);
+      setPeerIdsToDeleteAll([]);
+      setPeerIdsToBan([]);
       setShouldDeleteForAll(true);
       setIsMediaDropdownOpen(false);
       setIsAdditionalOptionsVisible(false);
@@ -445,8 +445,9 @@ const DeleteMessageModal: FC<OwnProps & StateProps> = ({
         )}
         {(canDeleteForAll || chatBot || !shouldShowOption) && (
           <>
-            <p>{messageIds && messageIds.length > 1
-              ? lang('AreYouSureDeleteFewMessages') : lang('AreYouSureDeleteSingleMessage')}
+            <p>
+              {messageIds && messageIds.length > 1
+                ? lang('AreYouSureDeleteFewMessages') : lang('AreYouSureDeleteSingleMessage')}
             </p>
             {willDeleteForCurrentUserOnly && (
               <p>{oldLang('lng_delete_for_me_chat_hint', 1, 'i')}</p>

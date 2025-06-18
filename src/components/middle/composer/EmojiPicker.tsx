@@ -1,5 +1,5 @@
 import type { FC } from '../../../lib/teact/teact';
-import React, {
+import {
   memo, useEffect, useMemo,
   useRef, useState,
 } from '../../../lib/teact/teact';
@@ -16,11 +16,11 @@ import type {
 import { MENU_TRANSITION_DURATION, RECENT_SYMBOL_SET_ID } from '../../../config';
 import animateHorizontalScroll from '../../../util/animateHorizontalScroll';
 import animateScroll from '../../../util/animateScroll';
+import { IS_TOUCH_ENV } from '../../../util/browser/windowEnvironment';
 import buildClassName from '../../../util/buildClassName';
 import { uncompressEmoji } from '../../../util/emoji/emoji';
 import { pick } from '../../../util/iteratees';
 import { MEMO_EMPTY_ARRAY } from '../../../util/memo';
-import { IS_TOUCH_ENV } from '../../../util/windowEnvironment';
 import { REM } from '../../common/helpers/mediaDimensions';
 
 import useAppLayout from '../../../hooks/useAppLayout';
@@ -67,7 +67,7 @@ const INTERSECTION_THROTTLE = 200;
 
 const categoryIntersections: boolean[] = [];
 
-let emojiDataPromise: Promise<EmojiModule>;
+let emojiDataPromise: Promise<EmojiModule> | undefined;
 let emojiRawData: EmojiRawData;
 let emojiData: EmojiData;
 
@@ -76,10 +76,8 @@ const EmojiPicker: FC<OwnProps & StateProps> = ({
   recentEmojis,
   onEmojiSelect,
 }) => {
-  // eslint-disable-next-line no-null/no-null
-  const containerRef = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line no-null/no-null
-  const headerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>();
+  const headerRef = useRef<HTMLDivElement>();
 
   const [categories, setCategories] = useState<EmojiCategoryData[]>();
   const [emojis, setEmojis] = useState<AllEmojis>();
@@ -175,7 +173,7 @@ const EmojiPicker: FC<OwnProps & StateProps> = ({
   const selectCategory = useLastCallback((index: number) => {
     setActiveCategoryIndex(index);
     const categoryEl = containerRef.current!.closest<HTMLElement>('.SymbolMenu-main')!
-      .querySelector(`#emoji-category-${index}`)! as HTMLElement;
+      .querySelector<HTMLElement>(`#emoji-category-${index}`)!;
     animateScroll({
       container: containerRef.current!,
       element: categoryEl,
@@ -198,7 +196,7 @@ const EmojiPicker: FC<OwnProps & StateProps> = ({
         round
         faded
         color="translucent"
-        // eslint-disable-next-line react/jsx-no-bind
+
         onClick={() => selectCategory(index)}
         ariaLabel={category.name}
       >

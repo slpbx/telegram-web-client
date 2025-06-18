@@ -31,6 +31,7 @@ import {
   selectCurrentChat,
   selectDefaultReaction,
   selectIsChatWithSelf,
+  selectIsCurrentUserFrozen,
   selectMaxUserReactions,
   selectMessageIdsByGroupId,
   selectPerformanceSettingsValue,
@@ -86,7 +87,7 @@ addActionHandler('loadAvailableEffects', async (global): Promise<void> => {
   }
 
   const { effects, emojis, stickers } = result;
-  const reactions:ApiReactionEmoji[] = [];
+  const reactions: ApiReactionEmoji[] = [];
 
   const effectById = buildCollectionByKey(effects, 'id');
 
@@ -122,13 +123,13 @@ addActionHandler('loadAvailableEffects', async (global): Promise<void> => {
 addActionHandler('interactWithAnimatedEmoji', (global, actions, payload): ActionReturnType => {
   const {
     emoji, x, y, startSize, isReversed, tabId = getCurrentTabId(),
-  } = payload!;
+  } = payload;
 
   const activeEmojiInteraction = {
     id: interactionLocalId++,
     animatedEffect: emoji,
     x: subtractXForEmojiInteraction(global, x) + Math.random()
-      * INTERACTION_RANDOM_OFFSET - INTERACTION_RANDOM_OFFSET / 2,
+    * INTERACTION_RANDOM_OFFSET - INTERACTION_RANDOM_OFFSET / 2,
     y: y + Math.random() * INTERACTION_RANDOM_OFFSET - INTERACTION_RANDOM_OFFSET / 2,
     startSize,
     isReversed,
@@ -142,7 +143,7 @@ addActionHandler('interactWithAnimatedEmoji', (global, actions, payload): Action
 addActionHandler('sendEmojiInteraction', (global, actions, payload): ActionReturnType => {
   const {
     messageId, chatId, emoji, interactions,
-  } = payload!;
+  } = payload;
   if (global.connectionState !== 'connectionStateReady') return;
 
   const chat = selectChat(global, chatId);
@@ -391,6 +392,8 @@ addActionHandler('stopActiveEmojiInteraction', (global, actions, payload): Actio
 });
 
 addActionHandler('loadReactors', async (global, actions, payload): Promise<void> => {
+  if (selectIsCurrentUserFrozen(global)) return;
+
   const { chatId, messageId, reaction } = payload;
   const chat = selectChat(global, chatId);
   const message = selectChatMessage(global, chatId, messageId);
@@ -418,6 +421,8 @@ addActionHandler('loadReactors', async (global, actions, payload): Promise<void>
 });
 
 addActionHandler('loadMessageReactions', (global, actions, payload): ActionReturnType => {
+  if (selectIsCurrentUserFrozen(global)) return;
+
   const { ids, chatId } = payload;
 
   const chat = selectChat(global, chatId);

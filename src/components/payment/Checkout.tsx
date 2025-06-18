@@ -1,5 +1,5 @@
 import type { FC } from '../../lib/teact/teact';
-import React, { memo, useCallback } from '../../lib/teact/teact';
+import { memo, useCallback } from '../../lib/teact/teact';
 import { getActions } from '../../global';
 
 import type {
@@ -274,7 +274,7 @@ function renderCheckoutItem({
   customIcon,
   onClick,
 }: {
-  title : string | undefined;
+  title: string | undefined;
   label: string | undefined;
   icon?: IconName;
   onClick?: NoneToVoidFunction;

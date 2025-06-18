@@ -1,5 +1,5 @@
 import type { FC } from '../../../lib/teact/teact';
-import React, {
+import {
   memo, useEffect, useLayoutEffect,
   useMemo,
   useRef, useState,
@@ -29,6 +29,7 @@ import {
   selectSender,
   selectTabState,
 } from '../../../global/selectors';
+import { IS_IOS } from '../../../util/browser/windowEnvironment';
 import buildClassName from '../../../util/buildClassName';
 import captureEscKeyListener from '../../../util/captureEscKeyListener';
 import { getDayStartAt } from '../../../util/dates/dateFormat';
@@ -36,7 +37,6 @@ import focusEditableElement from '../../../util/focusEditableElement';
 import { getSearchResultKey, parseSearchResultKey, type SearchResultKey } from '../../../util/keys/searchResultKey';
 import { MEMO_EMPTY_ARRAY } from '../../../util/memo';
 import { debounce, fastRaf } from '../../../util/schedulers';
-import { IS_IOS } from '../../../util/windowEnvironment';
 
 import { useClickOutside } from '../../../hooks/events/useOutsideClick';
 import useAppLayout from '../../../hooks/useAppLayout';
@@ -123,12 +123,9 @@ const MiddleSearch: FC<StateProps> = ({
     loadSavedReactionTags,
   } = getActions();
 
-  // eslint-disable-next-line no-null/no-null
-  const ref = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line no-null/no-null
-  const inputRef = useRef<HTMLInputElement>(null);
-  // eslint-disable-next-line no-null/no-null
-  const containerRef = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLDivElement>();
+  const inputRef = useRef<HTMLInputElement>();
+  const containerRef = useRef<HTMLDivElement>();
   const shouldCancelSearchRef = useRef(false);
 
   const { isMobile } = useAppLayout();
@@ -595,6 +592,7 @@ const MiddleSearch: FC<StateProps> = ({
             ref={containerRef}
             className={buildClassName(styles.results, 'custom-scroll')}
             items={viewportResults}
+            itemSelector={`.${RESULT_ITEM_CLASS_NAME}`}
             preloadBackwards={0}
             onLoadMore={getMore}
             onKeyDown={handleKeyDown}
@@ -696,7 +694,7 @@ const MiddleSearch: FC<StateProps> = ({
               round
               size="smaller"
               color="translucent"
-              // eslint-disable-next-line react/jsx-no-bind
+
               onClick={() => openHistoryCalendar({ selectedAt: getDayStartAt(Date.now()) })}
               ariaLabel={oldLang('JumpToDate')}
             >
@@ -712,7 +710,7 @@ const MiddleSearch: FC<StateProps> = ({
             round
             size="smaller"
             color="translucent"
-            // eslint-disable-next-line react/jsx-no-bind
+
             onClick={() => openHistoryCalendar({ selectedAt: getDayStartAt(Date.now()) })}
             ariaLabel={oldLang('JumpToDate')}
           >

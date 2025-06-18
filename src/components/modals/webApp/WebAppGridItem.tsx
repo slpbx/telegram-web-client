@@ -1,4 +1,4 @@
-import React, { memo } from '../../../lib/teact/teact';
+import { memo } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
 import type {
@@ -12,6 +12,7 @@ import buildClassName from '../../../util/buildClassName';
 import { formatIntegerCompact } from '../../../util/textFormat';
 import { extractCurrentThemeParams } from '../../../util/themeStyle';
 
+import useLang from '../../../hooks/useLang';
 import useLastCallback from '../../../hooks/useLastCallback';
 
 import PeerBadge from '../../common/PeerBadge';
@@ -19,7 +20,7 @@ import PeerBadge from '../../common/PeerBadge';
 import styles from './WebAppGridItem.module.scss';
 
 export type OwnProps = {
-  // eslint-disable-next-line react/no-unused-prop-types
+
   chatId: string;
   isPopularApp?: boolean;
 };
@@ -32,6 +33,8 @@ function WebAppGridItem({ user, isPopularApp }: OwnProps & StateProps) {
   const {
     requestMainWebView,
   } = getActions();
+
+  const lang = useLang();
 
   const handleClick = useLastCallback(() => {
     if (!user) {
@@ -51,11 +54,9 @@ function WebAppGridItem({ user, isPopularApp }: OwnProps & StateProps) {
 
   if (!user) return undefined;
 
-  // eslint-disable-next-line no-null/no-null
-
   const title = user?.firstName;
   const activeUserCount = user?.botActiveUsers;
-  const badgeText = activeUserCount && isPopularApp ? formatIntegerCompact(activeUserCount) : undefined;
+  const badgeText = activeUserCount && isPopularApp ? formatIntegerCompact(lang, activeUserCount) : undefined;
 
   return (
     <div

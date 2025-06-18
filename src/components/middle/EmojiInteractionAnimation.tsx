@@ -1,5 +1,5 @@
 import type { FC } from '../../lib/teact/teact';
-import React, {
+import {
   beginHeavyAnimation,
   memo, useEffect, useLayoutEffect, useRef,
 } from '../../lib/teact/teact';
@@ -10,8 +10,8 @@ import type { ActiveEmojiInteraction } from '../../types';
 import {
   selectAnimatedEmojiEffect,
 } from '../../global/selectors';
+import { IS_ANDROID } from '../../util/browser/windowEnvironment';
 import buildClassName from '../../util/buildClassName';
-import { IS_ANDROID } from '../../util/windowEnvironment';
 
 import useFlag from '../../hooks/useFlag';
 import useLastCallback from '../../hooks/useLastCallback';

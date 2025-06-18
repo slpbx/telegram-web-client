@@ -1,4 +1,4 @@
-import React, {
+import {
   memo, useMemo, useRef, useState,
 } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
@@ -8,8 +8,8 @@ import type { ObserveFn } from '../../../hooks/useIntersectionObserver';
 
 import { isSameReaction } from '../../../global/helpers';
 import { selectPerformanceSettingsValue, selectTabState } from '../../../global/selectors';
+import { IS_ANDROID, IS_IOS } from '../../../util/browser/windowEnvironment';
 import buildClassName from '../../../util/buildClassName';
-import { IS_ANDROID, IS_IOS } from '../../../util/windowEnvironment';
 import { LOCAL_TGS_URLS } from '../helpers/animatedAssets';
 import { REM } from '../helpers/mediaDimensions';
 
@@ -56,10 +56,8 @@ const PaidReactionEmoji = ({
 }: OwnProps & StateProps) => {
   const { stopActiveReaction } = getActions();
 
-  // eslint-disable-next-line no-null/no-null
-  const ref = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line no-null/no-null
-  const effectRef = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLDivElement>();
+  const effectRef = useRef<HTMLDivElement>();
 
   const [effectsIds, setEffectsIds] = useState<number[]>([]);
 

@@ -1,4 +1,5 @@
-import React, { memo, useEffect } from '../../../lib/teact/teact';
+import type React from '../../../lib/teact/teact';
+import { memo, useEffect } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
 import type { ApiChat, ApiMessage, ApiPeer } from '../../../api/types';
@@ -22,9 +23,9 @@ import {
   selectForwardedSender,
   selectPinnedIds,
 } from '../../../global/selectors';
+import { IS_TOUCH_ENV } from '../../../util/browser/windowEnvironment';
 import buildClassName from '../../../util/buildClassName';
 import cycleRestrict from '../../../util/cycleRestrict';
-import { IS_TOUCH_ENV } from '../../../util/windowEnvironment';
 import { getPictogramDimensions, REM } from '../../common/helpers/mediaDimensions';
 import renderText from '../../common/helpers/renderText';
 import renderKeyboardButtonText from '../composer/helpers/renderKeyboardButtonText';
@@ -62,7 +63,7 @@ const EMOJI_SIZE = 1.125 * REM;
 type OwnProps = {
   chatId: string;
   threadId: ThreadId;
-  // eslint-disable-next-line react/no-unused-prop-types
+
   messageListType: MessageListType;
   className?: string;
   isFullWidth?: boolean;

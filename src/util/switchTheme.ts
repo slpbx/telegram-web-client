@@ -1,4 +1,4 @@
-import type { ISettings } from '../types';
+import type { ThemeKey } from '../types';
 
 import { requestMutation } from '../lib/fasterdom/fasterdom';
 import themeColors from '../styles/themes.json';
@@ -46,7 +46,7 @@ const injectCss = (css: string) => {
   };
 };
 
-const switchTheme = (theme: ISettings['theme'], withAnimation: boolean) => {
+const switchTheme = (theme: ThemeKey, withAnimation: boolean) => {
   const themeClassName = `theme-${theme}`;
   if (document.documentElement.classList.contains(themeClassName)) {
     return;
@@ -113,7 +113,7 @@ export function lerpRgb(start: RGBAColor, end: RGBAColor, interpolationRatio: nu
   const g = Math.round(lerp(start.g, end.g, interpolationRatio));
   const b = Math.round(lerp(start.b, end.b, interpolationRatio));
   const a = start.a !== undefined
-    ? Math.round(lerp(start.a!, end.a!, interpolationRatio))
+    ? Math.round(lerp(start.a, end.a!, interpolationRatio))
     : undefined;
 
   return {

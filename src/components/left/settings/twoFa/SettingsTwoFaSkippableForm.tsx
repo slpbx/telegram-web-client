@@ -1,5 +1,6 @@
 import type { FC } from '../../../../lib/teact/teact';
-import React, {
+import type React from '../../../../lib/teact/teact';
+import {
   memo, useCallback, useEffect, useRef, useState,
 } from '../../../../lib/teact/teact';
 import { withGlobal } from '../../../../global';
@@ -7,7 +8,7 @@ import { withGlobal } from '../../../../global';
 import type { ApiSticker } from '../../../../api/types';
 
 import { selectAnimatedEmoji } from '../../../../global/selectors';
-import { IS_TOUCH_ENV } from '../../../../util/windowEnvironment';
+import { IS_TOUCH_ENV } from '../../../../util/browser/windowEnvironment';
 import renderText from '../../../common/helpers/renderText';
 
 import useAppLayout from '../../../../hooks/useAppLayout';
@@ -51,8 +52,7 @@ const SettingsTwoFaSkippableForm: FC<OwnProps & StateProps> = ({
   isActive,
   onReset,
 }) => {
-  // eslint-disable-next-line no-null/no-null
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>();
   const { isMobile } = useAppLayout();
 
   const focusDelayTimeoutMs = isMobile ? 550 : 400;

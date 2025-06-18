@@ -1,11 +1,11 @@
 import type { FC } from '../../../lib/teact/teact';
-import React, {
+import {
   memo, useEffect, useLayoutEffect, useMemo, useRef, useState,
 } from '../../../lib/teact/teact';
 import { getActions } from '../../../global';
 
 import type { ApiMessage, ApiPeer } from '../../../api/types';
-import type { ISettings } from '../../../types';
+import type { ThemeKey } from '../../../types';
 
 import { requestMutation } from '../../../lib/fasterdom/fasterdom';
 import {
@@ -50,7 +50,7 @@ type OwnProps = {
   peer?: ApiPeer;
   isInSelectMode?: boolean;
   isSelected?: boolean;
-  theme: ISettings['theme'];
+  theme: ThemeKey;
 };
 
 const Location: FC<OwnProps> = ({
@@ -58,10 +58,8 @@ const Location: FC<OwnProps> = ({
   peer,
 }) => {
   const { openMapModal } = getActions();
-  // eslint-disable-next-line no-null/no-null
-  const ref = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line no-null/no-null
-  const countdownRef = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLDivElement>();
+  const countdownRef = useRef<HTMLDivElement>();
   const lang = useOldLang();
   const forceUpdate = useForceUpdate();
 

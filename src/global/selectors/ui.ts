@@ -1,12 +1,13 @@
 import type { ApiMessage, ApiSponsoredMessage } from '../../api/types';
-import type { PerformanceTypeKey } from '../../types';
+import type { PerformanceTypeKey, ThemeKey } from '../../types';
 import type { GlobalState, TabArgs } from '../types';
 import { NewChatMembersProgress, RightColumnContent } from '../../types';
 
+import { IS_SNAP_EFFECT_SUPPORTED } from '../../util/browser/windowEnvironment';
 import { getCurrentTabId } from '../../util/establishMultitabRole';
-import { IS_SNAP_EFFECT_SUPPORTED } from '../../util/windowEnvironment';
 import { getMessageVideo, getMessageWebPageVideo } from '../helpers/messageMedia';
 import { selectCurrentManagement } from './management';
+import { selectSharedSettings } from './sharedState';
 import { selectIsStatisticsShown } from './statistics';
 import { selectTabState } from './tabs';
 
@@ -71,9 +72,11 @@ export function selectIsRightColumnShown<T extends GlobalState>(
 }
 
 export function selectTheme<T extends GlobalState>(global: T) {
-  const { theme } = global.settings.byKey;
+  return selectSharedSettings(global).theme;
+}
 
-  return theme;
+export function selectThemeValues<T extends GlobalState>(global: T, themeKey: ThemeKey) {
+  return global.settings.themes[themeKey];
 }
 
 export function selectIsForumPanelOpen<T extends GlobalState>(
@@ -103,14 +106,14 @@ export function selectIsReactionPickerOpen<T extends GlobalState>(
 }
 
 export function selectPerformanceSettings<T extends GlobalState>(global: T) {
-  return global.settings.performance;
+  return selectSharedSettings(global).performance;
 }
 
 export function selectPerformanceSettingsValue<T extends GlobalState>(
   global: T,
   key: PerformanceTypeKey,
 ) {
-  return global.settings.performance[key];
+  return selectPerformanceSettings(global)[key];
 }
 
 export function selectCanAutoPlayMedia<T extends GlobalState>(global: T, message: ApiMessage | ApiSponsoredMessage) {
@@ -164,4 +167,16 @@ export function selectActiveWebApp<T extends GlobalState>(
   if (!activeWebAppKey) return undefined;
 
   return selectWebApp(global, activeWebAppKey, tabId);
+}
+
+export function selectLeftColumnContentKey<T extends GlobalState>(
+  global: T, ...[tabId = getCurrentTabId()]: TabArgs<T>
+) {
+  return selectTabState(global, tabId).leftColumn.contentKey;
+}
+
+export function selectSettingsScreen<T extends GlobalState>(
+  global: T, ...[tabId = getCurrentTabId()]: TabArgs<T>
+) {
+  return selectTabState(global, tabId).leftColumn.settingsScreen;
 }

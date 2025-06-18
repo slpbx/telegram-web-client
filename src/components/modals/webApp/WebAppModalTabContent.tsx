@@ -1,5 +1,6 @@
 import type { FC } from '../../../lib/teact/teact';
-import React, {
+import type React from '../../../lib/teact/teact';
+import {
   memo, useEffect,
   useMemo,
   useRef, useState,
@@ -30,10 +31,10 @@ import {
   selectUserFullInfo,
   selectWebApp,
 } from '../../../global/selectors';
+import { getGeolocationStatus, IS_GEOLOCATION_SUPPORTED } from '../../../util/browser/windowEnvironment';
 import buildClassName from '../../../util/buildClassName';
 import download from '../../../util/download';
 import { extractCurrentThemeParams, validateHexColor } from '../../../util/themeStyle';
-import { getGeolocationStatus, IS_GEOLOCATION_SUPPORTED } from '../../../util/windowEnvironment';
 import { callApi } from '../../../api/gramjs';
 import renderText from '../../common/helpers/renderText';
 
@@ -75,7 +76,7 @@ export type OwnProps = {
   registerReloadFrameCallback: (callback: (url: string) => void) => void;
   onContextMenuButtonClick: (e: React.MouseEvent) => void;
   isTransforming?: boolean;
-  isMultiTabSupported? : boolean;
+  isMultiTabSupported?: boolean;
   modalHeight: number;
 };
 
@@ -164,24 +165,22 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
     unlockPopupsAt, handlePopupOpened, handlePopupClosed,
   } = usePopupLimit(POPUP_SEQUENTIAL_LIMIT, POPUP_RESET_DELAY);
 
-  // eslint-disable-next-line no-null/no-null
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>();
 
-  // eslint-disable-next-line no-null/no-null
-  const headerButtonRef = useRef<HTMLDivElement>(null);
+  const headerButtonRef = useRef<HTMLDivElement>();
 
-  // eslint-disable-next-line no-null/no-null
-  const headerButtonCaptionRef = useRef<HTMLDivElement>(null);
+  const headerButtonCaptionRef = useRef<HTMLDivElement>();
 
   const isFullscreen = modalState === 'fullScreen';
   const isMinimizedState = modalState === 'minimized';
 
   const exitFullScreenCallback = useLastCallback(() => {
-    setTimeout(() => { changeWebAppModalState({ state: 'maximized' }); }, COLLAPSING_WAIT);
+    setTimeout(() => {
+      changeWebAppModalState({ state: 'maximized' });
+    }, COLLAPSING_WAIT);
   });
 
-  // eslint-disable-next-line no-null/no-null
-  const fullscreenElementRef = useRef<HTMLElement | null>(null);
+  const fullscreenElementRef = useRef<HTMLElement>();
 
   useEffect(() => {
     fullscreenElementRef.current = document.querySelector('#portals') as HTMLElement;
@@ -247,8 +246,7 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
     updateCurrentWebApp({ headerColor: color });
   }, [themeHeaderColor, headerColorFromEvent, headerColorFromSettings]);
 
-  // eslint-disable-next-line no-null/no-null
-  const frameRef = useRef<HTMLIFrameElement>(null);
+  const frameRef = useRef<HTMLIFrameElement>();
 
   const oldLang = useOldLang();
   const lang = useLang();
@@ -747,7 +745,7 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
             sendEvent({
               eventType: 'location_requested',
               eventData: {
-                available: botAppPermissions?.geolocation!,
+                available: Boolean(botAppPermissions?.geolocation),
                 latitude: geolocation?.latitude,
                 longitude: geolocation?.longitude,
                 altitude: geolocation?.altitude,
@@ -1060,7 +1058,7 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
         src={url}
         title={`${bot?.firstName} Web App`}
         sandbox={SANDBOX_ATTRIBUTES}
-        allow="camera; microphone; geolocation;"
+        allow="camera; microphone; geolocation; clipboard-write;"
         allowFullScreen
         ref={frameRef}
       />
@@ -1112,7 +1110,7 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
             {mainButton?.isProgressVisible && <Spinner className={styles.mainButtonSpinner} color="white" />}
           </Button>
         </div>
-      ) }
+      )}
       {popupParameters && (
         <Modal
           isOpen={Boolean(popupParameters)}
@@ -1132,7 +1130,7 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
                 color={button.type === 'destructive' ? 'danger' : 'primary'}
                 isText
                 size="smaller"
-                // eslint-disable-next-line react/jsx-no-bind
+
                 onClick={() => handleAppPopupClose(button.id)}
               >
                 {button.text || oldLang(DEFAULT_BUTTON_TEXT[button.type])}

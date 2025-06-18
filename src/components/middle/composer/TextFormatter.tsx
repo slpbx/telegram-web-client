@@ -1,5 +1,6 @@
 import type { FC } from '../../../lib/teact/teact';
-import React, {
+import type React from '../../../lib/teact/teact';
+import {
   memo, useEffect, useRef, useState,
 } from '../../../lib/teact/teact';
 
@@ -61,10 +62,8 @@ const TextFormatter: FC<OwnProps> = ({
   setSelectedRange,
   onClose,
 }) => {
-  // eslint-disable-next-line no-null/no-null
-  const containerRef = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line no-null/no-null
-  const linkUrlInputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>();
+  const linkUrlInputRef = useRef<HTMLInputElement>();
   const { shouldRender, transitionClassNames } = useShowTransitionDeprecated(isOpen);
   const [isLinkControlOpen, openLinkControl, closeLinkControl] = useFlag();
   const [linkUrl, setLinkUrl] = useState('');

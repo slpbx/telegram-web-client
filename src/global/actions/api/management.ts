@@ -10,7 +10,8 @@ import {
   updateChat, updateChatFullInfo, updateManagement, updateManagementProgress, updateUserFullInfo,
 } from '../../reducers';
 import {
-  selectChat, selectCurrentMessageList, selectTabState, selectUser,
+  selectChat, selectCurrentMessageList, selectIsCurrentUserFrozen,
+  selectTabState, selectUser,
 } from '../../selectors';
 import { ensureIsSuperGroup } from './chats';
 
@@ -32,7 +33,7 @@ addActionHandler('checkPublicLink', async (global, actions, payload): Promise<vo
   );
   setGlobal(global);
 
-  const { result, error } = (await callApi('checkChatUsername', { username }))!;
+  const { result, error } = (await callApi('checkChatUsername', { username }));
 
   global = getGlobal();
   global = updateManagementProgress(
@@ -109,9 +110,11 @@ addActionHandler('setOpenedInviteInfo', (global, actions, payload): ActionReturn
 });
 
 addActionHandler('loadExportedChatInvites', async (global, actions, payload): Promise<void> => {
+  if (selectIsCurrentUserFrozen(global)) return;
+
   const {
     chatId, adminId, isRevoked, limit, tabId = getCurrentTabId(),
-  } = payload!;
+  } = payload;
   const peer = selectChat(global, chatId);
   const admin = selectUser(global, adminId || global.currentUserId!);
   if (!peer || !admin) return;
@@ -133,7 +136,7 @@ addActionHandler('loadExportedChatInvites', async (global, actions, payload): Pr
 addActionHandler('editExportedChatInvite', async (global, actions, payload): Promise<void> => {
   const {
     chatId, link, isRevoked, expireDate, usageLimit, isRequestNeeded, title, tabId = getCurrentTabId(),
-  } = payload!;
+  } = payload;
   const peer = selectChat(global, chatId);
   if (!peer) return;
 
@@ -174,7 +177,7 @@ addActionHandler('editExportedChatInvite', async (global, actions, payload): Pro
 addActionHandler('exportChatInvite', async (global, actions, payload): Promise<void> => {
   const {
     chatId, expireDate, usageLimit, isRequestNeeded, title, tabId = getCurrentTabId(),
-  } = payload!;
+  } = payload;
   const peer = selectChat(global, chatId);
   if (!peer) return;
 
@@ -200,7 +203,7 @@ addActionHandler('exportChatInvite', async (global, actions, payload): Promise<v
 addActionHandler('deleteExportedChatInvite', async (global, actions, payload): Promise<void> => {
   const {
     chatId, link, tabId = getCurrentTabId(),
-  } = payload!;
+  } = payload;
   const peer = selectChat(global, chatId);
   if (!peer) return;
 
@@ -224,7 +227,7 @@ addActionHandler('deleteExportedChatInvite', async (global, actions, payload): P
 addActionHandler('deleteRevokedExportedChatInvites', async (global, actions, payload): Promise<void> => {
   const {
     chatId, adminId, tabId = getCurrentTabId(),
-  } = payload!;
+  } = payload;
   const peer = selectChat(global, chatId);
   const admin = selectUser(global, adminId || global.currentUserId!);
   if (!peer || !admin) return;
@@ -249,7 +252,7 @@ addActionHandler('loadChatInviteImporters', async (
 ): Promise<void> => {
   const {
     chatId, link, offsetDate, offsetUserId, limit, tabId = getCurrentTabId(),
-  } = payload!;
+  } = payload;
   const peer = selectChat(global, chatId);
   const offsetUser = offsetUserId ? selectUser(global, offsetUserId) : undefined;
   if (!peer || (offsetUserId && !offsetUser)) return;
@@ -286,7 +289,7 @@ addActionHandler('loadChatInviteRequesters', async (
 ): Promise<void> => {
   const {
     chatId, link, offsetDate, offsetUserId, limit, tabId = getCurrentTabId(),
-  } = payload!;
+  } = payload;
   const peer = selectChat(global, chatId);
   const offsetUser = offsetUserId ? selectUser(global, offsetUserId) : undefined;
   if (!peer || (offsetUserId && !offsetUser)) return;
@@ -321,7 +324,7 @@ addActionHandler('loadChatInviteRequesters', async (
 addActionHandler('loadChatJoinRequests', async (global, actions, payload): Promise<void> => {
   const {
     chatId, offsetDate = 0, offsetUserId, limit = 0,
-  } = payload!;
+  } = payload;
   const peer = selectChat(global, chatId);
   const offsetUser = offsetUserId ? selectUser(global, offsetUserId) : undefined;
   if (!peer || (offsetUserId && !offsetUser)) return;
@@ -346,7 +349,7 @@ addActionHandler('loadChatJoinRequests', async (global, actions, payload): Promi
 addActionHandler('hideChatJoinRequest', async (global, actions, payload): Promise<void> => {
   const {
     chatId, userId, isApproved,
-  } = payload!;
+  } = payload;
   const peer = selectChat(global, chatId);
   const user = selectUser(global, userId);
   if (!peer || !user) return;
@@ -371,7 +374,7 @@ addActionHandler('hideChatJoinRequest', async (global, actions, payload): Promis
 addActionHandler('hideAllChatJoinRequests', async (global, actions, payload): Promise<void> => {
   const {
     chatId, isApproved, link,
-  } = payload!;
+  } = payload;
   const peer = selectChat(global, chatId);
   if (!peer) return;
 
@@ -395,7 +398,7 @@ addActionHandler('hideAllChatJoinRequests', async (global, actions, payload): Pr
 });
 
 addActionHandler('hidePeerSettingsBar', async (global, actions, payload): Promise<void> => {
-  const { peerId } = payload!;
+  const { peerId } = payload;
   const user = selectUser(global, peerId);
   if (!user) return;
 

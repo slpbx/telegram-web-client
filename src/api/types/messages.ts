@@ -365,6 +365,7 @@ export interface ApiMessageReplyInfo {
   isForumTopic?: true;
   isQuote?: true;
   quoteText?: ApiFormattedText;
+  quoteOffset?: number;
 }
 
 export interface ApiStoryReplyInfo {
@@ -379,6 +380,7 @@ export interface ApiInputMessageReplyInfo {
   replyToTopId?: number;
   replyToPeerId?: string;
   quoteText?: ApiFormattedText;
+  quoteOffset?: number;
 }
 
 export interface ApiInputStoryReplyInfo {
@@ -457,6 +459,7 @@ export type ApiMessageEntityCustomEmoji = {
   documentId: string;
 };
 
+// Local entities
 export type ApiMessageEntityTimestamp = {
   type: ApiMessageEntityTypes.Timestamp;
   offset: number;
@@ -464,8 +467,15 @@ export type ApiMessageEntityTimestamp = {
   timestamp: number;
 };
 
+export type ApiMessageEntityQuoteFocus = {
+  type: 'quoteFocus';
+  offset: number;
+  length: number;
+};
+
 export type ApiMessageEntity = ApiMessageEntityDefault | ApiMessageEntityPre | ApiMessageEntityTextUrl |
-ApiMessageEntityMentionName | ApiMessageEntityCustomEmoji | ApiMessageEntityBlockquote | ApiMessageEntityTimestamp;
+  ApiMessageEntityMentionName | ApiMessageEntityCustomEmoji | ApiMessageEntityBlockquote | ApiMessageEntityTimestamp |
+  ApiMessageEntityQuoteFocus;
 
 export enum ApiMessageEntityTypes {
   Bold = 'MessageEntityBold',
@@ -487,6 +497,7 @@ export enum ApiMessageEntityTypes {
   Spoiler = 'MessageEntitySpoiler',
   CustomEmoji = 'MessageEntityCustomEmoji',
   Timestamp = 'MessageEntityTimestamp',
+  QuoteFocus = 'MessageEntityQuoteFocus',
   Unknown = 'MessageEntityUnknown',
 }
 
@@ -684,7 +695,7 @@ export type ApiSavedReactionTag = {
 };
 
 export type ApiPaidReactionPrivacyType = ApiPaidReactionPrivacyDefault |
-ApiPaidReactionPrivacyAnonymous | PaidReactionPrivacyPeer;
+  ApiPaidReactionPrivacyAnonymous | PaidReactionPrivacyPeer;
 
 export type ApiPaidReactionPrivacyDefault = {
   type: 'default';
@@ -844,9 +855,7 @@ export type ApiReplyKeyboard = {
   keyboardPlaceholder?: string;
   isKeyboardSingleUse?: boolean;
   isKeyboardSelective?: boolean;
-} & {
-  [K in 'inlineButtons' | 'keyboardButtons']?: ApiKeyboardButtons;
-};
+} & Partial<Record<'inlineButtons' | 'keyboardButtons', ApiKeyboardButtons>>;
 
 export type ApiTranscription = {
   text: string;
@@ -859,7 +868,7 @@ export type ApiGlobalMessageSearchType = 'text' | 'channels' | 'media' | 'docume
 export type ApiMessageSearchContext = 'all' | 'users' | 'groups' | 'channels';
 
 export type ApiReportReason = 'spam' | 'violence' | 'pornography' | 'childAbuse'
-| 'copyright' | 'geoIrrelevant' | 'fake' | 'illegalDrugs' | 'personalDetails' | 'other';
+  | 'copyright' | 'geoIrrelevant' | 'fake' | 'illegalDrugs' | 'personalDetails' | 'other';
 
 export type ApiSendMessageAction = {
   type: 'cancel' | 'typing' | 'recordAudio' | 'chooseSticker' | 'playingGame';

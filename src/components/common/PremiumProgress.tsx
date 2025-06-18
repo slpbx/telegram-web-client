@@ -1,5 +1,5 @@
 import type { FC } from '../../lib/teact/teact';
-import React, {
+import {
   memo, useEffect, useRef, useState,
 } from '../../lib/teact/teact';
 
@@ -35,10 +35,8 @@ const PremiumProgress: FC<OwnProps> = ({
   className,
 }) => {
   const lang = useOldLang();
-  // eslint-disable-next-line no-null/no-null
-  const floatingBadgeRef = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line no-null/no-null
-  const parentContainerRef = useRef<HTMLDivElement>(null);
+  const floatingBadgeRef = useRef<HTMLDivElement>();
+  const parentContainerRef = useRef<HTMLDivElement>();
 
   const [shiftX, setShiftX] = useState(0);
   const [tailPosition, setTailPosition] = useState(0);

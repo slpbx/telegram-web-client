@@ -1,6 +1,6 @@
 import type { ChangeEvent } from 'react';
 import type { FC } from '../../../lib/teact/teact';
-import React, {
+import {
   memo, useCallback, useEffect, useMemo,
   useState,
 } from '../../../lib/teact/teact';
@@ -198,7 +198,7 @@ const SettingsEditProfile: FC<OwnProps & StateProps> = ({
 
     return (
       <p className="settings-item-description" dir={lang.isRtl ? 'rtl' : undefined}>
-        {(lang('lng_username_purchase_available') as string)
+        {(lang('lng_username_purchase_available'))
           .replace('{link}', '%PURCHASE_LINK%')
           .split('%')
           .map((s) => {
@@ -266,8 +266,12 @@ const SettingsEditProfile: FC<OwnProps & StateProps> = ({
           </p>
           {editableUsername && (
             <p className="settings-item-description" dir={lang.isRtl ? 'rtl' : undefined}>
-              {lang('lng_username_link')}<br />
-              <span className="username-link">{TME_LINK_PREFIX}{editableUsername}</span>
+              {lang('lng_username_link')}
+              <br />
+              <span className="username-link">
+                {TME_LINK_PREFIX}
+                {editableUsername}
+              </span>
             </p>
           )}
         </div>

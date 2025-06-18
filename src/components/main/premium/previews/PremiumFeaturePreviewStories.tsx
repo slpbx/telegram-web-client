@@ -1,4 +1,4 @@
-import React, { memo, useLayoutEffect, useRef } from '../../../../lib/teact/teact';
+import { memo, useLayoutEffect, useRef } from '../../../../lib/teact/teact';
 import { withGlobal } from '../../../../global';
 
 import type { ApiUser } from '../../../../api/types';
@@ -61,8 +61,7 @@ const CIRCLE_READ_SEGMENTS = 0;
 const PremiumFeaturePreviewVideo = ({
   currentUser,
 }: StateProps) => {
-  // eslint-disable-next-line no-null/no-null
-  const circleRef = useRef<HTMLCanvasElement>(null);
+  const circleRef = useRef<HTMLCanvasElement>();
 
   const lang = useOldLang();
 

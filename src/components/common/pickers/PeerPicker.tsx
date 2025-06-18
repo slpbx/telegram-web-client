@@ -1,4 +1,5 @@
-import React, {
+import type React from '../../../lib/teact/teact';
+import {
   memo, useCallback, useEffect, useMemo, useRef,
 } from '../../../lib/teact/teact';
 import { getGlobal } from '../../../global';
@@ -7,7 +8,7 @@ import type { CustomPeerType, UniqueCustomPeer } from '../../../types';
 
 import { DEBUG } from '../../../config';
 import { requestMeasure } from '../../../lib/fasterdom/fasterdom';
-import { getGroupStatus, getUserStatus, isUserOnline } from '../../../global/helpers';
+import { getGroupStatus, getMainUsername, getUserStatus, isUserOnline } from '../../../global/helpers';
 import { getPeerTypeKey, isApiPeerChat } from '../../../global/helpers/peers';
 import { selectPeer, selectUserStatus } from '../../../global/selectors';
 import buildClassName from '../../../util/buildClassName';
@@ -135,8 +136,7 @@ const PeerPicker = <CategoryType extends string = CustomPeerType>({
     return optionalProps.selectedId ? [optionalProps.selectedId] : MEMO_EMPTY_ARRAY;
   }, [allowMultiple, optionalProps.selectedId, optionalProps.selectedIds]);
 
-  // eslint-disable-next-line no-null/no-null
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>();
   const shouldMinimize = selectedIds.length > MAX_FULL_ITEMS;
 
   useEffect(() => {
@@ -246,7 +246,14 @@ const PeerPicker = <CategoryType extends string = CustomPeerType>({
 
     const peerOrCategory = peer || category;
     if (!peerOrCategory) {
-      if (DEBUG) return <div key={id}>No peer or category with ID {id}</div>;
+      if (DEBUG) {
+        return (
+          <div key={id}>
+            No peer or category with ID
+            {id}
+          </div>
+        );
+      }
       return undefined;
     }
 
@@ -273,7 +280,7 @@ const PeerPicker = <CategoryType extends string = CustomPeerType>({
       if (!peer) return undefined;
 
       if (withPeerUsernames) {
-        const username = peer.usernames?.[0]?.username;
+        const username = getMainUsername(peer);
         if (username) {
           return [`@${username}`];
         }
@@ -320,9 +327,9 @@ const PeerPicker = <CategoryType extends string = CustomPeerType>({
         ripple
         inputElement={getInputElement()}
         inputPosition="end"
-        // eslint-disable-next-line react/jsx-no-bind
+
         onClick={() => handleItemClick(id)}
-        // eslint-disable-next-line react/jsx-no-bind
+
         onDisabledClick={onDisabledClick && (() => onDisabledClick(id, isAlwaysSelected))}
       />
     );

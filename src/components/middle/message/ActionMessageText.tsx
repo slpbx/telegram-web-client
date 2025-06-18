@@ -1,10 +1,15 @@
-import React, { memo, type TeactNode } from '../../../lib/teact/teact';
+import { memo, type TeactNode } from '../../../lib/teact/teact';
 import { getActions, getGlobal, withGlobal } from '../../../global';
 
 import type { ApiChat, ApiMessage, ApiPeer } from '../../../api/types';
 
-import { GENERAL_TOPIC_ID, SERVICE_NOTIFICATIONS_USER_ID, TME_LINK_PREFIX } from '../../../config';
 import {
+  GENERAL_TOPIC_ID,
+  SERVICE_NOTIFICATIONS_USER_ID,
+  TME_LINK_PREFIX,
+} from '../../../config';
+import {
+  getMainUsername,
   getMessageInvoice, getMessageText, isChatChannel,
 } from '../../../global/helpers';
 import { getPeerTitle } from '../../../global/helpers/peers';
@@ -221,7 +226,7 @@ const ActionMessageText = ({
         const topicLink = (
           <Link
             className={styles.topicLink}
-            // eslint-disable-next-line react/jsx-no-bind
+
             onClick={() => openThread({ chatId, threadId: topicId })}
           >
             {iconEmojiId ? <CustomEmoji documentId={iconEmojiId} isSelectable />
@@ -243,7 +248,7 @@ const ActionMessageText = ({
         const topicLink = (
           <Link
             className={styles.topicLink}
-            // eslint-disable-next-line react/jsx-no-bind
+
             onClick={() => openThread({ chatId, threadId: topicId })}
           >
             {iconEmojiId && iconEmojiId !== DEFAULT_TOPIC_ICON_ID
@@ -263,7 +268,7 @@ const ActionMessageText = ({
         const topicPlaceholderLink = (
           <Link
             className={styles.topicLink}
-            // eslint-disable-next-line react/jsx-no-bind
+
             onClick={() => openThread({ chatId, threadId: topicId })}
           >
             {lang('ActionTopicPlaceholder')}
@@ -382,10 +387,9 @@ const ActionMessageText = ({
         if (isAttachMenu) return lang('ActionAttachMenuBotAllowed');
         if (isFromRequest) return lang('ActionWebappBotAllowed');
         if (app) {
-          const link = sender?.usernames?.length
-            && `${TME_LINK_PREFIX + sender.usernames[0].username}/${app.shortName}`;
+          const senderUsername = sender && getMainUsername(sender);
+          const link = senderUsername && `${TME_LINK_PREFIX + senderUsername}/${app.shortName}`;
           const appLink = link
-            // eslint-disable-next-line react/jsx-no-bind
             ? <Link onClick={() => openTelegramLink({ url: link })}>{app.title}</Link>
             : lang('ActionBotAppPlaceholder');
           return lang('ActionBotAllowedFromApp', { app: appLink }, { withNodes: true });
@@ -393,8 +397,8 @@ const ActionMessageText = ({
 
         if (!domain) return lang(UNSUPPORTED_LANG_KEY);
 
-        const url = ensureProtocol(domain)!;
-        // eslint-disable-next-line react/jsx-no-bind
+        const url = ensureProtocol(domain);
+
         const link = <Link onClick={() => openUrl({ url })}>{domain}</Link>;
         return lang('ActionBotAllowedFromDomain', { domain: link }, { withNodes: true });
       }
@@ -593,7 +597,7 @@ const ActionMessageText = ({
 
       case 'starGiftUnique': {
         const {
-          isTransferred, isUpgrade, savedId, peerId, fromId,
+          isTransferred, isUpgrade, savedId, peerId, fromId, resaleStars, gift,
         } = action;
 
         const isToChannel = Boolean(peerId && savedId);
@@ -601,6 +605,19 @@ const ActionMessageText = ({
         const fromPeer = fromId ? selectPeer(global, fromId) : sender;
         const fromTitle = (fromPeer && getPeerTitle(lang, fromPeer)) || userFallbackText;
         const fromLink = renderPeerLink(fromPeer?.id, fromTitle, asPreview);
+
+        if (resaleStars) {
+          return lang(
+            isOutgoing
+              ? 'ApiMessageMessageActionResaleStarGiftUniqueOutgoing'
+              : 'ApiMessageMessageActionResaleStarGiftUniqueIncoming',
+            {
+              gift: lang('GiftUnique', { title: gift.title, number: gift.number }),
+              stars: renderStrong(formatStarsAsText(lang, resaleStars)),
+            },
+            { withNodes: true },
+          );
+        }
 
         if (isToChannel) {
           const channelPeer = selectPeer(global, peerId!);
@@ -698,6 +715,31 @@ const ActionMessageText = ({
 
       case 'customAction':
         return action.message;
+
+      case 'paidMessagesPrice': {
+        const { stars } = action;
+        if (stars === 0) {
+          return lang('ActionPaidMessageGroupPriceFree');
+        }
+        return lang('ActionPaidMessageGroupPrice', {
+          stars: formatStarsAsText(lang, stars),
+        }, { withNodes: true, withMarkdown: true });
+      }
+
+      case 'paidMessagesRefunded': {
+        const { stars } = action;
+        const user = selectPeer(global, chatId);
+        const userTitle = (user && getPeerTitle(lang, user)) || userFallbackText;
+
+        const key = isOutgoing
+          ? 'ApiMessageActionPaidMessagesRefundedOutgoing'
+          : 'ApiMessageActionPaidMessagesRefundedIncoming';
+
+        return lang(key, {
+          stars: formatStarsAsText(lang, stars),
+          user: renderPeerLink(user?.id, userTitle),
+        }, { withNodes: true, withMarkdown: true });
+      }
 
       case 'phoneCall': // Rendered as a regular message, but considered an action for the summary
         return lang(getCallMessageKey(action, isOutgoing));

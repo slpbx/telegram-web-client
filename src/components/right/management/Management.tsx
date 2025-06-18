@@ -1,5 +1,5 @@
 import type { FC } from '../../../lib/teact/teact';
-import React, { memo } from '../../../lib/teact/teact';
+import { memo } from '../../../lib/teact/teact';
 import { withGlobal } from '../../../global';
 
 import type { ManagementType } from '../../../types';
@@ -25,6 +25,7 @@ import ManageInvites from './ManageInvites';
 import ManageJoinRequests from './ManageJoinRequests';
 import ManageReactions from './ManageReactions';
 import ManageUser from './ManageUser';
+import NewDiscussionGroup from './NewDiscussionGroup.tsx';
 
 export type OwnProps = {
   chatId: string;
@@ -198,6 +199,16 @@ const Management: FC<OwnProps & StateProps> = ({
             ManagementScreens.ChatNewAdminRights,
             ManagementScreens.GroupRecentActions,
           ].includes(currentScreen)}
+          onClose={onClose}
+        />
+      );
+
+    case ManagementScreens.NewDiscussionGroup:
+      return (
+        <NewDiscussionGroup
+          chatId={chatId}
+          onScreenSelect={onScreenSelect}
+          isActive={isActive}
           onClose={onClose}
         />
       );

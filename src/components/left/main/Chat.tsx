@@ -1,5 +1,5 @@
 import type { FC } from '../../../lib/teact/teact';
-import React, { memo, useEffect, useMemo } from '../../../lib/teact/teact';
+import { memo, useEffect, useMemo } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
 import type {
@@ -23,7 +23,6 @@ import { StoryViewerOrigin } from '../../../types';
 import { CHAT_HEIGHT_PX } from '../../../config';
 import {
   groupStatefulContent,
-  isUserId,
   isUserOnline,
 } from '../../../global/helpers';
 import { getIsChatMuted } from '../../../global/helpers/notifications';
@@ -35,6 +34,7 @@ import {
   selectChatMessage,
   selectCurrentMessageList,
   selectDraft,
+  selectIsCurrentUserFrozen,
   selectIsForumPanelClosed,
   selectIsForumPanelOpen,
   selectNotifyDefaults,
@@ -50,9 +50,10 @@ import {
   selectUser,
   selectUserStatus,
 } from '../../../global/selectors';
+import { IS_OPEN_IN_NEW_TAB_SUPPORTED } from '../../../util/browser/windowEnvironment';
 import buildClassName from '../../../util/buildClassName';
+import { isUserId } from '../../../util/entities/ids';
 import { createLocationHash } from '../../../util/routing';
-import { IS_OPEN_IN_NEW_TAB_SUPPORTED } from '../../../util/windowEnvironment';
 
 import useSelectorSignal from '../../../hooks/data/useSelectorSignal';
 import useAppLayout from '../../../hooks/useAppLayout';
@@ -116,6 +117,7 @@ type StateProps = {
   lastMessage?: ApiMessage;
   currentUserId: string;
   isSynced?: boolean;
+  isAccountFrozen?: boolean;
   crmchatDisplayProperties?: DisplayedProperty[];
 };
 
@@ -154,6 +156,7 @@ const Chat: FC<OwnProps & StateProps> = ({
   className,
   isSynced,
   onDragEnter,
+  isAccountFrozen,
   crmchatDisplayProperties,
 }) => {
   const {
@@ -167,6 +170,7 @@ const Chat: FC<OwnProps & StateProps> = ({
     closeForumPanel,
     setShouldCloseRightColumn,
     reportMessages,
+    openFrozenAccountModal,
   } = getActions();
 
   const { isMobile } = useAppLayout();
@@ -252,11 +256,21 @@ const Chat: FC<OwnProps & StateProps> = ({
   });
 
   const handleDelete = useLastCallback(() => {
+    if (isAccountFrozen) {
+      openFrozenAccountModal();
+      return;
+    }
+
     markRenderDeleteModal();
     openDeleteModal();
   });
 
   const handleMute = useLastCallback(() => {
+    if (isAccountFrozen) {
+      openFrozenAccountModal();
+      return;
+    }
+
     markRenderMuteModal();
     openMuteModal();
   });
@@ -267,6 +281,11 @@ const Chat: FC<OwnProps & StateProps> = ({
   });
 
   const handleReport = useLastCallback(() => {
+    if (isAccountFrozen) {
+      openFrozenAccountModal();
+      return;
+    }
+
     if (!chat) return;
     reportMessages({ chatId: chat.id, messageIds: [] });
   });
@@ -476,6 +495,7 @@ export default memo(withGlobal<OwnProps>(
 
     const storyData = lastMessage?.content.storyData;
     const lastMessageStory = storyData && selectPeerStory(global, storyData.peerId, storyData.id);
+    const isAccountFrozen = selectIsCurrentUserFrozen(global);
 
     const crmchatDisplayProperties = global.crmchatDisplayedProperties?.byTelegramId?.[chatId]
       ?? global.crmchatDisplayedProperties?.byTelegramUsername?.[user?.usernames?.[0]?.username?.toLowerCase() ?? ''];
@@ -505,6 +525,7 @@ export default memo(withGlobal<OwnProps>(
       topics: topicsInfo?.topicsById,
       isSynced: global.isSynced,
       lastMessageStory,
+      isAccountFrozen,
       crmchatDisplayProperties,
     };
   },

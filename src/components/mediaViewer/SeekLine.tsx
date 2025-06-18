@@ -1,5 +1,5 @@
 import type { FC } from '../../lib/teact/teact';
-import React, {
+import {
   memo, useEffect, useLayoutEffect,
   useMemo, useRef, useSignal, useState,
 } from '../../lib/teact/teact';
@@ -9,11 +9,12 @@ import type { BufferedRange } from '../../hooks/useBuffering';
 
 import { createVideoPreviews, getPreviewDimensions, renderVideoPreview } from '../../lib/video-preview/VideoPreview';
 import { animateNumber } from '../../util/animation';
+import { IS_TOUCH_ENV } from '../../util/browser/windowEnvironment';
 import buildClassName from '../../util/buildClassName';
 import { captureEvents } from '../../util/captureEvents';
 import { formatMediaDuration } from '../../util/dates/dateFormat';
+import getPointerPosition from '../../util/events/getPointerPosition';
 import { clamp, round } from '../../util/math';
-import { IS_TOUCH_ENV } from '../../util/windowEnvironment';
 
 import { useThrottledSignal } from '../../hooks/useAsyncResolvers';
 import useCurrentTimeSignal from '../../hooks/useCurrentTimeSignal';
@@ -39,7 +40,7 @@ type OwnProps = {
 };
 
 const LOCK_TIMEOUT = 250;
-let cancelAnimation: Function | undefined;
+let cancelAnimation: ReturnType<typeof animateNumber> | undefined;
 
 const SeekLine: FC<OwnProps> = ({
   duration,
@@ -54,8 +55,7 @@ const SeekLine: FC<OwnProps> = ({
   onSeek,
   onSeekStart,
 }) => {
-  // eslint-disable-next-line no-null/no-null
-  const seekerRef = useRef<HTMLDivElement>(null);
+  const seekerRef = useRef<HTMLDivElement>();
   const [getCurrentTimeSignal] = useCurrentTimeSignal();
   const [getIsWaiting] = useVideoWaitingSignal();
   const getCurrentTime = useThrottledSignal(getCurrentTimeSignal, LOCK_TIMEOUT);
@@ -65,14 +65,10 @@ const SeekLine: FC<OwnProps> = ({
   const isLockedRef = useRef<boolean>(false);
   const [isPreviewVisible, setPreviewVisible] = useState(false);
   const [isSeeking, setIsSeeking] = useState(false);
-  // eslint-disable-next-line no-null/no-null
-  const previewCanvasRef = useRef<HTMLCanvasElement>(null);
-  // eslint-disable-next-line no-null/no-null
-  const previewRef = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line no-null/no-null
-  const progressRef = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line no-null/no-null
-  const previewTimeRef = useRef<HTMLDivElement>(null);
+  const previewCanvasRef = useRef<HTMLCanvasElement>();
+  const previewRef = useRef<HTMLDivElement>();
+  const progressRef = useRef<HTMLDivElement>();
+  const previewTimeRef = useRef<HTMLDivElement>();
 
   const previewSize = useMemo(() => {
     return getPreviewDimensions(posterSize?.width || 0, posterSize?.height || 0);
@@ -156,7 +152,7 @@ const SeekLine: FC<OwnProps> = ({
     let offset = 0;
 
     const getPreviewProps = (e: MouseEvent | TouchEvent) => {
-      const pageX = e instanceof MouseEvent ? e.pageX : e.touches[0].pageX;
+      const pageX = getPointerPosition(e).x;
       const t = clamp(duration * ((pageX - seekerSize.left) / seekerSize.width), 0, duration);
       if (isPreviewDisabled) return [t, 0];
       if (!seekerSize.width) seekerSize = seeker.getBoundingClientRect();

@@ -1,4 +1,5 @@
-import React, {
+import type React from '../../../lib/teact/teact';
+import {
   memo, useCallback, useMemo, useState,
 } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
@@ -16,7 +17,7 @@ import {
 } from '../../../global/initialState';
 import { selectPerformanceSettings } from '../../../global/selectors';
 import { areDeepEqual } from '../../../util/areDeepEqual';
-import { IS_BACKDROP_BLUR_SUPPORTED, IS_SNAP_EFFECT_SUPPORTED } from '../../../util/windowEnvironment';
+import { IS_BACKDROP_BLUR_SUPPORTED, IS_SNAP_EFFECT_SUPPORTED } from '../../../util/browser/windowEnvironment';
 
 import useHistoryBack from '../../../hooks/useHistoryBack';
 import useLang from '../../../hooks/useLang';
@@ -81,7 +82,7 @@ function SettingsPerformance({
   onReset,
 }: OwnProps & StateProps) {
   const {
-    setSettingOption,
+    setSharedSettingOption,
     updatePerformanceSettings,
   } = getActions();
 
@@ -138,9 +139,9 @@ function SettingsPerformance({
       ? INITIAL_PERFORMANCE_STATE_MIN
       : (newLevel === ANIMATION_LEVEL_MED ? INITIAL_PERFORMANCE_STATE_MID : INITIAL_PERFORMANCE_STATE_MAX);
 
-    setSettingOption({ animationLevel: newLevel as AnimationLevel });
+    setSharedSettingOption({ animationLevel: newLevel as AnimationLevel });
     updatePerformanceSettings(performance);
-  }, [setSettingOption]);
+  }, []);
 
   const handlePropertyGroupChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, checked } = e.target;

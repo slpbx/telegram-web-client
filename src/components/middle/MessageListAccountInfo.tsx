@@ -1,9 +1,9 @@
 import type { FC } from '../../lib/teact/teact';
-import React, {
+import type React from '../../lib/teact/teact';
+import {
   memo,
   useEffect,
   useMemo,
-  useRef,
 } from '../../lib/teact/teact';
 import { getActions, getGlobal, withGlobal } from '../../global';
 
@@ -30,12 +30,10 @@ import { getCountryCodeByIso } from '../../util/phoneNumber';
 import stopEvent from '../../util/stopEvent';
 import renderText from '../common/helpers/renderText';
 
-import useEffectOnce from '../../hooks/useEffectOnce';
 import useLang from '../../hooks/useLang';
 import useLastCallback from '../../hooks/useLastCallback';
 import useMedia from '../../hooks/useMedia';
 import useOldLang from '../../hooks/useOldLang';
-import useShowTransition from '../../hooks/useShowTransition';
 
 import AvatarList from '../common/AvatarList';
 import Icon from '../common/icons/Icon';
@@ -65,7 +63,6 @@ const MessageListAccountInfo: FC<OwnProps & StateProps> = ({
   chatId,
   botInfo,
   isLoadingFullUser,
-  isInMessageList,
   phoneCodeList,
   commonChats,
   userFullInfo,
@@ -110,20 +107,22 @@ const MessageListAccountInfo: FC<OwnProps & StateProps> = ({
 
   const securityNameInfo = nameChangeDate && chat ? (
     <div className="local-action-message" key="security-name-message">
-      <span>{lang('UserUpdatedName', {
-        user: chat.title,
-        time: formatPastDatetime(lang, nameChangeDate),
-      }, { withNodes: true, withMarkdown: true })}
+      <span>
+        {lang('UserUpdatedName', {
+          user: chat.title,
+          time: formatPastDatetime(lang, nameChangeDate),
+        }, { withNodes: true, withMarkdown: true })}
       </span>
     </div>
   ) : undefined;
 
   const securityPhotoInfo = photoChangeDate && chat ? (
     <div className="local-action-message" key="security-photo-message">
-      <span>{lang('UserUpdatedPhoto', {
-        user: chat.title,
-        time: formatPastDatetime(lang, photoChangeDate),
-      }, { withNodes: true, withMarkdown: true })}
+      <span>
+        {lang('UserUpdatedPhoto', {
+          user: chat.title,
+          time: formatPastDatetime(lang, photoChangeDate),
+        }, { withNodes: true, withMarkdown: true })}
       </span>
     </div>
   ) : undefined;
@@ -168,25 +167,8 @@ const MessageListAccountInfo: FC<OwnProps & StateProps> = ({
     return entries;
   }, [lang, oldLang, country, registrationMonth, commonChats, userFullInfo]);
 
-  const isEmptyOrLoading = (isBotInfoEmpty && isChatInfoEmpty) || isLoadingFullUser;
-
-  const isFirstRenderRef = useRef(true);
-  const {
-    shouldRender,
-    ref,
-  } = useShowTransition({
-    isOpen: !isEmptyOrLoading && isInMessageList,
-    withShouldRender: true,
-  });
-
-  useEffectOnce(() => {
-    isFirstRenderRef.current = false;
-  });
-
-  if (!shouldRender) return undefined;
-
   return (
-    <div ref={ref} className={buildClassName(styles.root, 'empty')}>
+    <div className={buildClassName(styles.root, 'empty')}>
       {isLoadingFullUser && isChatInfoEmpty && <span>{oldLang('Loading')}</span>}
       {(isBotInfoEmpty && isChatInfoEmpty) && !isLoadingFullUser && <span>{oldLang('NoMessages')}</span>}
       {botInfo && (

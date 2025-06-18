@@ -1,5 +1,5 @@
 import type { FC } from '../../../../lib/teact/teact';
-import React, { memo, useEffect, useRef } from '../../../../lib/teact/teact';
+import { memo, useEffect, useRef } from '../../../../lib/teact/teact';
 
 import type { ApiReaction, ApiReactionCustomEmoji, ApiReactionPaid } from '../../../../api/types';
 
@@ -41,8 +41,7 @@ const ReactionSelectorCustomReaction: FC<OwnProps> = ({
   onSendPaidReaction,
   onShowPaidReactionModal,
 }) => {
-  // eslint-disable-next-line no-null/no-null
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLDivElement>();
   const handleClick = useLastCallback(() => {
     if (reaction.type === 'paid') {
       onSendPaidReaction?.();

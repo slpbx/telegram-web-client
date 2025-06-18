@@ -1,4 +1,4 @@
-import React, {
+import {
   useCallback, useLayoutEffect, useRef,
 } from '../../../../lib/teact/teact';
 
@@ -72,8 +72,7 @@ export default function useChatListEntry({
   withInterfaceAnimations?: boolean;
 }) {
   const oldLang = useOldLang();
-  // eslint-disable-next-line no-null/no-null
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLDivElement>();
 
   const storyData = lastMessage?.content.storyData;
   const shouldTryLoadingStory = statefulMediaContent && !statefulMediaContent.story;
@@ -89,7 +88,7 @@ export default function useChatListEntry({
 
   const renderLastMessageOrTyping = useCallback(() => {
     if (!isSavedDialog && !isPreview
-        && typingStatus && lastMessage && typingStatus.timestamp > lastMessage.date * 1000) {
+      && typingStatus && lastMessage && typingStatus.timestamp > lastMessage.date * 1000) {
       return <TypingStatus typingStatus={typingStatus} />;
     }
 
@@ -117,7 +116,9 @@ export default function useChatListEntry({
       return undefined;
     }
 
-    const senderName = getMessageSenderName(oldLang, chatId, lastMessageSender);
+    const senderName = lastMessageSender
+      ? getMessageSenderName(oldLang, chatId, lastMessageSender)
+      : undefined;
 
     return (
       <p className="last-message shared-canvas-container" dir={oldLang.isRtl ? 'auto' : 'ltr'}>

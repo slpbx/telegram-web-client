@@ -1,10 +1,11 @@
 import type { FC } from '../../../lib/teact/teact';
-import React, { memo, useMemo, useRef } from '../../../lib/teact/teact';
+import type React from '../../../lib/teact/teact';
+import { memo, useMemo, useRef } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
 import type { ApiMessage, ApiTypeStory } from '../../../api/types';
 import type { ObserveFn } from '../../../hooks/useIntersectionObserver';
-import { AudioOrigin, type ISettings } from '../../../types';
+import { AudioOrigin, type ThemeKey } from '../../../types';
 
 import { getMessageWebPage } from '../../../global/helpers';
 import { selectCanPlayAnimatedEmojis } from '../../../global/selectors';
@@ -53,7 +54,7 @@ type OwnProps = {
   isProtected?: boolean;
   isConnected?: boolean;
   backgroundEmojiId?: string;
-  theme: ISettings['theme'];
+  theme: ThemeKey;
   story?: ApiTypeStory;
   shouldWarnAboutSvg?: boolean;
   autoLoadFileMaxSizeMb?: number;
@@ -99,8 +100,7 @@ const WebPage: FC<OwnProps & StateProps> = ({
   const { openUrl, openTelegramLink } = getActions();
   const webPage = getMessageWebPage(message);
   const { isMobile } = useAppLayout();
-  // eslint-disable-next-line no-null/no-null
-  const stickersRef = useRef<HTMLDivElement>(null);
+  const stickersRef = useRef<HTMLDivElement>();
 
   const oldLang = useOldLang();
   const lang = useLang();
@@ -270,7 +270,7 @@ const WebPage: FC<OwnProps & StateProps> = ({
             video={video}
             isOwn={message.isOutgoing}
             isInWebPage
-            observeIntersectionForLoading={observeIntersectionForLoading!}
+            observeIntersectionForLoading={observeIntersectionForLoading}
             noAvatars={noAvatars}
             canAutoLoad={canAutoLoad}
             canAutoPlay={canAutoPlay}

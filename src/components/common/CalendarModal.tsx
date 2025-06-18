@@ -1,5 +1,6 @@
 import type { FC } from '../../lib/teact/teact';
-import React, {
+import type React from '../../lib/teact/teact';
+import {
   memo, useCallback, useEffect, useMemo, useState,
 } from '../../lib/teact/teact';
 
@@ -312,7 +313,7 @@ const CalendarModal: FC<OwnProps> = ({
                   currentYear, currentMonth, gridDate, minDate, maxDate,
                 )
                   ? 'disabled'
-                  : `${gridDate ? 'clickable' : ''}`,
+                  : gridDate ? 'clickable' : '',
                 selectedDay === formatDay(currentYear, currentMonth, gridDate) && 'selected',
               )}
             >

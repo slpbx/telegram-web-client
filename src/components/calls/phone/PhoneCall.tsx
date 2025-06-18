@@ -1,7 +1,7 @@
 import '../../../global/actions/calls';
 
 import type { FC } from '../../../lib/teact/teact';
-import React, {
+import {
   memo, useCallback, useEffect, useMemo, useRef,
 } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
@@ -13,13 +13,13 @@ import {
 } from '../../../lib/secret-sauce';
 import { selectTabState } from '../../../global/selectors';
 import { selectPhoneCallUser } from '../../../global/selectors/calls';
-import buildClassName from '../../../util/buildClassName';
-import { formatMediaDuration } from '../../../util/dates/dateFormat';
 import {
   IS_ANDROID,
   IS_IOS,
   IS_REQUEST_FULLSCREEN_SUPPORTED,
-} from '../../../util/windowEnvironment';
+} from '../../../util/browser/windowEnvironment';
+import buildClassName from '../../../util/buildClassName';
+import { formatMediaDuration } from '../../../util/dates/dateFormat';
 import { LOCAL_TGS_URLS } from '../../common/helpers/animatedAssets';
 import renderText from '../../common/helpers/renderText';
 
@@ -55,8 +55,7 @@ const PhoneCall: FC<StateProps> = ({
   const {
     hangUp, requestMasterAndAcceptCall, playGroupCallSound, toggleGroupCallPanel, connectToActivePhoneCall,
   } = getActions();
-  // eslint-disable-next-line no-null/no-null
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>();
 
   const [isFullscreen, openFullscreen, closeFullscreen] = useFlag();
   const { isMobile } = useAppLayout();

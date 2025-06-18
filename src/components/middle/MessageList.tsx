@@ -1,5 +1,5 @@
 import type { FC } from '../../lib/teact/teact';
-import React, {
+import {
   beginHeavyAnimation, memo, useEffect, useMemo, useRef,
 } from '../../lib/teact/teact';
 import { addExtraClass, removeExtraClass } from '../../lib/teact/teact-dom';
@@ -29,7 +29,6 @@ import {
   isChatChannel,
   isChatGroup,
   isSystemBot,
-  isUserId,
 } from '../../global/helpers';
 import {
   selectBot,
@@ -43,6 +42,7 @@ import {
   selectFocusedMessageId,
   selectIsChatProtected,
   selectIsChatWithSelf,
+  selectIsCurrentUserFrozen,
   selectIsCurrentUserPremium,
   selectIsInSelectMode,
   selectIsViewportNewest,
@@ -56,6 +56,7 @@ import {
 } from '../../global/selectors';
 import animateScroll, { isAnimatingScroll, restartCurrentScrollAnimation } from '../../util/animateScroll';
 import buildClassName from '../../util/buildClassName';
+import { isUserId } from '../../util/entities/ids';
 import { orderBy } from '../../util/iteratees';
 import { isLocalMessageId } from '../../util/keys/messageKey';
 import resetScroll from '../../util/resetScroll';
@@ -130,9 +131,12 @@ type StateProps = {
   isEmptyThread?: boolean;
   isForum?: boolean;
   currentUserId: string;
+  isAccountFrozen?: boolean;
   areAdsEnabled?: boolean;
   channelJoinInfo?: ApiChatFullInfo['joinInfo'];
   isChatProtected?: boolean;
+  hasCustomGreeting?: boolean;
+  isAppConfigLoaded?: boolean;
 };
 
 const MESSAGE_REACTIONS_POLLING_INTERVAL = 20 * 1000;
@@ -195,14 +199,16 @@ const MessageList: FC<OwnProps & StateProps> = ({
   onIntersectPinnedMessage,
   onScrollDownToggle,
   onNotchToggle,
+  isAccountFrozen,
+  hasCustomGreeting,
+  isAppConfigLoaded,
 }) => {
   const {
     loadViewportMessages, setScrollOffset, loadSponsoredMessages, loadMessageReactions, copyMessagesByIds,
     loadMessageViews, loadPeerStoriesByIds, loadFactChecks,
   } = getActions();
 
-  // eslint-disable-next-line no-null/no-null
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>();
 
   // We update local cached `scrollOffsetRef` when opening chat.
   // Then we update global version every second on scrolling.
@@ -246,10 +252,10 @@ const MessageList: FC<OwnProps & StateProps> = ({
 
   useEffect(() => {
     const canHaveAds = isChannelChat || isBot;
-    if (areAdsEnabled && canHaveAds && isSynced && isReady) {
+    if (areAdsEnabled && canHaveAds && isSynced && isReady && isAppConfigLoaded) {
       loadSponsoredMessages({ peerId: chatId });
     }
-  }, [chatId, isSynced, isReady, isChannelChat, isBot, areAdsEnabled]);
+  }, [chatId, isSynced, isReady, isChannelChat, isBot, areAdsEnabled, isAppConfigLoaded]);
 
   // Updated only once when messages are loaded (as we want the unread divider to keep its position)
   useSyncEffect(() => {
@@ -342,7 +348,7 @@ const MessageList: FC<OwnProps & StateProps> = ({
     threadId, isChatWithSelf, channelJoinInfo]);
 
   useInterval(() => {
-    if (!messageIds || !messagesById || type === 'scheduled') return;
+    if (!messageIds || !messagesById || type === 'scheduled' || isAccountFrozen) return;
     if (!isChannelChat && !isGroupChat) return;
 
     const ids = messageIds.filter((id) => {
@@ -364,7 +370,7 @@ const MessageList: FC<OwnProps & StateProps> = ({
     if (!storyDataList.length) return;
 
     const storiesByPeerIds = storyDataList.reduce((acc, storyData) => {
-      const { peerId, id } = storyData!;
+      const { peerId, id } = storyData;
       if (!acc[peerId]) {
         acc[peerId] = [];
       }
@@ -544,7 +550,7 @@ const MessageList: FC<OwnProps & StateProps> = ({
       && (messageIds && messageIds.length < MESSAGE_LIST_SLICE / 2)
       && !container.parentElement!.classList.contains('force-messages-scroll')
       && forceMeasure(() => (
-        (container.firstElementChild as HTMLDivElement)!.clientHeight <= container.offsetHeight * 2
+        (container.firstElementChild as HTMLDivElement).clientHeight <= container.offsetHeight * 2
       ))
     ) {
       addExtraClass(container.parentElement!, 'force-messages-scroll');
@@ -552,7 +558,7 @@ const MessageList: FC<OwnProps & StateProps> = ({
 
       setTimeout(() => {
         if (container.parentElement) {
-          removeExtraClass(container.parentElement!, 'force-messages-scroll');
+          removeExtraClass(container.parentElement, 'force-messages-scroll');
         }
       }, MESSAGE_ANIMATION_DURATION);
     }
@@ -579,7 +585,7 @@ const MessageList: FC<OwnProps & StateProps> = ({
           const shouldScrollToBottom = !isBackgroundModeActive() || !firstUnreadElement;
           animateScroll({
             container,
-            element: shouldScrollToBottom ? lastItemElement! : firstUnreadElement!,
+            element: shouldScrollToBottom ? lastItemElement : firstUnreadElement,
             position: shouldScrollToBottom ? 'end' : 'start',
             margin: BOTTOM_FOCUS_MARGIN,
             forceDuration: noMessageSendingAnimation ? 0 : undefined,
@@ -696,7 +702,7 @@ const MessageList: FC<OwnProps & StateProps> = ({
             {restrictionReason ? restrictionReason.text : `This is a private ${isChannelChat ? 'channel' : 'chat'}`}
           </span>
         </div>
-      ) : paidMessagesStars && isPrivate && !hasMessages ? (
+      ) : paidMessagesStars && isPrivate && !hasMessages && !hasCustomGreeting ? (
         <RequirementToContactMessage paidMessagesStars={paidMessagesStars} userId={chatId} />
       ) : isContactRequirePremium && !hasMessages ? (
         <RequirementToContactMessage userId={chatId} />
@@ -743,6 +749,7 @@ const MessageList: FC<OwnProps & StateProps> = ({
           onScrollDownToggle={onScrollDownToggle}
           onNotchToggle={onNotchToggle}
           onIntersectPinnedMessage={onIntersectPinnedMessage}
+          canPost={canPost}
         />
       ) : (
         <Loading color="white" backgroundColor="dark" />
@@ -794,6 +801,10 @@ export default memo(withGlobal<OwnProps>(
 
     const isCurrentUserPremium = selectIsCurrentUserPremium(global);
     const areAdsEnabled = !isCurrentUserPremium || selectUserFullInfo(global, currentUserId)?.areAdsEnabled;
+    const isAccountFrozen = selectIsCurrentUserFrozen(global);
+
+    const hasCustomGreeting = Boolean(userFullInfo?.businessIntro);
+    const isAppConfigLoaded = global.isAppConfigLoaded;
 
     return {
       areAdsEnabled,
@@ -828,6 +839,9 @@ export default memo(withGlobal<OwnProps>(
       currentUserId,
       isChatProtected: selectIsChatProtected(global, chatId),
       ...(withLastMessageWhenPreloading && { lastMessage }),
+      isAccountFrozen,
+      hasCustomGreeting,
+      isAppConfigLoaded,
     };
   },
 )(MessageList));

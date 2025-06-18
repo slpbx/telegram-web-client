@@ -1,9 +1,10 @@
 import type { FC } from '../../lib/teact/teact';
-import React, { useRef } from '../../lib/teact/teact';
+import type React from '../../lib/teact/teact';
+import { useRef } from '../../lib/teact/teact';
 
 import type { OwnProps as ButtonProps } from './Button';
 
-import { IS_TOUCH_ENV } from '../../util/windowEnvironment';
+import { IS_TOUCH_ENV } from '../../util/browser/windowEnvironment';
 
 import useLastCallback from '../../hooks/useLastCallback';
 
@@ -56,7 +57,7 @@ const ResponsiveHoverButton: FC<OwnProps> = ({ onActivate, ...buttonProps }) => 
 
   return (
     <Button
-      // eslint-disable-next-line react/jsx-props-no-spreading
+
       {...buttonProps}
       onMouseEnter={!IS_TOUCH_ENV ? handleMouseEnter : undefined}
       onMouseLeave={!IS_TOUCH_ENV ? handleMouseLeave : undefined}

@@ -1,4 +1,5 @@
-import React, {
+import type React from '../../lib/teact/teact';
+import {
   memo, useEffect, useMemo, useState,
 } from '../../lib/teact/teact';
 import { getActions, withGlobal } from '../../global';
@@ -242,7 +243,6 @@ function StorySettings({
     return lang('StoryPrivacyOptionPeople', privacy.allowUserIds.length, 'i');
   }
 
-  // eslint-disable-next-line consistent-return
   function renderHeaderContent() {
     switch (activeKey) {
       case Screens.privacy:
@@ -256,7 +256,6 @@ function StorySettings({
     }
   }
 
-  // eslint-disable-next-line consistent-return
   function renderContent(isActive: boolean) {
     switch (activeKey) {
       case Screens.privacy:
@@ -412,7 +411,7 @@ export default memo(withGlobal<OwnProps>((global): StateProps => {
     : undefined;
 
   return {
-    story: story && 'content' in story ? story as ApiStory : undefined,
+    story: story && 'content' in story ? story : undefined,
     visibility: story && 'visibility' in story ? story.visibility : undefined,
     contactListIds: global.contactList?.userIds,
     usersById: global.users.byId,

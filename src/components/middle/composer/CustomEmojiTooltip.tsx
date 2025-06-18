@@ -1,5 +1,5 @@
 import type { FC } from '../../../lib/teact/teact';
-import React, { memo, useEffect, useRef } from '../../../lib/teact/teact';
+import { memo, useEffect, useRef } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
 import type { ApiSticker } from '../../../api/types';
@@ -50,8 +50,7 @@ const CustomEmojiTooltip: FC<OwnProps & StateProps> = ({
 }) => {
   const { clearCustomEmojiForEmoji } = getActions();
 
-  // eslint-disable-next-line no-null/no-null
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>();
   const { shouldRender, transitionClassNames } = useShowTransitionDeprecated(isOpen, undefined, undefined, false);
   const prevStickers = usePreviousDeprecated(customEmoji, true);
   const displayedStickers = customEmoji || prevStickers;

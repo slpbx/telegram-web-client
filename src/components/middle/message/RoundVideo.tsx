@@ -1,5 +1,6 @@
 import type { FC } from '../../../lib/teact/teact';
-import React, {
+import type React from '../../../lib/teact/teact';
+import {
   useEffect, useLayoutEffect,
   useRef, useSignal, useState,
 } from '../../../lib/teact/teact';
@@ -79,12 +80,9 @@ const RoundVideo: FC<OwnProps> = ({
   isTranscriptionHidden,
   isTranscribing,
 }) => {
-  // eslint-disable-next-line no-null/no-null
-  const ref = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line no-null/no-null
-  const playerRef = useRef<HTMLVideoElement>(null);
-  // eslint-disable-next-line no-null/no-null
-  const circleRef = useRef<SVGCircleElement>(null);
+  const ref = useRef<HTMLDivElement>();
+  const playerRef = useRef<HTMLVideoElement>();
+  const circleRef = useRef<SVGCircleElement>();
 
   const { cancelMediaDownload, openOneTimeMediaModal, transcribeAudio } = getActions();
 
@@ -129,6 +127,7 @@ const RoundVideo: FC<OwnProps> = ({
   });
 
   const [isActivated, setIsActivated] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
 
   const [getProgress, setProgress] = useSignal(0);
   const getThrottledProgress = useThrottledSignal(getProgress, PROGRESS_THROTTLE);
@@ -229,6 +228,7 @@ const RoundVideo: FC<OwnProps> = ({
   const handleTimeUpdate = useLastCallback((e: React.UIEvent<HTMLVideoElement>) => {
     const playerEl = e.currentTarget;
     setProgress(playerEl.currentTime / playerEl.duration);
+    setCurrentTime(Math.floor(playerEl.currentTime));
   });
 
   const handleTranscribe = useLastCallback(() => {
@@ -335,7 +335,7 @@ const RoundVideo: FC<OwnProps> = ({
             'message-media-duration', isMediaUnread && 'unread',
           )}
         >
-          {isActivated ? formatMediaDuration(playerRef.current!.currentTime) : formatMediaDuration(video.duration)}
+          {isActivated ? formatMediaDuration(currentTime) : formatMediaDuration(video.duration)}
           {(!isActivated || playerRef.current!.paused) && <Icon name="muted" />}
         </div>
       )}

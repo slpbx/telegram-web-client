@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from '../../../lib/teact/teact';
+import type React from '../../../lib/teact/teact';
+import { useEffect, useRef, useState } from '../../../lib/teact/teact';
 import { getActions } from '../../../global';
 
 import type { ApiMediaExtendedPreview, ApiVideo } from '../../../api/types';
@@ -54,7 +55,6 @@ export type OwnProps<T> = {
   onCancelUpload?: (arg: T) => void;
 };
 
-// eslint-disable-next-line @typescript-eslint/comma-dangle
 const Video = <T,>({
   id,
   video,
@@ -78,10 +78,8 @@ const Video = <T,>({
   onCancelUpload,
 }: OwnProps<T>) => {
   const { cancelMediaDownload } = getActions();
-  // eslint-disable-next-line no-null/no-null
-  const ref = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line no-null/no-null
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const ref = useRef<HTMLDivElement>();
+  const videoRef = useRef<HTMLVideoElement>();
 
   const isPaidPreview = video.mediaType === 'extendedMediaPreview';
 

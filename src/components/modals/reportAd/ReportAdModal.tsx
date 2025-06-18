@@ -1,4 +1,4 @@
-import React, {
+import {
   memo, useEffect, useMemo, useRef,
 } from '../../../lib/teact/teact';
 import { getActions } from '../../../global';
@@ -30,17 +30,16 @@ const ReportAdModal = ({
   modal,
 }: OwnProps) => {
   const {
-    reportSponsoredMessage, closeReportAdModal, openPreviousReportAdModal,
+    reportSponsored, closeReportAdModal, openPreviousReportAdModal,
   } = getActions();
   const lang = useOldLang();
   const isOpen = Boolean(modal);
 
-  // eslint-disable-next-line no-null/no-null
-  const transitionRef = useRef<HTMLDivElement>(null);
+  const transitionRef = useRef<HTMLDivElement>();
 
   const handleOptionClick = useLastCallback((e, option: string) => {
     const { chatId, randomId } = modal!;
-    reportSponsoredMessage({ peerId: chatId, randomId, option });
+    reportSponsored({ peerId: chatId, randomId, option });
   });
 
   const [renderingSection, renderingDepth] = useMemo(() => {

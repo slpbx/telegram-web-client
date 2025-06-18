@@ -5,6 +5,7 @@ import {
   MEDIA_PROGRESSIVE_CACHE_NAME,
 } from '../config';
 import generateUniqueId from '../util/generateUniqueId';
+import { getAccountSlot } from '../util/multiaccount';
 import { pause } from '../util/schedulers';
 
 declare const self: ServiceWorkerGlobalScope;
@@ -30,6 +31,7 @@ const requestStates = new Map<string, RequestStates>();
 
 export async function respondForProgressive(e: FetchEvent) {
   const { url } = e.request;
+  const accountSlot = getAccountSlot(url);
   const range = e.request.headers.get('range');
   const bytes = /^bytes=(\d+)-(\d+)?$/g.exec(range || '')!;
   const start = Number(bytes[1]);
@@ -40,11 +42,13 @@ export async function respondForProgressive(e: FetchEvent) {
     end = start + DEFAULT_PART_SIZE - 1;
   }
 
+  const parsedUrl = new URL(url);
+
   // Optimization for Safari
   if (start === 0 && end === 1) {
-    const match = e.request.url.match(/fileSize=(\d+)&mimeType=([\w/]+)/);
-    const fileSize = match && Number(match[1]);
-    const mimeType = match?.[2];
+    const fileSizeParam = parsedUrl.searchParams.get('fileSize');
+    const fileSize = fileSizeParam && Number(fileSizeParam);
+    const mimeType = parsedUrl.searchParams.get('mimeType');
 
     if (fileSize && mimeType) {
       return new Response(new Uint8Array(2).buffer, {
@@ -60,8 +64,11 @@ export async function respondForProgressive(e: FetchEvent) {
     }
   }
 
-  const cacheKey = `${url}?start=${start}&end=${end}`;
-  const [cachedArrayBuffer, cachedHeaders] = !MEDIA_PROGRESSIVE_CACHE_DISABLED ? await fetchFromCache(cacheKey) : [];
+  parsedUrl.searchParams.set('start', String(start));
+  parsedUrl.searchParams.set('end', String(end));
+  const cacheKey = parsedUrl.href;
+  const [cachedArrayBuffer, cachedHeaders] = !MEDIA_PROGRESSIVE_CACHE_DISABLED
+    ? await fetchFromCache(accountSlot, cacheKey) : [];
 
   if (DEBUG) {
     // eslint-disable-next-line no-console
@@ -108,7 +115,7 @@ export async function respondForProgressive(e: FetchEvent) {
   ];
 
   if (!MEDIA_PROGRESSIVE_CACHE_DISABLED && partSize <= MEDIA_CACHE_MAX_BYTES && end < MAX_END_TO_CACHE) {
-    saveToCache(cacheKey, arrayBufferPart, headers);
+    saveToCache(accountSlot, cacheKey, arrayBufferPart, headers);
   }
 
   return new Response(arrayBufferPart, {
@@ -119,8 +126,9 @@ export async function respondForProgressive(e: FetchEvent) {
 }
 
 // We can not cache 206 responses: https://github.com/GoogleChrome/workbox/issues/1644#issuecomment-638741359
-async function fetchFromCache(cacheKey: string) {
-  const cache = await self.caches.open(MEDIA_PROGRESSIVE_CACHE_NAME);
+async function fetchFromCache(accountSlot: number | undefined, cacheKey: string) {
+  const cacheName = !accountSlot ? MEDIA_PROGRESSIVE_CACHE_NAME : `${MEDIA_PROGRESSIVE_CACHE_NAME}_${accountSlot}`;
+  const cache = await self.caches.open(cacheName);
 
   return Promise.all([
     cache.match(`${cacheKey}&type=arrayBuffer`).then((r) => (r ? r.arrayBuffer() : undefined)),
@@ -128,8 +136,11 @@ async function fetchFromCache(cacheKey: string) {
   ]);
 }
 
-async function saveToCache(cacheKey: string, arrayBuffer: ArrayBuffer, headers: HeadersInit) {
-  const cache = await self.caches.open(MEDIA_PROGRESSIVE_CACHE_NAME);
+async function saveToCache(
+  accountSlot: number | undefined, cacheKey: string, arrayBuffer: ArrayBuffer, headers: HeadersInit,
+) {
+  const cacheName = !accountSlot ? MEDIA_PROGRESSIVE_CACHE_NAME : `${MEDIA_PROGRESSIVE_CACHE_NAME}_${accountSlot}`;
+  const cache = await self.caches.open(cacheName);
 
   return Promise.all([
     cache.put(new Request(`${cacheKey}&type=arrayBuffer`), new Response(arrayBuffer)),
@@ -142,9 +153,7 @@ export async function requestPart(
   params: { url: string; start: number; end: number },
 ): Promise<PartInfo | undefined> {
   const isDownload = params.url.includes('/download/');
-  const client = isDownload ? (await self.clients.matchAll())
-    .find((c) => c.type === 'window' && c.frameType === 'top-level')
-    : await (self.clients.get(e.clientId));
+  const client = await (isDownload ? getClientForRequest(params.url) : self.clients.get(e.clientId));
   if (!client) {
     return undefined;
   }
@@ -175,6 +184,14 @@ export async function requestPart(
   });
 
   return promise;
+}
+
+async function getClientForRequest(url: string) {
+  const urlAccountSlot = getAccountSlot(url);
+  const clients = await self.clients.matchAll();
+  return clients.find((c) => (
+    c.type === 'window' && c.frameType === 'top-level' && getAccountSlot(c.url) === urlAccountSlot
+  ));
 }
 
 self.addEventListener('message', (e) => {

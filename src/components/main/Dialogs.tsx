@@ -1,5 +1,5 @@
 import type { FC } from '../../lib/teact/teact';
-import React, { memo, useEffect } from '../../lib/teact/teact';
+import { memo, useEffect } from '../../lib/teact/teact';
 import { getActions, withGlobal } from '../../global';
 
 import type {
@@ -67,7 +67,7 @@ const Dialogs: FC<StateProps> = ({ dialogs, currentMessageList }) => {
           <Button
             className="confirm-dialog-button"
             isText
-            // eslint-disable-next-line react/jsx-no-bind
+
             onClick={handleConfirm}
           >
             {lang('OK')}
@@ -88,7 +88,7 @@ const Dialogs: FC<StateProps> = ({ dialogs, currentMessageList }) => {
         title={getErrorHeader(error)}
       >
         {error.hasErrorKey ? getReadableErrorText(error)
-          : renderText(error.message!, ['simple_markdown', 'emoji', 'br'])}
+          : renderText(error.message, ['simple_markdown', 'emoji', 'br'])}
         <div className="dialog-buttons mt-2">
           <Button isText onClick={closeModal}>{lang('OK')}</Button>
         </div>

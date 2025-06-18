@@ -1,5 +1,5 @@
 import type { FC } from '../../../lib/teact/teact';
-import React, {
+import {
   memo,
   useCallback, useEffect, useRef,
 } from '../../../lib/teact/teact';
@@ -48,8 +48,7 @@ const RecentContacts: FC<OwnProps & StateProps> = ({
     addRecentlyFoundChatId, clearRecentlyFoundChats,
   } = getActions();
 
-  // eslint-disable-next-line no-null/no-null
-  const topUsersRef = useRef<HTMLDivElement>(null);
+  const topUsersRef = useRef<HTMLDivElement>();
 
   // Due to the parent Transition, this component never gets unmounted,
   // that's why we use throttled API call on every update.

@@ -1,5 +1,5 @@
 import type { FC } from '../../lib/teact/teact';
-import React, {
+import {
   memo, useCallback, useRef, useState,
 } from '../../lib/teact/teact';
 import { getActions } from '../../global';
@@ -27,8 +27,7 @@ const WebAppsCloseConfirmationModal: FC<OwnProps> = ({
 
   const [shouldSkipInFuture, setShouldSkipInFuture] = useState(false);
 
-  // eslint-disable-next-line no-null/no-null
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>();
 
   const onClose = useCallback(() => {
     closeWebAppsCloseConfirmationModal({ shouldSkipInFuture });

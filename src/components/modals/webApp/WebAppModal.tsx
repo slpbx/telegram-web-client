@@ -1,6 +1,6 @@
 import { type MouseEvent as ReactMouseEvent } from 'react';
 import type { FC } from '../../../lib/teact/teact';
-import React, {
+import {
   memo, useEffect,
   useMemo, useRef,
   useSignal, useState,
@@ -18,6 +18,7 @@ import {
   selectCurrentChat, selectTheme, selectUser,
   selectWebApp,
 } from '../../../global/selectors';
+import { selectSharedSettings } from '../../../global/selectors/sharedState';
 import buildClassName from '../../../util/buildClassName';
 import buildStyle from '../../../util/buildStyle';
 import { getColorLuma } from '../../../util/colors';
@@ -134,12 +135,9 @@ const WebAppModal: FC<OwnProps & StateProps> = ({
   const isFullScreen = modal?.modalState === 'fullScreen';
 
   const supportMultiTabMode = !isMobile;
-  // eslint-disable-next-line no-null/no-null
-  const ref = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line no-null/no-null
-  const headerRef = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line no-null/no-null
-  const menuRef = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLDivElement>();
+  const headerRef = useRef<HTMLDivElement>();
+  const menuRef = useRef<HTMLDivElement>();
 
   const getTriggerElement = useLastCallback(() => ref.current!);
 
@@ -197,7 +195,9 @@ const WebAppModal: FC<OwnProps & StateProps> = ({
   }, [isDragging, x, y]);
 
   useEffect(() => {
-    if (!isDragging && size && isMaximizedState) { updateMiniAppCachedSize({ size }); }
+    if (!isDragging && size && isMaximizedState) {
+      updateMiniAppCachedSize({ size });
+    }
   }, [isDragging, isMaximizedState, size]);
 
   const currentSize = size || getSize();
@@ -538,8 +538,7 @@ const WebAppModal: FC<OwnProps & StateProps> = ({
     );
   }
 
-  // eslint-disable-next-line no-null/no-null
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>();
   useHorizontalScroll(containerRef, !isOpen || isMinimizedState || !(containerRef.current));
 
   function renderTabs() {
@@ -556,7 +555,7 @@ const WebAppModal: FC<OwnProps & StateProps> = ({
               className={styles.tabAvatar}
               size="mini"
               peer={tab.bot}
-              // eslint-disable-next-line react/jsx-no-bind
+
               onClick={() => handleTabClick(tab)}
             />
           )
@@ -691,7 +690,7 @@ const WebAppModal: FC<OwnProps & StateProps> = ({
         isFullScreen && styles.fullScreen,
       )}
       dialogStyle={supportMultiTabMode ? draggableStyle : undefined}
-      dialogContent={isDraggingEnabled ? renderResizeHandles() : undefined}
+      dialogContent={isDraggingEnabled && !isMinimizedState ? renderResizeHandles() : undefined}
       isOpen={isOpen}
       isLowStackPriority
       onClose={handleModalClose}
@@ -714,7 +713,7 @@ const WebAppModal: FC<OwnProps & StateProps> = ({
           modalHeight={currentHeight}
         />
       ))}
-      { isMoreAppsTabActive && (<MoreAppsTabContent />)}
+      {isMoreAppsTabActive && (<MoreAppsTabContent />)}
     </Modal>
   );
 };
@@ -728,16 +727,15 @@ export default memo(withGlobal<OwnProps>(
     const bot = activeBotId ? selectUser(global, activeBotId) : undefined;
     const chat = selectCurrentChat(global);
     const theme = selectTheme(global);
-    const cachedPosition = global.settings.miniAppsCachedPosition;
-    const cachedSize = global.settings.miniAppsCachedSize;
+    const { miniAppsCachedPosition, miniAppsCachedSize } = selectSharedSettings(global);
 
     return {
       attachBot,
       bot,
       chat,
       theme,
-      cachedPosition,
-      cachedSize,
+      cachedPosition: miniAppsCachedPosition,
+      cachedSize: miniAppsCachedSize,
     };
   },
 )(WebAppModal));

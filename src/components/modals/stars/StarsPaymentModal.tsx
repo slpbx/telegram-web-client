@@ -1,4 +1,4 @@
-import React, { memo, useEffect, useMemo } from '../../../lib/teact/teact';
+import { memo, useEffect, useMemo } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
 import type {
@@ -87,7 +87,7 @@ const StarPaymentModal = ({
     if (paidMediaMessage) {
       const extendedMedia = paidMediaMessage.content.paidMedia!.extendedMedia as ApiMediaExtendedPreview[];
       const areAllPhotos = extendedMedia.every((media) => !media.duration);
-      const areAllVideos = extendedMedia.every((media) => !!media.duration);
+      const areAllVideos = extendedMedia.every((media) => Boolean(media.duration));
 
       const mediaText = areAllPhotos ? oldLang('Stars.Transfer.Photos', extendedMedia.length)
         : areAllVideos ? oldLang('Stars.Transfer.Videos', extendedMedia.length)
@@ -205,7 +205,7 @@ const StarPaymentModal = ({
           withNodes: true,
         })}
       </Button>
-      {disclaimerText && (
+      {Boolean(disclaimerText) && (
         <div className={buildClassName(styles.disclaimer, styles.smallerText)}>
           {disclaimerText}
         </div>

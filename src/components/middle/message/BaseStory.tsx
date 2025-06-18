@@ -1,12 +1,12 @@
-import React, { memo, useEffect } from '../../../lib/teact/teact';
+import { memo, useEffect } from '../../../lib/teact/teact';
 import { getActions } from '../../../global';
 
 import type { ApiMessageStoryData, ApiTypeStory } from '../../../api/types';
 
 import { getStoryMediaHash } from '../../../global/helpers';
+import { IS_CANVAS_FILTER_SUPPORTED } from '../../../util/browser/windowEnvironment';
 import buildClassName from '../../../util/buildClassName';
 import { formatMediaDuration } from '../../../util/dates/dateFormat';
-import { IS_CANVAS_FILTER_SUPPORTED } from '../../../util/windowEnvironment';
 
 import useAppLayout from '../../../hooks/useAppLayout';
 import useCanvasBlur from '../../../hooks/useCanvasBlur';
@@ -106,7 +106,7 @@ function BaseStory({
       )}
       {Boolean(video?.duration) && (
         <div className="message-media-duration">
-          {formatMediaDuration(video!.duration)}
+          {formatMediaDuration(video.duration)}
         </div>
       )}
       {isProtected && <span className="protector" />}

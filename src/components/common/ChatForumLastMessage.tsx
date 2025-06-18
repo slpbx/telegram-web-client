@@ -1,5 +1,6 @@
 import type { FC } from '../../lib/teact/teact';
-import React, {
+import type React from '../../lib/teact/teact';
+import {
   memo,
   useEffect,
   useMemo,
@@ -42,10 +43,8 @@ const ChatForumLastMessage: FC<OwnProps> = ({
 }) => {
   const { openThread } = getActions();
 
-  // eslint-disable-next-line no-null/no-null
-  const lastMessageRef = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line no-null/no-null
-  const mainColumnRef = useRef<HTMLDivElement>(null);
+  const lastMessageRef = useRef<HTMLDivElement>();
+  const mainColumnRef = useRef<HTMLDivElement>();
 
   const lang = useOldLang();
 

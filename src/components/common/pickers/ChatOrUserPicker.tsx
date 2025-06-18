@@ -1,5 +1,6 @@
 import type { FC } from '../../../lib/teact/teact';
-import React, {
+import type React from '../../../lib/teact/teact';
+import {
   memo, useCallback, useMemo, useRef, useState,
 } from '../../../lib/teact/teact';
 import { getActions, getGlobal } from '../../../global';
@@ -77,19 +78,15 @@ const ChatOrUserPicker: FC<OwnProps> = ({
   const { loadTopics } = getActions();
 
   const lang = useOldLang();
-  // eslint-disable-next-line no-null/no-null
-  const containerRef = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line no-null/no-null
-  const topicContainerRef = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line no-null/no-null
-  const searchRef = useRef<HTMLInputElement>(null);
-  // eslint-disable-next-line no-null/no-null
-  const topicSearchRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>();
+  const topicContainerRef = useRef<HTMLDivElement>();
+  const searchRef = useRef<HTMLInputElement>();
+  const topicSearchRef = useRef<HTMLInputElement>();
   const [viewportIds, getMore] = useInfiniteScroll(loadMore, chatOrUserIds, Boolean(search));
   const [forumId, setForumId] = useState<string | undefined>(undefined);
   const [topicSearch, setTopicSearch] = useState<string>('');
   const activeKey = forumId ? TOPIC_LIST_SLIDE : CHAT_LIST_SLIDE;
-  const viewportOffset = chatOrUserIds!.indexOf(viewportIds![0]);
+  const viewportOffset = chatOrUserIds.indexOf(viewportIds![0]);
 
   const resetSearch = useLastCallback(() => {
     onSearchChange('');
@@ -223,7 +220,7 @@ const ChatOrUserPicker: FC<OwnProps> = ({
         subtitleClassName={subtitleClassName}
         ripple
         style={`top: ${(viewportOffset + index) * PEER_PICKER_ITEM_HEIGHT_PX}px;`}
-        // eslint-disable-next-line react/jsx-no-bind
+
         onClick={() => handleClick(id)}
       />
     );
@@ -257,7 +254,7 @@ const ChatOrUserPicker: FC<OwnProps> = ({
             <PickerItem
               key={`${forumId}_${topicId}`}
               className={ITEM_CLASS_NAME}
-              // eslint-disable-next-line react/jsx-no-bind
+
               onClick={() => onSelectChatOrUser(forumId!, topicId)}
               style={`top: ${(viewportOffset + i) * TOPIC_ITEM_HEIGHT_PX}px;`}
               avatarElement={(
@@ -305,7 +302,7 @@ const ChatOrUserPicker: FC<OwnProps> = ({
             itemSelector={`.${ITEM_CLASS_NAME}`}
             onLoadMore={getMore}
             withAbsolutePositioning
-            maxHeight={chatOrUserIds!.length * PEER_PICKER_ITEM_HEIGHT_PX}
+            maxHeight={chatOrUserIds.length * PEER_PICKER_ITEM_HEIGHT_PX}
             onKeyDown={handleKeyDown}
           >
             {viewportIds.map(renderChatItem)}

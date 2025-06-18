@@ -1,6 +1,6 @@
 import type { ChangeEvent } from 'react';
 import type { FC } from '../../../lib/teact/teact';
-import React, { memo, useCallback, useMemo } from '../../../lib/teact/teact';
+import { memo, useCallback, useMemo } from '../../../lib/teact/teact';
 
 import type { ApiPremiumGiftCodeOption, ApiPremiumSubscriptionOption } from '../../../api/types';
 
@@ -68,7 +68,11 @@ const PremiumSubscriptionOption: FC<OwnProps> = ({
             <span
               className={buildClassName(styles.giveawayDiscount, styles.discount)}
               title={oldLang('GiftDiscount')}
-            > &minus;{discount}%
+            >
+              {' '}
+              &minus;
+              {discount}
+              %
             </span>
           )}
           {oldLang('Months', months)}

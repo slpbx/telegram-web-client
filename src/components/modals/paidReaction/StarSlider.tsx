@@ -1,4 +1,5 @@
-import React, {
+import type React from '../../../lib/teact/teact';
+import {
   memo, useMemo, useRef, useState,
 } from '../../../lib/teact/teact';
 
@@ -31,8 +32,7 @@ const StarSlider = ({
   className,
   onChange,
 }: OwnProps) => {
-  // eslint-disable-next-line no-null/no-null
-  const floatingBadgeRef = useRef<HTMLDivElement>(null);
+  const floatingBadgeRef = useRef<HTMLDivElement>();
 
   const points = useMemo(() => {
     const result = [];

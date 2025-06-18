@@ -1,5 +1,5 @@
 import type { FC } from '../../../../lib/teact/teact';
-import React, { memo, useMemo } from '../../../../lib/teact/teact';
+import { memo, useMemo } from '../../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../../global';
 
 import type {
@@ -57,7 +57,11 @@ type StateProps = {
 };
 
 const StarsTransactionModal: FC<OwnProps & StateProps> = ({
-  modal, peer, canPlayAnimatedEmojis, topSticker, paidMessageCommission,
+  modal,
+  peer,
+  canPlayAnimatedEmojis,
+  topSticker,
+  paidMessageCommission,
 }) => {
   const { showNotification, openMediaViewer, closeStarsTransactionModal } = getActions();
 
@@ -81,7 +85,7 @@ const StarsTransactionModal: FC<OwnProps & StateProps> = ({
     }
 
     const {
-      giveawayPostId, photo, stars, isGiftUpgrade, starGift,
+      giveawayPostId, photo, stars, isGiftUpgrade, starGift, isGiftResale,
     } = transaction;
 
     const gift = transaction?.starGift;
@@ -91,7 +95,7 @@ const StarsTransactionModal: FC<OwnProps & StateProps> = ({
     const giftAttributes = isUniqueGift ? getGiftAttributes(gift) : undefined;
 
     const customPeer = (transaction.peer && transaction.peer.type !== 'peer'
-        && buildStarsTransactionCustomPeer(transaction.peer)) || undefined;
+      && buildStarsTransactionCustomPeer(transaction.peer)) || undefined;
 
     const peerId = transaction.peer?.type === 'peer' ? transaction.peer.id : undefined;
     const toName = transaction.peer && oldLang(getStarsPeerTitleKey(transaction.peer));
@@ -100,7 +104,7 @@ const StarsTransactionModal: FC<OwnProps & StateProps> = ({
 
     const messageLink = peer && transaction.messageId && !isGiftUpgrade
       ? getMessageLink(peer, undefined, transaction.messageId) : undefined;
-    const giveawayMessageLink = peer && giveawayPostId && getMessageLink(peer, undefined, giveawayPostId);
+    const giveawayMessageLink = peer && giveawayPostId ? getMessageLink(peer, undefined, giveawayPostId) : undefined;
 
     const media = transaction.extendedMedia;
 
@@ -127,6 +131,7 @@ const StarsTransactionModal: FC<OwnProps & StateProps> = ({
           modelAttribute={giftAttributes!.model!}
           title={gift.title}
           subtitle={lang('GiftInfoCollectible', { number: gift.number })}
+          resellPrice={transaction.stars}
         />
       </div>
     );
@@ -159,7 +164,7 @@ const StarsTransactionModal: FC<OwnProps & StateProps> = ({
             draggable={false}
           />
         )}
-        {title && <h1 className={styles.title}>{title}</h1>}
+        {Boolean(title) && <h1 className={styles.title}>{title}</h1>}
         <p className={styles.description}>{description}</p>
         <p className={styles.amount}>
           <span
@@ -168,13 +173,15 @@ const StarsTransactionModal: FC<OwnProps & StateProps> = ({
             {formatStarsTransactionAmount(lang, stars)}
           </span>
           <StarIcon type="gold" size="middle" />
+          {transaction.isRefund && (
+            <p className={styles.refunded}>{lang('Refunded')}</p>
+          )}
         </p>
-        {transaction.paidMessages && transaction.starRefCommision && paidMessageCommission
-        && (
+        {Boolean(transaction.paidMessages && transaction.starRefCommision && paidMessageCommission) && (
           <p className={styles.description}>
             {lang(
               'PaidMessageTransactionDescription',
-              { percent: formatPercent(paidMessageCommission / 10) },
+              { percent: formatPercent(paidMessageCommission! / 10) },
               {
                 withNodes: true,
                 withMarkdown: true,
@@ -187,7 +194,7 @@ const StarsTransactionModal: FC<OwnProps & StateProps> = ({
 
     const tableData: TableData = [];
 
-    if (transaction && !transaction.paidMessages) {
+    if (transaction && !transaction.paidMessages && !isGiftResale) {
       tableData.push([
         oldLang('StarsTransaction.StarRefReason.Title'),
         oldLang('StarsTransaction.StarRefReason.Program'),
@@ -201,12 +208,21 @@ const StarsTransactionModal: FC<OwnProps & StateProps> = ({
       ]);
     }
 
+    if (isGiftResale) {
+      tableData.push([
+        oldLang('StarGiftReason'),
+        isNegativeStarsAmount(transaction.stars)
+          ? lang('StarGiftSaleTransaction')
+          : lang('StarGiftPurchaseTransaction'),
+      ]);
+    }
+
     let peerLabel;
     if (isGiftUpgrade) {
       peerLabel = oldLang('Stars.Transaction.GiftFrom');
     } else if (isNegativeStarsAmount(stars) || transaction.isMyGift) {
       peerLabel = oldLang('Stars.Transaction.To');
-    } else if (transaction.starRefCommision && !transaction.paidMessages) {
+    } else if (transaction.starRefCommision && !transaction.paidMessages && !isGiftResale) {
       peerLabel = oldLang('StarsTransaction.StarRefReason.Miniapp');
     } else if (peerId) {
       peerLabel = oldLang('Star.Transaction.From');

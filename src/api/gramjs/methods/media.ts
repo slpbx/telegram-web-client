@@ -18,7 +18,7 @@ import * as cacheApi from '../../../util/cacheApi';
 import { getEntityTypeById } from '../gramjsBuilders';
 import localDb from '../localDb';
 
-const MEDIA_ENTITY_TYPES: Set<EntityType> = new Set([
+const MEDIA_ENTITY_TYPES = new Set<EntityType>([
   'sticker', 'wallpaper', 'photo', 'webDocument', 'document',
 ]);
 
@@ -42,7 +42,7 @@ export default async function downloadMedia(
     return undefined;
   }
 
-  const parsed = await parseMedia(data, mediaFormat, mimeType);
+  const parsed = parseMedia(data, mediaFormat, mimeType);
   if (!parsed) {
     return undefined;
   }
@@ -142,7 +142,10 @@ async function download(
   }
 
   if (MEDIA_ENTITY_TYPES.has(entityType)) {
-    const data = await client.downloadMedia(entity, {
+    const entityWithType = entity as (
+      GramJs.Photo | GramJs.Document | GramJs.WebDocument
+    );
+    const data = await client.downloadMedia(entityWithType, {
       sizeType, start, end, progressCallback: onProgress, workers: DOWNLOAD_WORKERS,
     });
     let mimeType;
@@ -181,10 +184,9 @@ async function download(
   }
 }
 
-// eslint-disable-next-line no-async-without-await/no-async-without-await
-async function parseMedia(
+function parseMedia(
   data: Buffer | File, mediaFormat: ApiMediaFormat, mimeType?: string,
-): Promise<ApiParsedMedia | undefined> {
+): ApiParsedMedia | undefined {
   if (data instanceof File) {
     return data;
   }
@@ -240,7 +242,7 @@ export function parseMediaUrl(url: string) {
     : url.startsWith('webDocument')
       ? url.match(/(webDocument):(.+)/)
       : url.match(
-        // eslint-disable-next-line max-len
+
         /(avatar|profile|photo|stickerSet|sticker|wallpaper|document)([-\d\w./]+)(?::\d+)?(\?size=\w+)?/,
       );
   if (!mediaMatch) {

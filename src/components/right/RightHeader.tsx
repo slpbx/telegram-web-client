@@ -1,5 +1,5 @@
 import type { FC } from '../../lib/teact/teact';
-import React, {
+import {
   useEffect, useMemo, useRef, useState,
 } from '../../lib/teact/teact';
 import { getActions, withGlobal } from '../../global';
@@ -11,7 +11,7 @@ import { ManagementScreens, ProfileState } from '../../types';
 
 import { ANIMATION_END_DELAY, SAVED_FOLDER_ID } from '../../config';
 import {
-  getCanAddContact, getCanManageTopic, isChatChannel, isUserBot, isUserId,
+  getCanAddContact, getCanManageTopic, isChatChannel, isUserBot,
 } from '../../global/helpers';
 import {
   selectCanManage,
@@ -27,6 +27,7 @@ import {
   selectUser,
 } from '../../global/selectors';
 import buildClassName from '../../util/buildClassName';
+import { isUserId } from '../../util/entities/ids';
 
 import useAppLayout from '../../hooks/useAppLayout';
 import useCurrentOrPrev from '../../hooks/useCurrentOrPrev';
@@ -87,7 +88,7 @@ type StateProps = {
   canEditBot?: boolean;
   giftProfileFilter: GiftProfileFilterOptions;
   canUseGiftFilter?: boolean;
-  canUseGiftAdminFilter?:boolean;
+  canUseGiftAdminFilter?: boolean;
   isInsideTopic?: boolean;
   canEditTopic?: boolean;
   isSavedMessages?: boolean;
@@ -135,6 +136,7 @@ enum HeaderContent {
   CreateTopic,
   EditTopic,
   SavedDialogs,
+  NewDiscussionGroup,
 }
 
 const RightHeader: FC<OwnProps & StateProps> = ({
@@ -317,6 +319,8 @@ const RightHeader: FC<OwnProps & StateProps> = ({
       HeaderContent.ManageInviteInfo
     ) : managementScreen === ManagementScreens.JoinRequests ? (
       HeaderContent.ManageJoinRequests
+    ) : managementScreen === ManagementScreens.NewDiscussionGroup ? (
+      HeaderContent.NewDiscussionGroup
     ) : undefined // Never reached
   ) : isStatistics ? (
     HeaderContent.Statistics
@@ -518,7 +522,7 @@ const RightHeader: FC<OwnProps & StateProps> = ({
                 >
                   <MenuItem
                     icon={giftsSortType === 'byDate' ? 'cash-circle' : 'calendar-filter'}
-                    // eslint-disable-next-line react/jsx-no-bind
+
                     onClick={() => updateGiftProfileFilter(
                       { peerId: chatId, filter: { sortType: giftsSortType === 'byDate' ? 'byValue' : 'byDate' } },
                     )}
@@ -530,7 +534,7 @@ const RightHeader: FC<OwnProps & StateProps> = ({
 
                   <MenuItem
                     icon={shouldIncludeUnlimitedGifts ? 'check' : 'placeholder'}
-                    // eslint-disable-next-line react/jsx-no-bind
+
                     onClick={() => updateGiftProfileFilter(
                       { peerId: chatId, filter: { shouldIncludeUnlimited: !shouldIncludeUnlimitedGifts } },
                     )}
@@ -540,7 +544,7 @@ const RightHeader: FC<OwnProps & StateProps> = ({
 
                   <MenuItem
                     icon={shouldIncludeLimitedGifts ? 'check' : 'placeholder'}
-                    // eslint-disable-next-line react/jsx-no-bind
+
                     onClick={() => updateGiftProfileFilter(
                       { peerId: chatId, filter: { shouldIncludeLimited: !shouldIncludeLimitedGifts } },
                     )}
@@ -550,7 +554,7 @@ const RightHeader: FC<OwnProps & StateProps> = ({
 
                   <MenuItem
                     icon={shouldIncludeUniqueGifts ? 'check' : 'placeholder'}
-                    // eslint-disable-next-line react/jsx-no-bind
+
                     onClick={() => updateGiftProfileFilter(
                       { peerId: chatId, filter: { shouldIncludeUnique: !shouldIncludeUniqueGifts } },
                     )}
@@ -563,7 +567,7 @@ const RightHeader: FC<OwnProps & StateProps> = ({
                       <MenuSeparator />
                       <MenuItem
                         icon={shouldIncludeDisplayedGifts ? 'check' : 'placeholder'}
-                        // eslint-disable-next-line react/jsx-no-bind
+
                         onClick={() => updateGiftProfileFilter(
                           { peerId: chatId, filter: { shouldIncludeDisplayed: !shouldIncludeDisplayedGifts } },
                         )}
@@ -573,7 +577,7 @@ const RightHeader: FC<OwnProps & StateProps> = ({
 
                       <MenuItem
                         icon={shouldIncludeHiddenGifts ? 'check' : 'placeholder'}
-                        // eslint-disable-next-line react/jsx-no-bind
+
                         onClick={() => updateGiftProfileFilter(
                           { peerId: chatId, filter: { shouldIncludeHidden: !shouldIncludeHiddenGifts } },
                         )}
@@ -587,6 +591,8 @@ const RightHeader: FC<OwnProps & StateProps> = ({
             )}
           </>
         );
+      case HeaderContent.NewDiscussionGroup:
+        return <h3 className="title">{oldLang('NewGroup')}</h3>;
       default:
         return (
           <>
@@ -674,8 +680,7 @@ const RightHeader: FC<OwnProps & StateProps> = ({
     (shouldSkipTransition || shouldSkipHistoryAnimations) && 'no-transition',
   );
 
-  // eslint-disable-next-line no-null/no-null
-  const headerRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>();
   useElectronDrag(headerRef);
 
   return (

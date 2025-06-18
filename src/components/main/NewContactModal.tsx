@@ -1,5 +1,6 @@
 import type { FC } from '../../lib/teact/teact';
-import React, {
+import type React from '../../lib/teact/teact';
+import {
   memo, useCallback, useEffect, useRef, useState,
 } from '../../lib/teact/teact';
 import { getActions, withGlobal } from '../../global';
@@ -8,8 +9,8 @@ import type { ApiCountryCode, ApiUser, ApiUserStatus } from '../../api/types';
 
 import { getUserStatus } from '../../global/helpers';
 import { selectUser, selectUserStatus } from '../../global/selectors';
+import { IS_TOUCH_ENV } from '../../util/browser/windowEnvironment';
 import { formatPhoneNumberWithCode } from '../../util/phoneNumber';
-import { IS_TOUCH_ENV } from '../../util/windowEnvironment';
 import renderText from '../common/helpers/renderText';
 
 import useCurrentOrPrev from '../../hooks/useCurrentOrPrev';
@@ -51,8 +52,7 @@ const NewContactModal: FC<OwnProps & StateProps> = ({
   const lang = useOldLang();
   const renderingUser = useCurrentOrPrev(user);
   const renderingIsByPhoneNumber = useCurrentOrPrev(isByPhoneNumber);
-  // eslint-disable-next-line no-null/no-null
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>();
 
   const [isShown, markIsShown, unmarkIsShown] = useFlag();
   const [firstName, setFirstName] = useState<string>(renderingUser?.firstName ?? '');
@@ -73,7 +73,9 @@ const NewContactModal: FC<OwnProps & StateProps> = ({
 
   useEffect(() => {
     if (!IS_TOUCH_ENV && isShown) {
-      setTimeout(() => { inputRef.current?.focus(); }, ANIMATION_DURATION);
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, ANIMATION_DURATION);
     }
   }, [isShown]);
 

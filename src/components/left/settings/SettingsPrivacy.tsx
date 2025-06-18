@@ -1,15 +1,22 @@
 import type { FC } from '../../../lib/teact/teact';
-import React, { memo, useCallback, useEffect } from '../../../lib/teact/teact';
+import { memo, useCallback, useEffect, useMemo } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
 import type { ApiPrivacySettings } from '../../../api/types';
 import type { GlobalState } from '../../../global/types';
 import { SettingsScreens } from '../../../types';
 
-import { selectCanSetPasscode, selectIsCurrentUserPremium } from '../../../global/selectors';
+import { ACCOUNT_TTL_OPTIONS } from '../../../config.ts';
+import {
+  selectCanSetPasscode, selectIsCurrentUserFrozen,
+  selectIsCurrentUserPremium,
+} from '../../../global/selectors';
+import { selectSharedSettings } from '../../../global/selectors/sharedState';
+import { getClosestEntry } from '../../../util/getClosestEntry.ts';
 
 import useHistoryBack from '../../../hooks/useHistoryBack';
 import useLang from '../../../hooks/useLang';
+import useLastCallback from '../../../hooks/useLastCallback.ts';
 import useOldLang from '../../../hooks/useOldLang';
 
 import StarIcon from '../../common/icons/StarIcon';
@@ -18,7 +25,6 @@ import ListItem from '../../ui/ListItem';
 
 type OwnProps = {
   isActive?: boolean;
-  onScreenSelect: (screen: SettingsScreens) => void;
   onReset: () => void;
 };
 
@@ -36,8 +42,12 @@ type StateProps = {
   shouldNewNonContactPeersRequirePremium?: boolean;
   shouldChargeForMessages: boolean;
   canDisplayChatInTitle?: boolean;
+  isCurrentUserFrozen?: boolean;
   privacy: GlobalState['settings']['privacy'];
+  accountDaysTtl?: number;
 };
+
+const DAYS_PER_MONTH = 30;
 
 const SettingsPrivacy: FC<OwnProps & StateProps> = ({
   isActive,
@@ -55,10 +65,12 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
   canDisplayChatInTitle,
   canSetPasscode,
   privacy,
-  onScreenSelect,
   onReset,
+  isCurrentUserFrozen,
+  accountDaysTtl,
 }) => {
   const {
+    openDeleteAccountModal,
     loadPrivacySettings,
     loadBlockedUsers,
     loadContentSettings,
@@ -66,21 +78,26 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
     loadGlobalPrivacySettings,
     updateGlobalPrivacySettings,
     loadWebAuthorizations,
-    setSettingOption,
+    setSharedSettingOption,
+    openSettingsScreen,
+    loadAccountDaysTtl,
   } = getActions();
 
   useEffect(() => {
-    loadBlockedUsers();
-    loadPrivacySettings();
-    loadContentSettings();
-    loadWebAuthorizations();
-  }, []);
+    if (!isCurrentUserFrozen) {
+      loadBlockedUsers();
+      loadPrivacySettings();
+      loadContentSettings();
+      loadWebAuthorizations();
+    }
+  }, [isCurrentUserFrozen]);
 
   useEffect(() => {
-    if (isActive) {
+    if (isActive && !isCurrentUserFrozen) {
       loadGlobalPrivacySettings();
+      loadAccountDaysTtl();
     }
-  }, [isActive, loadGlobalPrivacySettings]);
+  }, [isActive, isCurrentUserFrozen, loadGlobalPrivacySettings]);
 
   const oldLang = useOldLang();
   const lang = useLang();
@@ -97,14 +114,24 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
   }, [updateGlobalPrivacySettings]);
 
   const handleChatInTitleChange = useCallback((isChecked: boolean) => {
-    setSettingOption({
+    setSharedSettingOption({
       canDisplayChatInTitle: isChecked,
     });
   }, []);
 
   const handleUpdateContentSettings = useCallback((isChecked: boolean) => {
-    updateContentSettings(isChecked);
+    updateContentSettings({ isSensitiveEnabled: isChecked });
   }, [updateContentSettings]);
+
+  const handleOpenDeleteAccountModal = useLastCallback(() => {
+    if (!accountDaysTtl) return;
+    openDeleteAccountModal({ days: accountDaysTtl });
+  });
+
+  const dayOption = useMemo(() => {
+    if (!accountDaysTtl) return undefined;
+    return getClosestEntry(ACCOUNT_TTL_OPTIONS, accountDaysTtl / DAYS_PER_MONTH).toString();
+  }, [accountDaysTtl]);
 
   function getVisibilityValue(setting?: ApiPrivacySettings) {
     if (!setting) return oldLang('Loading');
@@ -151,8 +178,8 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
         <ListItem
           icon="delete-user"
           narrow
-          // eslint-disable-next-line react/jsx-no-bind
-          onClick={() => onScreenSelect(SettingsScreens.PrivacyBlockedUsers)}
+
+          onClick={() => openSettingsScreen({ screen: SettingsScreens.PrivacyBlockedUsers })}
         >
           {oldLang('BlockedUsers')}
           <span className="settings-item__current-value">{blockedCount || ''}</span>
@@ -161,10 +188,10 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
           <ListItem
             icon="key"
             narrow
-            // eslint-disable-next-line react/jsx-no-bind
-            onClick={() => onScreenSelect(
-              hasPasscode ? SettingsScreens.PasscodeEnabled : SettingsScreens.PasscodeDisabled,
-            )}
+
+            onClick={() => openSettingsScreen({
+              screen: hasPasscode ? SettingsScreens.PasscodeEnabled : SettingsScreens.PasscodeDisabled,
+            })}
           >
             <div className="multiline-item">
               <span className="title">{oldLang('Passcode')}</span>
@@ -177,10 +204,10 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
         <ListItem
           icon="lock"
           narrow
-          // eslint-disable-next-line react/jsx-no-bind
-          onClick={() => onScreenSelect(
-            hasPassword ? SettingsScreens.TwoFaEnabled : SettingsScreens.TwoFaDisabled,
-          )}
+
+          onClick={() => openSettingsScreen({
+            screen: hasPassword ? SettingsScreens.TwoFaEnabled : SettingsScreens.TwoFaDisabled,
+          })}
         >
           <div className="multiline-item">
             <span className="title">{oldLang('TwoStepVerification')}</span>
@@ -193,8 +220,8 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
           <ListItem
             icon="web"
             narrow
-            // eslint-disable-next-line react/jsx-no-bind
-            onClick={() => onScreenSelect(SettingsScreens.ActiveWebsites)}
+
+            onClick={() => openSettingsScreen({ screen: SettingsScreens.ActiveWebsites })}
           >
             {oldLang('PrivacySettings.WebSessions')}
             <span className="settings-item__current-value">{webAuthCount}</span>
@@ -208,8 +235,8 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
         <ListItem
           narrow
           className="no-icon"
-          // eslint-disable-next-line react/jsx-no-bind
-          onClick={() => onScreenSelect(SettingsScreens.PrivacyPhoneNumber)}
+
+          onClick={() => openSettingsScreen({ screen: SettingsScreens.PrivacyPhoneNumber })}
         >
           <div className="multiline-item">
             <span className="title">{oldLang('PrivacyPhoneTitle')}</span>
@@ -221,8 +248,8 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
         <ListItem
           narrow
           className="no-icon"
-          // eslint-disable-next-line react/jsx-no-bind
-          onClick={() => onScreenSelect(SettingsScreens.PrivacyLastSeen)}
+
+          onClick={() => openSettingsScreen({ screen: SettingsScreens.PrivacyLastSeen })}
         >
           <div className="multiline-item">
             <span className="title">{oldLang('LastSeenTitle')}</span>
@@ -234,8 +261,8 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
         <ListItem
           narrow
           className="no-icon"
-          // eslint-disable-next-line react/jsx-no-bind
-          onClick={() => onScreenSelect(SettingsScreens.PrivacyProfilePhoto)}
+
+          onClick={() => openSettingsScreen({ screen: SettingsScreens.PrivacyProfilePhoto })}
         >
           <div className="multiline-item">
             <span className="title">{oldLang('PrivacyProfilePhotoTitle')}</span>
@@ -247,8 +274,8 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
         <ListItem
           narrow
           className="no-icon"
-          // eslint-disable-next-line react/jsx-no-bind
-          onClick={() => onScreenSelect(SettingsScreens.PrivacyBio)}
+
+          onClick={() => openSettingsScreen({ screen: SettingsScreens.PrivacyBio })}
         >
           <div className="multiline-item">
             <span className="title">{oldLang('PrivacyBio')}</span>
@@ -260,8 +287,8 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
         <ListItem
           narrow
           className="no-icon"
-          // eslint-disable-next-line react/jsx-no-bind
-          onClick={() => onScreenSelect(SettingsScreens.PrivacyBirthday)}
+
+          onClick={() => openSettingsScreen({ screen: SettingsScreens.PrivacyBirthday })}
         >
           <div className="multiline-item">
             <span className="title">{oldLang('PrivacyBirthday')}</span>
@@ -273,8 +300,8 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
         <ListItem
           narrow
           className="no-icon"
-          // eslint-disable-next-line react/jsx-no-bind
-          onClick={() => onScreenSelect(SettingsScreens.PrivacyGifts)}
+
+          onClick={() => openSettingsScreen({ screen: SettingsScreens.PrivacyGifts })}
         >
           <div className="multiline-item">
             <span className="title">{lang('PrivacyGifts')}</span>
@@ -286,8 +313,8 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
         <ListItem
           narrow
           className="no-icon"
-          // eslint-disable-next-line react/jsx-no-bind
-          onClick={() => onScreenSelect(SettingsScreens.PrivacyForwarding)}
+
+          onClick={() => openSettingsScreen({ screen: SettingsScreens.PrivacyForwarding })}
         >
           <div className="multiline-item">
             <span className="title">{oldLang('PrivacyForwardsTitle')}</span>
@@ -299,8 +326,8 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
         <ListItem
           narrow
           className="no-icon"
-          // eslint-disable-next-line react/jsx-no-bind
-          onClick={() => onScreenSelect(SettingsScreens.PrivacyPhoneCall)}
+
+          onClick={() => openSettingsScreen({ screen: SettingsScreens.PrivacyPhoneCall })}
         >
           <div className="multiline-item">
             <span className="title">{oldLang('WhoCanCallMe')}</span>
@@ -314,8 +341,8 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
           allowDisabledClick
           rightElement={isCurrentUserPremium && <StarIcon size="big" type="premium" />}
           className="no-icon"
-          // eslint-disable-next-line react/jsx-no-bind
-          onClick={() => onScreenSelect(SettingsScreens.PrivacyVoiceMessages)}
+
+          onClick={() => openSettingsScreen({ screen: SettingsScreens.PrivacyVoiceMessages })}
         >
           <div className="multiline-item">
             <span className="title">{oldLang('PrivacyVoiceMessagesTitle')}</span>
@@ -328,8 +355,8 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
           narrow
           rightElement={isCurrentUserPremium && <StarIcon size="big" type="premium" />}
           className="no-icon"
-          // eslint-disable-next-line react/jsx-no-bind
-          onClick={() => onScreenSelect(SettingsScreens.PrivacyMessages)}
+
+          onClick={() => openSettingsScreen({ screen: SettingsScreens.PrivacyMessages })}
         >
           <div className="multiline-item">
             <span className="title">{oldLang('PrivacyMessagesTitle')}</span>
@@ -344,8 +371,8 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
         <ListItem
           narrow
           className="no-icon"
-          // eslint-disable-next-line react/jsx-no-bind
-          onClick={() => onScreenSelect(SettingsScreens.PrivacyGroupChats)}
+
+          onClick={() => openSettingsScreen({ screen: SettingsScreens.PrivacyGroupChats })}
         >
           <div className="multiline-item">
             <span className="title">{oldLang('WhoCanAddMe')}</span>
@@ -395,6 +422,21 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
           onCheck={handleChatInTitleChange}
         />
       </div>
+
+      <div className="settings-item">
+        <h4 className="settings-item-header" dir={oldLang.isRtl ? 'rtl' : undefined}>
+          {lang('DeleteMyAccount')}
+        </h4>
+        <ListItem
+          narrow
+          onClick={handleOpenDeleteAccountModal}
+        >
+          {lang('DeleteAccountIfAwayFor')}
+          <span className="settings-item__current-value">
+            {lang('Months', { count: dayOption }, { pluralValue: 1 })}
+          </span>
+        </ListItem>
+      </div>
     </div>
   );
 };
@@ -405,9 +447,10 @@ export default memo(withGlobal<OwnProps>(
       settings: {
         byKey: {
           hasPassword, isSensitiveEnabled, canChangeSensitive, shouldArchiveAndMuteNewNonContact,
-          canDisplayChatInTitle, shouldNewNonContactPeersRequirePremium, nonContactPeersPaidStars,
+          shouldNewNonContactPeersRequirePremium, nonContactPeersPaidStars,
         },
         privacy,
+        accountDaysTtl,
       },
       blocked,
       passcode: {
@@ -416,7 +459,9 @@ export default memo(withGlobal<OwnProps>(
       appConfig,
     } = global;
 
+    const { canDisplayChatInTitle } = selectSharedSettings(global);
     const shouldChargeForMessages = Boolean(nonContactPeersPaidStars);
+    const isCurrentUserFrozen = selectIsCurrentUserFrozen(global);
 
     return {
       isCurrentUserPremium: selectIsCurrentUserPremium(global),
@@ -433,6 +478,8 @@ export default memo(withGlobal<OwnProps>(
       privacy,
       canDisplayChatInTitle,
       canSetPasscode: selectCanSetPasscode(global),
+      isCurrentUserFrozen,
+      accountDaysTtl,
     };
   },
 )(SettingsPrivacy));

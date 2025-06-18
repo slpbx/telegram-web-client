@@ -1,5 +1,5 @@
 import type { FC } from '../../lib/teact/teact';
-import React, {
+import {
   memo, useCallback, useEffect,
   useRef,
 } from '../../lib/teact/teact';
@@ -37,8 +37,7 @@ const PaymentInfo: FC<OwnProps> = ({
   countryList,
   dispatch,
 }) => {
-  // eslint-disable-next-line no-null/no-null
-  const selectCountryRef = useRef<HTMLSelectElement>(null);
+  const selectCountryRef = useRef<HTMLSelectElement>();
 
   useEffect(() => {
     if (selectCountryRef.current

@@ -1,6 +1,7 @@
 import type { ActionReturnType } from '../../types';
 import { SettingsScreens } from '../../../types';
 
+import { IS_SCREEN_LOCKED_CACHE_KEY } from '../../../config';
 import { getCurrentTabId, signalPasscodeHash } from '../../../util/establishMultitabRole';
 import { cloneDeep } from '../../../util/iteratees';
 import {
@@ -15,7 +16,6 @@ import { clearPasscodeSettings, updatePasscodeSettings } from '../../reducers';
 
 let noLockOnUnload = false;
 onBeforeUnload(() => {
-  // eslint-disable-next-line eslint-multitab-tt/no-immediate-global
   const global = getGlobal();
   if (!global.isInited) return;
   if (global.passcode.hasPasscode && !noLockOnUnload && Object.keys(global.byTabId).length === 1) {
@@ -65,13 +65,14 @@ addActionHandler('setPasscode', async (global, actions, payload): Promise<void> 
       message: 'Failed to set passcode',
       tabId,
     });
-    actions.requestNextSettingsScreen({ screen: SettingsScreens.PasscodeDisabled, tabId });
+    actions.openSettingsScreen({ screen: SettingsScreens.PasscodeDisabled, tabId });
   }
 });
 
 addActionHandler('clearPasscode', (global): ActionReturnType => {
   void clearEncryptedSession();
 
+  localStorage.removeItem(IS_SCREEN_LOCKED_CACHE_KEY);
   return clearPasscodeSettings(global);
 });
 
@@ -79,7 +80,7 @@ addActionHandler('unlockScreen', (global, actions, payload): ActionReturnType =>
   const beforeTabStates = Object.values(global.byTabId);
   const { sessionJson, globalJson } = payload;
   const session = JSON.parse(sessionJson);
-  storeSession(session, session.userId);
+  storeSession(session);
 
   const previousGlobal = global;
   global = JSON.parse(globalJson);

@@ -1,13 +1,16 @@
-import React, {
+import type {
+  ElementRef } from '../../lib/teact/teact';
+import type React from '../../lib/teact/teact';
+import {
   beginHeavyAnimation,
   type FC, memo, useEffect, useRef,
 } from '../../lib/teact/teact';
 
 import type { MenuPositionOptions } from '../../hooks/useMenuPosition';
 
+import { IS_BACKDROP_BLUR_SUPPORTED } from '../../util/browser/windowEnvironment';
 import buildClassName from '../../util/buildClassName';
 import captureEscKeyListener from '../../util/captureEscKeyListener';
-import { IS_BACKDROP_BLUR_SUPPORTED } from '../../util/windowEnvironment';
 import { preventMessageInputBlurWithBubbling } from '../middle/helpers/preventMessageInputBlur';
 
 import useAppLayout from '../../hooks/useAppLayout';
@@ -27,7 +30,7 @@ export type { MenuPositionOptions } from '../../hooks/useMenuPosition';
 
 type OwnProps =
   {
-    ref?: React.RefObject<HTMLDivElement>;
+    ref?: ElementRef<HTMLDivElement>;
     isOpen: boolean;
     shouldCloseFast?: boolean;
     id?: string;
@@ -76,8 +79,7 @@ const Menu: FC<OwnProps> = ({
 }) => {
   const { isTouchScreen } = useAppLayout();
 
-  // eslint-disable-next-line no-null/no-null
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>();
 
   const { ref: bubbleRef } = useShowTransition({
     isOpen,

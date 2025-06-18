@@ -1,6 +1,7 @@
 import type { ChangeEvent } from 'react';
 import type { FC } from '../../../lib/teact/teact';
-import React, {
+import type React from '../../../lib/teact/teact';
+import {
   memo, useEffect, useMemo, useRef, useState,
 } from '../../../lib/teact/teact';
 import { getActions, getGlobal, withGlobal } from '../../../global';
@@ -103,7 +104,7 @@ const DEFAULT_CUSTOM_EXPIRE_DATE = 86400 * 3 * 1000; // 3 days
 const MAX_ADDITIONAL_CHANNELS = 9;
 const DEFAULT_BOOST_COUNT = 5;
 
-const GIVEAWAY_IMG_LIST: { [key: number]: string } = {
+const GIVEAWAY_IMG_LIST: Partial<Record<number, string>> = {
   3: GiftGreenRound,
   6: GiftBlueRound,
   12: GiftRedRound,
@@ -124,8 +125,7 @@ const GiveawayModal: FC<OwnProps & StateProps> = ({
   isStarsGiftEnabled,
   starsGiftOptions,
 }) => {
-  // eslint-disable-next-line no-null/no-null
-  const dialogRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDivElement>();
   const {
     closeGiveawayModal, openInvoice, openPremiumModal,
     launchPrepaidGiveaway, launchPrepaidStarsGiveaway,
@@ -182,7 +182,7 @@ const GiveawayModal: FC<OwnProps & StateProps> = ({
   const isPremiumGiveaway = selectedGiveawayOption === 'premium_giveaway';
   const isStarsGiveaway = selectedGiveawayOption === 'stars_giveaway';
   const selectedUserCount = isPremiumGiveaway
-  && !selectedUserIds.length ? selectedRandomUserCount : selectedUserIds.length;
+    && !selectedUserIds.length ? selectedRandomUserCount : selectedUserIds.length;
   const boostQuantity = selectedUserCount * giveawayBoostPerPremiumLimit;
   const boostStarsQuantity = selectedStarOption?.yearlyBoosts;
 
@@ -490,7 +490,7 @@ const GiveawayModal: FC<OwnProps & StateProps> = ({
             isGiveaway
             key={gift.months}
             option={gift}
-            fullMonthlyAmount={fullMonthlyAmount!}
+            fullMonthlyAmount={fullMonthlyAmount}
             checked={gift.months === selectedMonthOption}
             onChange={setSelectedMonthOption}
           />
@@ -558,7 +558,7 @@ const GiveawayModal: FC<OwnProps & StateProps> = ({
                 ripple
                 key={channelId}
                 className="chat-item-clickable contact-list-item"
-                /* eslint-disable-next-line react/jsx-no-bind */
+
                 onClick={() => deleteParticipantsHandler(channelId)}
                 rightElement={(<Icon name="close" className={styles.removeChannel} />)}
               >
@@ -722,7 +722,11 @@ const GiveawayModal: FC<OwnProps & StateProps> = ({
               {dataStarsPrepaidGiveaway ? (
                 <img className={styles.prepaidImg} src={GiftStar} alt="" />
               ) : (
-                <img className={styles.prepaidImg} src={GIVEAWAY_IMG_LIST[dataPrepaidGiveaway!.months]} alt="" />
+                <img
+                  className={styles.prepaidImg}
+                  src={GIVEAWAY_IMG_LIST[dataPrepaidGiveaway!.months] || GIVEAWAY_IMG_LIST[3]}
+                  alt=""
+                />
               )}
             </div>
             <div className={styles.info}>

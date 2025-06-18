@@ -1,5 +1,5 @@
 import type { FC } from '../../../lib/teact/teact';
-import React, { memo, useRef } from '../../../lib/teact/teact';
+import { memo, useRef } from '../../../lib/teact/teact';
 
 import type { ObserveFn } from '../../../hooks/useIntersectionObserver';
 
@@ -33,8 +33,7 @@ type OwnProps = {
 const EmojiCategory: FC<OwnProps> = ({
   category, index, allEmojis, observeIntersection, shouldRender, onEmojiSelect,
 }) => {
-  // eslint-disable-next-line no-null/no-null
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLDivElement>();
 
   useOnIntersect(ref, observeIntersection);
 

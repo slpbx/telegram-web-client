@@ -7,16 +7,17 @@ import type { GlobalState, TabArgs } from '../types';
 import {
   ALL_FOLDER_ID, ARCHIVED_FOLDER_ID, MEMBERS_LOAD_SLICE, SAVED_FOLDER_ID, SERVICE_NOTIFICATIONS_USER_ID,
 } from '../../config';
+import { IS_TRANSLATION_SUPPORTED } from '../../util/browser/windowEnvironment';
+import { isUserId } from '../../util/entities/ids';
 import { getCurrentTabId } from '../../util/establishMultitabRole';
-import { IS_TRANSLATION_SUPPORTED } from '../../util/windowEnvironment';
 import {
   getHasAdminRight,
   getPrivateChatUserId,
   isChatChannel,
+  isChatPublic,
   isChatSuperGroup,
   isHistoryClearMessage,
   isUserBot,
-  isUserId,
   isUserOnline,
 } from '../helpers';
 import { selectTabState } from './tabs';
@@ -92,7 +93,7 @@ export function selectIsTrustedBot<T extends GlobalState>(global: T, botId: stri
   return global.trustedBotIds.includes(botId);
 }
 
-export function selectChatType<T extends GlobalState>(global: T, chatId: string) : ApiChatType | undefined {
+export function selectChatType<T extends GlobalState>(global: T, chatId: string): ApiChatType | undefined {
   const bot = selectBot(global, chatId);
   if (bot) {
     return 'bots';
@@ -256,7 +257,7 @@ export function selectCanInviteToChat<T extends GlobalState>(global: T, chatId: 
   // https://github.com/TelegramMessenger/Telegram-iOS/blob/5126be83b3b9578fb014eb52ca553da9e7a8b83a/submodules/TelegramCore/Sources/TelegramEngine/Peers/Communities.swift#L6
   return !chat.migratedTo && Boolean(!isUserId(chatId) && ((isChatChannel(chat) || isChatSuperGroup(chat)) ? (
     chat.isCreator || getHasAdminRight(chat, 'inviteUsers')
-    || (chat.usernames?.length && !chat.isJoinRequest)
+    || (isChatPublic(chat) && !chat.isJoinRequest)
   ) : (chat.isCreator || getHasAdminRight(chat, 'inviteUsers'))));
 }
 

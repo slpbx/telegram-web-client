@@ -1,4 +1,4 @@
-import React, {
+import {
   memo, useEffect, useMemo, useRef,
 } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
@@ -10,11 +10,11 @@ import {
 import { requestMeasure } from '../../../lib/fasterdom/fasterdom';
 import { getStickerMediaHash } from '../../../global/helpers';
 import { selectIsPremiumPurchaseBlocked } from '../../../global/selectors';
+import { IS_OFFSET_PATH_SUPPORTED } from '../../../util/browser/windowEnvironment';
 import buildClassName from '../../../util/buildClassName';
 import { formatDateToString } from '../../../util/dates/dateFormat';
 import { buildCollectionByKey } from '../../../util/iteratees';
 import * as mediaLoader from '../../../util/mediaLoader';
-import { IS_OFFSET_PATH_SUPPORTED } from '../../../util/windowEnvironment';
 import renderText from '../helpers/renderText';
 
 import useTimeout from '../../../hooks/schedulers/useTimeout';
@@ -54,8 +54,7 @@ const UserBirthday = ({
   isInSettings,
 }: OwnProps & StateProps) => {
   const { openGiftModal, requestConfetti } = getActions();
-  // eslint-disable-next-line no-null/no-null
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLDivElement>();
   const animationPlayedRef = useRef(false);
   const [isPlayingAnimation, playAnimation, stopAnimation] = useFlag();
 

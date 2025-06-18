@@ -1,5 +1,5 @@
 import type { FC } from '../../lib/teact/teact';
-import React, {
+import {
   memo, useEffect, useMemo, useRef,
 } from '../../lib/teact/teact';
 import { getGlobal, withGlobal } from '../../global';
@@ -30,9 +30,9 @@ import {
   selectIsCurrentUserPremium,
 } from '../../global/selectors';
 import animateHorizontalScroll from '../../util/animateHorizontalScroll';
+import { IS_TOUCH_ENV } from '../../util/browser/windowEnvironment';
 import buildClassName from '../../util/buildClassName';
 import { pickTruthy, unique, uniqueByField } from '../../util/iteratees';
-import { IS_TOUCH_ENV } from '../../util/windowEnvironment';
 import { REM } from './helpers/mediaDimensions';
 
 import useAppLayout from '../../hooks/useAppLayout';
@@ -145,14 +145,10 @@ const CustomEmojiPicker: FC<OwnProps & StateProps> = ({
   onContextMenuClose,
   onContextMenuClick,
 }) => {
-  // eslint-disable-next-line no-null/no-null
-  const containerRef = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line no-null/no-null
-  const headerRef = useRef<HTMLDivElement>(null);
-  // eslint-disable-next-line no-null/no-null
-  const sharedCanvasRef = useRef<HTMLCanvasElement>(null);
-  // eslint-disable-next-line no-null/no-null
-  const sharedCanvasHqRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>();
+  const headerRef = useRef<HTMLDivElement>();
+  const sharedCanvasRef = useRef<HTMLCanvasElement>();
+  const sharedCanvasHqRef = useRef<HTMLCanvasElement>();
 
   const { isMobile } = useAppLayout();
   const {
@@ -362,7 +358,7 @@ const CustomEmojiPicker: FC<OwnProps & StateProps> = ({
           round
           faded={isFaded}
           color="translucent"
-          // eslint-disable-next-line react/jsx-no-bind
+
           onClick={() => selectStickerSet(isRecent ? 0 : index)}
         >
           {isRecent ? (
