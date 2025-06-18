@@ -34,16 +34,24 @@ const sessionPromise = new Promise<ApiSessionData>(
   },
 );
 
-type CurrentState = Pick<GlobalState, 'currentUserId'> & {
+type CurrentState = Pick<GlobalState, 'authState' | 'currentUserId'> & {
   messageList?: GlobalState['byTabId'][number]['messageLists'][number];
 };
 const current: CurrentState = {
   currentUserId: undefined,
+  authState: undefined,
   messageList: undefined,
 };
 
 addCallback(async () => {
   const global = getGlobal();
+  if (global.authState !== current.authState) {
+    current.authState = global.authState;
+    sendMessage({
+      type: 'authStateLegacy',
+      state: current.authState,
+    });
+  }
 
   const messageLists = global.byTabId[getCurrentTabId()]?.messageLists;
   const currentList = messageLists?.[messageLists.length - 1];
