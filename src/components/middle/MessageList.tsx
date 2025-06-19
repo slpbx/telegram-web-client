@@ -28,10 +28,12 @@ import {
   isAnonymousForwardsChat,
   isChatChannel,
   isChatGroup,
+  isChatMonoforum,
   isSystemBot,
 } from '../../global/helpers';
 import {
   selectBot,
+  selectCanTranslateChat,
   selectChat,
   selectChatFullInfo,
   selectChatLastMessage,
@@ -47,11 +49,13 @@ import {
   selectIsInSelectMode,
   selectIsViewportNewest,
   selectLastScrollOffset,
+  selectMonoforumChannel,
   selectPerformanceSettingsValue,
   selectScrollOffset,
   selectTabState,
   selectThreadInfo,
   selectTopic,
+  selectTranslationLanguage,
   selectUserFullInfo,
 } from '../../global/selectors';
 import animateScroll, { isAnimatingScroll, restartCurrentScrollAnimation } from '../../util/animateScroll';
@@ -92,19 +96,20 @@ type OwnProps = {
   isComments?: boolean;
   canPost: boolean;
   isReady: boolean;
-  onScrollDownToggle: BooleanToVoidFunction;
-  onNotchToggle: BooleanToVoidFunction;
   withBottomShift?: boolean;
   withDefaultBg: boolean;
-  onIntersectPinnedMessage: OnIntersectPinnedMessage;
   isContactRequirePremium?: boolean;
   paidMessagesStars?: number;
+  onScrollDownToggle: BooleanToVoidFunction;
+  onNotchToggle: BooleanToVoidFunction;
+  onIntersectPinnedMessage: OnIntersectPinnedMessage;
 };
 
 type StateProps = {
   isChatLoaded?: boolean;
   isChannelChat?: boolean;
   isGroupChat?: boolean;
+  isChatMonoforum?: boolean;
   isChatWithSelf?: boolean;
   isSystemBotChat?: boolean;
   isAnonymousForwards?: boolean;
@@ -137,6 +142,10 @@ type StateProps = {
   isChatProtected?: boolean;
   hasCustomGreeting?: boolean;
   isAppConfigLoaded?: boolean;
+  monoforumChannelId?: string;
+  canTranslate?: boolean;
+  translationLanguage?: string;
+  shouldAutoTranslate?: boolean;
 };
 
 const MESSAGE_REACTIONS_POLLING_INTERVAL = 20 * 1000;
@@ -164,6 +173,7 @@ const MessageList: FC<OwnProps & StateProps> = ({
   isChannelWithAvatars,
   canPost,
   isSynced,
+  isChatMonoforum,
   isReady,
   isChatWithSelf,
   isSystemBotChat,
@@ -196,16 +206,20 @@ const MessageList: FC<OwnProps & StateProps> = ({
   areAdsEnabled,
   channelJoinInfo,
   isChatProtected,
+  isAccountFrozen,
+  hasCustomGreeting,
+  monoforumChannelId,
+  isAppConfigLoaded,
+  canTranslate,
+  translationLanguage,
+  shouldAutoTranslate,
   onIntersectPinnedMessage,
   onScrollDownToggle,
   onNotchToggle,
-  isAccountFrozen,
-  hasCustomGreeting,
-  isAppConfigLoaded,
 }) => {
   const {
     loadViewportMessages, setScrollOffset, loadSponsoredMessages, loadMessageReactions, copyMessagesByIds,
-    loadMessageViews, loadPeerStoriesByIds, loadFactChecks,
+    loadMessageViews, loadPeerStoriesByIds, loadFactChecks, requestChatTranslation,
   } = getActions();
 
   const containerRef = useRef<HTMLDivElement>();
@@ -267,6 +281,12 @@ const MessageList: FC<OwnProps & StateProps> = ({
   useSyncEffect(() => {
     memoFocusingIdRef.current = focusingId;
   }, [focusingId]);
+
+  // Enable auto translation for the chat if it's available
+  useEffect(() => {
+    if (!shouldAutoTranslate || !canTranslate) return;
+    requestChatTranslation({ chatId, toLanguageCode: translationLanguage });
+  }, [shouldAutoTranslate, canTranslate, translationLanguage, chatId]);
 
   useNativeCopySelectedMessages(copyMessagesByIds);
 
@@ -681,7 +701,7 @@ const MessageList: FC<OwnProps & StateProps> = ({
     isChatProtected && 'hide-on-print',
   );
 
-  const hasMessages = (messageIds && messageGroups) || lastMessage;
+  const hasMessages = Boolean((messageIds && messageGroups) || lastMessage);
 
   useEffect(() => {
     if (hasMessages) return;
@@ -702,12 +722,12 @@ const MessageList: FC<OwnProps & StateProps> = ({
             {restrictionReason ? restrictionReason.text : `This is a private ${isChannelChat ? 'channel' : 'chat'}`}
           </span>
         </div>
-      ) : paidMessagesStars && isPrivate && !hasMessages && !hasCustomGreeting ? (
-        <RequirementToContactMessage paidMessagesStars={paidMessagesStars} userId={chatId} />
+      ) : paidMessagesStars && !hasMessages && !hasCustomGreeting ? (
+        <RequirementToContactMessage paidMessagesStars={paidMessagesStars} peerId={monoforumChannelId || chatId} />
       ) : isContactRequirePremium && !hasMessages ? (
-        <RequirementToContactMessage userId={chatId} />
+        <RequirementToContactMessage peerId={chatId} />
       ) : (isBot || isNonContact) && !hasMessages ? (
-        <MessageListAccountInfo chatId={chatId} />
+        <MessageListAccountInfo chatId={chatId} hasMessages={hasMessages} />
       ) : shouldRenderGreeting ? (
         <ContactGreeting key={chatId} userId={chatId} />
       ) : messageIds && (!messageGroups || isGroupChatJustCreated || isEmptyTopic) ? (
@@ -724,6 +744,7 @@ const MessageList: FC<OwnProps & StateProps> = ({
           chatId={chatId}
           isComments={isComments}
           isChannelChat={isChannelChat}
+          isChatMonoforum={isChatMonoforum}
           isSavedDialog={isSavedDialog}
           messageIds={messageIds || [lastMessage!.id]}
           messageGroups={messageGroups || groupMessages([lastMessage!])}
@@ -806,12 +827,18 @@ export default memo(withGlobal<OwnProps>(
     const hasCustomGreeting = Boolean(userFullInfo?.businessIntro);
     const isAppConfigLoaded = global.isAppConfigLoaded;
 
+    const monoforumChannelId = selectMonoforumChannel(global, chatId)?.id;
+    const canTranslate = selectCanTranslateChat(global, chatId) && !chatFullInfo?.isTranslationDisabled;
+    const shouldAutoTranslate = chat?.hasAutoTranslation;
+    const translationLanguage = selectTranslationLanguage(global);
+
     return {
       areAdsEnabled,
       isChatLoaded: true,
       isRestricted,
       restrictionReason,
       isChannelChat: isChatChannel(chat),
+      isChatMonoforum: isChatMonoforum(chat),
       isGroupChat: isChatGroup(chat),
       isChannelWithAvatars: chat.areProfilesShown,
       isCreator: chat.isCreator,
@@ -842,6 +869,10 @@ export default memo(withGlobal<OwnProps>(
       isAccountFrozen,
       hasCustomGreeting,
       isAppConfigLoaded,
+      monoforumChannelId,
+      canTranslate,
+      translationLanguage,
+      shouldAutoTranslate,
     };
   },
 )(MessageList));

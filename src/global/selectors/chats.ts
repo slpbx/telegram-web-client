@@ -283,6 +283,9 @@ export function selectShouldDetectChatLanguage<T extends GlobalState>(
 ) {
   const chat = selectChat(global, chatId);
   if (!chat) return false;
+
+  if (chat.hasAutoTranslation) return true;
+
   const { canTranslateChats } = global.settings.byKey;
 
   const isPremium = selectIsCurrentUserPremium(global);
@@ -345,4 +348,29 @@ export function selectChatLastMessage<T extends GlobalState>(
 
   const realChatId = listType === 'saved' ? global.currentUserId! : chatId;
   return global.messages.byChatId[realChatId]?.byId[id];
+}
+
+export function selectIsMonoforumAdmin<T extends GlobalState>(
+  global: T, chatId: string,
+) {
+  const chat = selectChat(global, chatId);
+  if (!chat?.isMonoforum) return;
+
+  const channel = selectMonoforumChannel(global, chatId);
+  if (!channel) return;
+
+  return Boolean(chat.isCreator || chat.adminRights || channel.isCreator || channel.adminRights);
+}
+
+/**
+ * Only selects monoforum channel for monoforum chats.
+ * Returns `undefined` for other chats, including channels that have linked monoforum.
+ */
+export function selectMonoforumChannel<T extends GlobalState>(
+  global: T, chatId: string,
+) {
+  const chat = selectChat(global, chatId);
+  if (!chat) return;
+
+  return chat.isMonoforum ? selectChat(global, chat.linkedMonoforumId!) : undefined;
 }

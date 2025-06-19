@@ -36,6 +36,7 @@ export interface ApiOnProgress {
 }
 
 export interface ApiAttachment {
+  blob: Blob;
   blobUrl: string;
   compressedBlobUrl?: string;
   filename: string;
@@ -62,6 +63,7 @@ export interface ApiAttachment {
 
   uniqueId?: string;
   ttlSeconds?: number;
+  shouldSendInHighQuality?: boolean;
 }
 
 export interface ApiWallpaper {
@@ -235,6 +237,7 @@ export interface ApiAppConfig {
   bandwidthPremiumUploadSpeedup?: number;
   bandwidthPremiumDownloadSpeedup?: number;
   channelRestrictAdsLevelMin?: number;
+  channelAutoTranslationLevelMin?: number;
   paidReactionMaxAmount?: number;
   isChannelRevenueWithdrawalEnabled?: boolean;
   isStarsGiftEnabled?: boolean;
@@ -249,6 +252,7 @@ export interface ApiAppConfig {
   starsStargiftResaleAmountMin?: number;
   starsStargiftResaleAmountMax?: number;
   starsStargiftResaleCommissionPermille?: number;
+  pollMaxAnswers?: number;
 }
 
 export interface ApiConfig {

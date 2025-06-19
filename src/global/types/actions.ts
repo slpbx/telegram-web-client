@@ -354,7 +354,9 @@ export interface ActionPayloads {
   } & WithTabId;
   openThreadWithInfo: ActionPayloads['openThread'] & WithTabId;
   openLinkedChat: { id: string } & WithTabId;
-  loadMoreMembers: WithTabId | undefined;
+  loadMoreMembers: {
+    chatId: string;
+  };
   setActiveChatFolder: {
     activeChatFolder: number;
   } & WithTabId;
@@ -1080,6 +1082,10 @@ export interface ActionPayloads {
   updatePaidMessagesPrice: {
     chatId: string;
     paidMessagesStars: number;
+  } & WithTabId;
+  toggleAutoTranslation: {
+    chatId: string;
+    isEnabled: boolean;
   } & WithTabId;
 
   updateChat: {
@@ -2187,6 +2193,7 @@ export interface ActionPayloads {
     shouldSendGrouped?: boolean;
     isInvertedMedia?: true;
     webPageMediaSize?: WebPageMediaSize;
+    shouldSendInHighQuality?: boolean;
   };
 
   saveEffectInDraft: {

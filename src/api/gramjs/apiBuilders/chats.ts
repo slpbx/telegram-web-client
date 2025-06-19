@@ -110,6 +110,9 @@ function buildApiChatFieldsFromPeerEntity(
     isJoinToSend: channel?.joinToSend,
     isJoinRequest: channel?.joinRequest,
     isForum: channel?.forum,
+    isMonoforum: channel?.monoforum,
+    linkedMonoforumId: channel?.linkedMonoforumId && buildApiPeerId(channel.linkedMonoforumId, 'channel'),
+    areChannelMessagesAllowed: channel?.broadcastMessagesAllowed,
     areStoriesHidden,
     maxStoryId,
     hasStories: Boolean(maxStoryId) && !storiesUnavailable,
@@ -119,6 +122,8 @@ function buildApiChatFieldsFromPeerEntity(
     hasGeo: channel?.hasGeo,
     subscriptionUntil: channel?.subscriptionUntilDate,
     paidMessagesStars: paidMessagesStars?.toJSNumber(),
+    level: channel?.level,
+    hasAutoTranslation: channel?.autotranslation,
 
     ...buildApiChatPermissions(peerEntity),
     ...buildApiChatRestrictions(peerEntity),

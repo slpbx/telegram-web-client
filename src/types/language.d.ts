@@ -1419,6 +1419,7 @@ export interface LangPair {
   'ActionScreenshotTakenYou': undefined;
   'ActionBotAppPlaceholder': undefined;
   'ActionGiftTextUnknown': undefined;
+  'ActionGiftTextUnknownYou': undefined;
   'ActionGiftUniqueSent': undefined;
   'ActionStarGiftUpgradedSelf': undefined;
   'ActionStarGiftTransferredSelf': undefined;
@@ -1508,7 +1509,7 @@ export interface LangPair {
   'FrozenAccountAppealTitle': undefined;
   'ButtonAppeal': undefined;
   'ButtonUnderstood': undefined;
-  'ActionPaidMessageGroupPriceFree': undefined;
+  'ActionPaidMessagePriceFreeYou': undefined;
   'NotificationTitleNotSupportedInFrozenAccount': undefined;
   'NotificationMessageNotSupportedInFrozenAccount': undefined;
   'GiftRibbonSale': undefined;
@@ -1524,12 +1525,18 @@ export interface LangPair {
   'GiftSortByPrice': undefined;
   'GiftSortByNumber': undefined;
   'ContextMenuItemSelectAll': undefined;
-  'ButtonSort': undefined;
   'ValueGiftSortByDate': undefined;
   'ValueGiftSortByPrice': undefined;
   'ValueGiftSortByNumber': undefined;
   'ResellGiftsNoFound': undefined;
   'ResellGiftsClearFilters': undefined;
+  'SendInStandardQuality': undefined;
+  'SendInHighQuality': undefined;
+  'MonoforumBadge': undefined;
+  'MonoforumStatus': undefined;
+  'MonoforumComposerPlaceholder': undefined;
+  'ChannelSendMessage': undefined;
+  'AutomaticTranslation': undefined;
 }
 
 export interface LangPairWithVariables<V = LangVariable> {
@@ -1772,6 +1779,9 @@ export interface LangPairWithVariables<V = LangVariable> {
   };
   'VoipPeerIncompatible': {
     'user': V;
+  };
+  'NewDiscussionChatTitle': {
+    'name': V;
   };
   'LastSeenTodayAt': {
     'time': V;
@@ -2170,6 +2180,9 @@ export interface LangPairWithVariables<V = LangVariable> {
     'from': V;
     'title': V;
   };
+  'ActionCreatedChatYou': {
+    'title': V;
+  };
   'ActionPaymentDone': {
     'amount': V;
     'user': V;
@@ -2386,8 +2399,12 @@ export interface LangPairWithVariables<V = LangVariable> {
     'percent': V;
     'amount': V;
   };
-  'FirstMessageInPaidMessagesChat': {
-    'user': V;
+  'MessagesPlaceholderPaidUser': {
+    'peer': V;
+    'amount': V;
+  };
+  'MessagesPlaceholderPaidChannel': {
+    'peer': V;
     'amount': V;
   };
   'ComposerPlaceholderPaidMessage': {
@@ -2427,8 +2444,21 @@ export interface LangPairWithVariables<V = LangVariable> {
     'botLink': V;
     'date': V;
   };
-  'ActionPaidMessageGroupPrice': {
-    'stars': V;
+  'ActionPaidMessagePrice': {
+    'peer': V;
+    'amount': V;
+  };
+  'ActionPaidMessagePriceYou': {
+    'amount': V;
+  };
+  'ActionPaidMessagePriceFree': {
+    'peer': V;
+  };
+  'ActionMessageChannelFree': {
+    'peer': V;
+  };
+  'ActionMessageChannelDisabled': {
+    'peer': V;
   };
   'ApiMessageActionPaidMessagesRefundedOutgoing': {
     'stars': V;
@@ -2488,9 +2518,6 @@ export interface LangPairWithVariables<V = LangVariable> {
   'ComposerTitleForwardFrom': {
     'users': V;
   };
-  'NewDiscussionChatTitle': {
-    'name': V;
-  }
 }
 
 export interface LangPairPlural {
@@ -2754,6 +2781,14 @@ export interface LangPairPluralWithVariables<V = LangVariable> {
   'ActionGiveawayResultStarsText': {
     'channel': V;
     'amount': V;
+  };
+  'ActionGiftCodeSubscriptionText': {
+    'peer': V;
+    'months': V;
+  };
+  'ActionGiftCodeSubscriptionTextYou': {
+    'peer': V;
+    'months': V;
   };
   'ActionGiftPremiumTitle': {
     'months': V;

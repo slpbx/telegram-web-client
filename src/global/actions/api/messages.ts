@@ -138,6 +138,7 @@ import {
   selectSendAs,
   selectTabState,
   selectThreadIdFromMessage,
+  selectThreadInfo,
   selectTopic,
   selectTranslationLanguage,
   selectUser,
@@ -344,7 +345,11 @@ addActionHandler('sendMessage', async (global, actions, payload): Promise<void> 
   const messageReplyInfo = selectMessageReplyInfo(global, chatId!, threadId!, draftReplyInfo);
 
   const replyInfo = storyReplyInfo || messageReplyInfo;
-  const lastMessageId = selectChatLastMessageId(global, chatId!);
+
+  const threadInfo = selectThreadInfo(global, chatId!, threadId!);
+  const lastMessageId = threadId === MAIN_THREAD_ID
+    ? selectChatLastMessageId(global, chatId!) : threadInfo?.lastMessageId;
+
   const messagePriceInStars = await getPeerStarsForMessage(global, chatId!);
 
   const params: SendMessageParams = {
@@ -576,11 +581,16 @@ addActionHandler('saveDraft', (global, actions, payload): ActionReturnType => {
   const {
     chatId, threadId, text,
   } = payload;
-  if (!text) {
+  const chat = selectChat(global, chatId);
+  if (!text || !chat) {
     return;
   }
 
   const currentDraft = selectDraft(global, chatId, threadId);
+
+  if (chat.isMonoforum && !currentDraft?.replyInfo) {
+    return; // Monoforum doesn't support drafts outside threads
+  }
 
   const newDraft: ApiDraft = {
     text,
@@ -649,8 +659,12 @@ addActionHandler('resetDraftReplyInfo', (global, actions, payload): ActionReturn
     return;
   }
   const { chatId, threadId } = currentMessageList;
+  const chat = selectChat(global, chatId);
 
   const currentDraft = selectDraft(global, chatId, threadId);
+  if (chat?.isMonoforum && !currentDraft?.replyInfo) {
+    return; // Monoforum doesn't support drafts outside threads
+  }
   const newDraft: ApiDraft | undefined = !currentDraft?.text ? undefined : {
     ...currentDraft,
     replyInfo: undefined,
@@ -666,7 +680,11 @@ addActionHandler('saveEffectInDraft', (global, actions, payload): ActionReturnTy
     chatId, threadId, effectId,
   } = payload;
 
+  const chat = selectChat(global, chatId);
   const currentDraft = selectDraft(global, chatId, threadId);
+  if (chat?.isMonoforum && !currentDraft?.replyInfo) {
+    return; // Monoforum doesn't support drafts outside threads
+  }
 
   const newDraft = {
     ...currentDraft,
@@ -981,7 +999,7 @@ addActionHandler('sendMessageAction', async (global, actions, payload): Promise<
   if (selectIsChatWithSelf(global, chatId)) return;
 
   const chat = selectChat(global, chatId)!;
-  if (!chat) return;
+  if (!chat || chat.isMonoforum) return;
   const user = selectUser(global, chatId);
   if (user && (isUserBot(user) || isDeletedUser(user))) return;
 
@@ -2135,6 +2153,7 @@ addActionHandler('openChatOrTopicWithReplyInDraft', (global, actions, payload): 
     replyToMsgId: replyingInfo.messageId,
     replyToTopId: replyingInfo.toThreadId,
     replyToPeerId: currentChatId,
+    monoforumPeerId: replyingInfo.toThreadId,
     quoteText: replyingInfo.quoteText,
     quoteOffset: replyingInfo.quoteOffset,
   } as ApiInputMessageReplyInfo;

@@ -30,6 +30,8 @@ import {
   selectChatMessage,
   selectCurrentChat,
   selectCurrentMessageList,
+  selectIsChatWithBot,
+  selectIsChatWithSelf,
   selectIsCurrentUserPremium,
   selectIsTrustedBot,
   selectPeerPaidMessagesStars,
@@ -344,11 +346,13 @@ addActionHandler('showAllowedMessageTypesNotification', (global, actions, payloa
   const chat = selectChat(global, chatId);
   if (!chat) return;
   const chatFullInfo = selectChatFullInfo(global, chatId);
+  const isSavedMessages = chatId ? selectIsChatWithSelf(global, chatId) : undefined;
+  const isChatWithBot = chatId ? selectIsChatWithBot(global, chat) : undefined;
 
   const {
     canSendPlainText, canSendPhotos, canSendVideos, canSendDocuments, canSendAudios,
     canSendStickers, canSendRoundVideos, canSendVoices,
-  } = getAllowedAttachmentOptions(chat, chatFullInfo);
+  } = getAllowedAttachmentOptions(chat, chatFullInfo, isChatWithBot, isSavedMessages);
   const allowedContent = compact([
     canSendPlainText ? 'Chat.SendAllowedContentTypeText' : undefined,
     canSendPhotos ? 'Chat.SendAllowedContentTypePhoto' : undefined,
@@ -525,17 +529,11 @@ addActionHandler('requestWave', (global, actions, payload): ActionReturnType => 
 });
 
 addActionHandler('updateAttachmentSettings', (global, actions, payload): ActionReturnType => {
-  const {
-    shouldCompress, shouldSendGrouped, isInvertedMedia, webPageMediaSize,
-  } = payload;
-
   return {
     ...global,
     attachmentSettings: {
-      shouldCompress: shouldCompress ?? global.attachmentSettings.shouldCompress,
-      shouldSendGrouped: shouldSendGrouped ?? global.attachmentSettings.shouldSendGrouped,
-      isInvertedMedia,
-      webPageMediaSize,
+      ...global.attachmentSettings,
+      ...payload,
     },
   };
 });

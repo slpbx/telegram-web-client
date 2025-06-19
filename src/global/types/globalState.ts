@@ -121,6 +121,7 @@ export type GlobalState = {
     shouldSendGrouped: boolean;
     isInvertedMedia?: true;
     webPageMediaSize?: WebPageMediaSize;
+    shouldSendInHighQuality?: boolean;
   };
 
   attachMenu: {
