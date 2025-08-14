@@ -135,13 +135,13 @@ window.addEventListener('message', (event) => {
     resolveSession(event.data.session);
   }
   if (event.data.type === 'openChat') {
-    if (event.data.id) {
-      callActionWhenAvailable('openChat', {
-        id: String(event.data.id),
-      });
-    } else if (event.data.username) {
+    if (event.data.username) {
       callActionWhenAvailable('openChatByUsername', {
         username: event.data.username,
+      });
+    } else if (event.data.id) {
+      callActionWhenAvailable('openChat', {
+        id: String(event.data.id),
       });
     }
   }
