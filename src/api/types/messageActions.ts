@@ -1,6 +1,7 @@
 import type { ApiGroupCall, ApiPhoneCallDiscardReason } from './calls';
 import type { ApiBotApp, ApiFormattedText, ApiPhoto } from './messages';
-import type { ApiStarGiftRegular, ApiStarGiftUnique } from './stars';
+import type { ApiTodoItem } from './messages';
+import type { ApiStarGiftRegular, ApiStarGiftUnique, ApiTypeCurrencyAmount } from './stars';
 
 interface ActionMediaType {
   mediaType: 'action';
@@ -215,6 +216,15 @@ export interface ApiMessageActionGiftStars extends ActionMediaType {
   transactionId?: string;
 }
 
+export interface ApiMessageActionGiftTon extends ActionMediaType {
+  type: 'giftTon';
+  currency: string;
+  amount: number;
+  cryptoCurrency: string;
+  cryptoAmount: number;
+  transactionId?: string;
+}
+
 export interface ApiMessageActionPrizeStars extends ActionMediaType {
   type: 'prizeStars';
   isUnclaimed?: true;
@@ -281,6 +291,36 @@ export interface ApiMessageActionPaidMessagesPrice extends ActionMediaType {
   isAllowedInChannel?: boolean;
 }
 
+export interface ApiMessageActionSuggestedPostApproval extends ActionMediaType {
+  type: 'suggestedPostApproval';
+  isRejected?: boolean;
+  isBalanceTooLow?: boolean;
+  rejectComment?: string;
+  scheduleDate?: number;
+  amount?: ApiTypeCurrencyAmount;
+}
+
+export interface ApiMessageActionSuggestedPostSuccess extends ActionMediaType {
+  type: 'suggestedPostSuccess';
+  amount?: ApiTypeCurrencyAmount;
+}
+
+export interface ApiMessageActionSuggestedPostRefund extends ActionMediaType {
+  type: 'suggestedPostRefund';
+  payerInitiated: boolean;
+}
+
+export interface ApiMessageActionTodoCompletions extends ActionMediaType {
+  type: 'todoCompletions';
+  completedIds: number[];
+  incompletedIds: number[];
+}
+
+export interface ApiMessageActionTodoAppendTasks extends ActionMediaType {
+  type: 'todoAppendTasks';
+  items: ApiTodoItem[];
+}
+
 export interface ApiMessageActionUnsupported extends ActionMediaType {
   type: 'unsupported';
 }
@@ -297,5 +337,7 @@ export type ApiMessageAction = ApiMessageActionUnsupported | ApiMessageActionCha
   | ApiMessageActionTopicCreate | ApiMessageActionTopicEdit | ApiMessageActionSuggestProfilePhoto
   | ApiMessageActionChannelJoined | ApiMessageActionGiftCode | ApiMessageActionGiveawayLaunch
   | ApiMessageActionGiveawayResults | ApiMessageActionPaymentRefunded | ApiMessageActionGiftStars
-  | ApiMessageActionPrizeStars | ApiMessageActionStarGift | ApiMessageActionStarGiftUnique
-  | ApiMessageActionPaidMessagesRefunded | ApiMessageActionPaidMessagesPrice;
+  | ApiMessageActionGiftTon | ApiMessageActionPrizeStars | ApiMessageActionStarGift | ApiMessageActionStarGiftUnique
+  | ApiMessageActionPaidMessagesRefunded | ApiMessageActionPaidMessagesPrice | ApiMessageActionSuggestedPostApproval
+  | ApiMessageActionSuggestedPostSuccess | ApiMessageActionSuggestedPostRefund | ApiMessageActionTodoCompletions
+  | ApiMessageActionTodoAppendTasks;

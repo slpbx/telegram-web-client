@@ -43,7 +43,7 @@ import type {
   ApiSessionData,
 } from './misc';
 import type { ApiPrivacyKey, LangPackStringValue, PrivacyVisibility } from './settings';
-import type { ApiStarsAmount } from './stars';
+import type { ApiTypeCurrencyAmount } from './stars';
 import type { ApiStealthMode, ApiStory, ApiStorySkipped } from './stories';
 import type {
   ApiEmojiStatusType, ApiUser, ApiUserFullInfo, ApiUserStatus,
@@ -715,6 +715,13 @@ export type ApiUpdateMessageTranslations = {
   toLanguageCode: string;
 };
 
+export type ApiUpdateFailedMessageTranslations = {
+  '@type': 'failedMessageTranslations';
+  chatId: string;
+  messageIds: number[];
+  toLanguageCode: string;
+};
+
 export type ApiUpdateFetchingDifference = {
   '@type': 'updateFetchingDifference';
   isFetching: boolean;
@@ -787,7 +794,7 @@ export type ApiUpdatePremiumFloodWait = {
 
 export type ApiUpdateStarsBalance = {
   '@type': 'updateStarsBalance';
-  balance: ApiStarsAmount;
+  balance: ApiTypeCurrencyAmount;
 };
 
 export type ApiUpdateDeleteProfilePhoto = {
@@ -850,6 +857,7 @@ export type ApiUpdate = (
   ApiUpdateRecentStickers | ApiUpdateSavedGifs | ApiUpdateNewScheduledMessage | ApiUpdateMoveStickerSetToTop |
   ApiUpdateScheduledMessageSendSucceeded | ApiUpdateScheduledMessage | ApiUpdateStarPaymentStateCompleted |
   ApiUpdateDeleteScheduledMessages | ApiUpdateResetMessages | ApiUpdateMessageTranslations |
+  ApiUpdateFailedMessageTranslations |
   ApiUpdateTwoFaError | ApiUpdateTwoFaStateWaitCode | ApiUpdateWebViewResultSent |
   ApiUpdateDefaultNotifySettings | ApiUpdatePeerNotifySettings | ApiUpdatePeerBlocked | ApiUpdatePrivacy |
   ApiUpdateServerTimeOffset | ApiUpdateMessageReactions | ApiUpdateSavedReactionTags |

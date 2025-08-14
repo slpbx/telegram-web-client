@@ -68,8 +68,10 @@ import {
   buildInputPeer,
   buildInputPhoto,
   buildInputReplyTo,
+  buildInputSuggestedPost,
   buildInputUser,
   buildMtpMessageEntity,
+  DEFAULT_PRIMITIVES,
   generateRandomBigInt,
   getEntityTypeById,
 } from '../gramjsBuilders';
@@ -128,16 +130,17 @@ export async function fetchChats({
 }): Promise<ChatListData | undefined> {
   const peer = (offsetPeer && buildInputPeer(offsetPeer.id, offsetPeer.accessHash)) || new GramJs.InputPeerEmpty();
   const result = await invokeRequest(new GramJs.messages.GetDialogs({
+    hash: DEFAULT_PRIMITIVES.BIGINT,
     offsetPeer: peer,
-    offsetId,
+    offsetId: offsetId ?? DEFAULT_PRIMITIVES.INT,
     limit,
-    offsetDate,
+    offsetDate: offsetDate ?? DEFAULT_PRIMITIVES.INT,
     folderId: archived ? ARCHIVED_FOLDER_ID : undefined,
     ...(withPinned && { excludePinned: true }),
   }));
   const resultPinned = withPinned
     ? await invokeRequest(new GramJs.messages.GetPinnedDialogs({
-      folderId: archived ? ARCHIVED_FOLDER_ID : undefined,
+      folderId: archived ? ARCHIVED_FOLDER_ID : ALL_FOLDER_ID,
     }))
     : undefined;
 
@@ -265,9 +268,10 @@ export async function fetchSavedChats({
   const peer = (offsetPeer && buildInputPeer(offsetPeer.id, offsetPeer.accessHash)) || new GramJs.InputPeerEmpty();
   const result = await invokeRequest(new GramJs.messages.GetSavedDialogs({
     offsetPeer: peer,
-    offsetId,
+    offsetId: offsetId ?? DEFAULT_PRIMITIVES.INT,
     limit,
-    offsetDate,
+    offsetDate: offsetDate ?? DEFAULT_PRIMITIVES.INT,
+    hash: DEFAULT_PRIMITIVES.BIGINT,
     ...(withPinned && { excludePinned: true }),
   }));
   const resultPinned = withPinned
@@ -520,9 +524,10 @@ export function saveDraft({
 }) {
   return invokeRequest(new GramJs.messages.SaveDraft({
     peer: buildInputPeer(chat.id, chat.accessHash),
-    message: draft?.text?.text || '',
+    message: draft?.text?.text || DEFAULT_PRIMITIVES.STRING,
     entities: draft?.text?.entities?.map(buildMtpMessageEntity),
     replyTo: draft?.replyInfo && buildInputReplyTo(draft.replyInfo),
+    suggestedPost: draft?.suggestedPostInfo && buildInputSuggestedPost(draft.suggestedPostInfo),
   }));
 }
 
@@ -821,7 +826,7 @@ export function updateTopicMutedState({
 }
 
 export async function createChannel({
-  title, about = '', users, isBroadcast, isMegagroup,
+  title, about = DEFAULT_PRIMITIVES.STRING, users, isBroadcast, isMegagroup,
 }: {
   title: string; about?: string; users?: ApiUser[]; isBroadcast?: true; isMegagroup?: true;
 }) {
@@ -1094,7 +1099,7 @@ export async function fetchPinnedDialogs({
   listType: ChatListType;
 }) {
   const result = await invokeRequest(new GramJs.messages.GetPinnedDialogs({
-    folderId: listType === 'archived' ? ARCHIVED_FOLDER_ID : undefined,
+    folderId: listType === 'archived' ? ARCHIVED_FOLDER_ID : ALL_FOLDER_ID,
   }));
 
   if (!result) {
@@ -1282,7 +1287,7 @@ export function updateChatMemberBannedRights({
 }
 
 export function updateChatAdmin({
-  chat, user, adminRights, customTitle = '',
+  chat, user, adminRights, customTitle = DEFAULT_PRIMITIVES.STRING,
 }: { chat: ApiChat; user: ApiUser; adminRights: ApiChatAdminRights; customTitle?: string }) {
   const channel = buildInputChannel(chat.id, chat.accessHash);
   const userId = buildInputUser(user.id, user.accessHash);
@@ -1362,7 +1367,7 @@ export async function fetchMembers({
   chat,
   memberFilter = 'recent',
   offset,
-  query = '',
+  query = DEFAULT_PRIMITIVES.STRING,
 }: {
   chat: ApiChat;
   memberFilter?: ChannelMembersFilter;
@@ -1389,7 +1394,8 @@ export async function fetchMembers({
   const result = await invokeRequest(new GramJs.channels.GetParticipants({
     channel: buildInputChannel(chat.id, chat.accessHash),
     filter,
-    offset,
+    offset: offset ?? DEFAULT_PRIMITIVES.INT,
+    hash: DEFAULT_PRIMITIVES.BIGINT,
     limit: MEMBERS_LOAD_SLICE,
   }), {
     abortControllerChatId: chat.id,
@@ -1535,6 +1541,7 @@ export async function addChatMembers(chat: ApiChat, users: ApiUser[]) {
         const invitedUsers = await invokeRequest(new GramJs.messages.AddChatUser({
           chatId: buildInputChat(chat.id),
           userId: buildInputUser(user.id, user.accessHash),
+          fwdLimit: DEFAULT_PRIMITIVES.INT,
         }));
         if (!invitedUsers) return undefined;
         handleGramJsUpdate(invitedUsers.updates);
@@ -1700,6 +1707,7 @@ export function toggleForum({
   return invokeRequest(new GramJs.channels.ToggleForum({
     channel: buildInputChannel(id, accessHash),
     enabled: isEnabled,
+    tabs: Boolean(chat.withForumTabs),
   }), {
     shouldReturnTrue: true,
     shouldThrow: true,
@@ -1759,9 +1767,9 @@ export async function fetchTopics({
     channel: buildInputChannel(id, accessHash),
     limit,
     q: query,
-    offsetTopic: offsetTopicId,
-    offsetId,
-    offsetDate,
+    offsetTopic: offsetTopicId ?? DEFAULT_PRIMITIVES.INT,
+    offsetId: offsetId ?? DEFAULT_PRIMITIVES.INT,
+    offsetDate: offsetDate ?? DEFAULT_PRIMITIVES.INT,
   }));
 
   if (!result) return undefined;
@@ -1954,7 +1962,9 @@ export function leaveChatlist({
 }
 
 export async function createChalistInvite({
-  folderId, title, peers,
+  folderId,
+  title = DEFAULT_PRIMITIVES.STRING,
+  peers,
 }: {
   folderId: number;
   title?: string;
@@ -1964,7 +1974,7 @@ export async function createChalistInvite({
     chatlist: new GramJs.InputChatlistDialogFilter({
       filterId: folderId,
     }),
-    title: title || '',
+    title,
     peers: peers.map((peer) => buildInputPeer(peer.id, peer.accessHash)),
   }), {
     shouldThrow: true,
@@ -2081,7 +2091,7 @@ export function updatePaidMessagesPrice({
   chat?: ApiChat; paidMessagesStars: number;
 }) {
   return invokeRequest(new GramJs.channels.UpdatePaidMessagesPrice({
-    channel: chat && buildInputChannel(chat.id, chat.accessHash),
+    channel: chat ? buildInputChannel(chat.id, chat.accessHash) : new GramJs.InputChannelEmpty(),
     sendPaidMessagesStars: BigInt(paidMessagesStars),
   }), {
     shouldReturnTrue: true,

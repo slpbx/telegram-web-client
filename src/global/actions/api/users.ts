@@ -31,6 +31,7 @@ import { updateTabState } from '../../reducers/tabs';
 import {
   selectChat,
   selectChatFullInfo,
+  selectIsChatRestricted,
   selectIsCurrentUserFrozen,
   selectIsCurrentUserPremium,
   selectPeer,
@@ -191,14 +192,14 @@ addActionHandler('loadCommonChats', async (global, actions, payload): Promise<vo
   setGlobal(global);
 });
 
-addActionHandler('addNoPaidMessagesException', async (global, actions, payload): Promise<void> => {
+addActionHandler('toggleNoPaidMessagesException', async (global, actions, payload): Promise<void> => {
   const { userId, shouldRefundCharged } = payload;
   const user = selectUser(global, userId);
   if (!user) {
     return;
   }
 
-  const result = await callApi('addNoPaidMessagesException',
+  const result = await callApi('toggleNoPaidMessagesException',
     { user, shouldRefundCharged });
   if (!result) {
     return;
@@ -309,6 +310,10 @@ addActionHandler('loadMoreProfilePhotos', async (global, actions, payload): Prom
   const user = isPrivate ? selectUser(global, peerId) : undefined;
   const chat = !isPrivate ? selectChat(global, peerId) : undefined;
   const peer = user || chat;
+
+  if (chat && selectIsChatRestricted(global, peerId)) {
+    return;
+  }
   const profilePhotos = selectPeerPhotos(global, peerId);
   if (!peer?.avatarPhotoId) {
     return;

@@ -15,7 +15,7 @@ import {
   buildPostsStatistics,
   buildStoryPublicForwards,
 } from '../apiBuilders/statistics';
-import { buildInputChannel, buildInputPeer } from '../gramjsBuilders';
+import { buildInputChannel, buildInputPeer, DEFAULT_PRIMITIVES } from '../gramjsBuilders';
 import { checkErrorType, wrapError } from '../helpers/misc';
 import { invokeRequest } from './client';
 import { getPassword } from './twoFaSettings';
@@ -45,7 +45,7 @@ export async function fetchChannelMonetizationStatistics({
   peer: ApiPeer;
   dcId?: number;
 }) {
-  const result = await invokeRequest(new GramJs.stats.GetBroadcastRevenueStats({
+  const result = await invokeRequest(new GramJs.payments.GetStarsRevenueStats({
     peer: buildInputPeer(peer.id, peer.accessHash),
   }), {
     dcId,
@@ -103,7 +103,7 @@ export async function fetchMessagePublicForwards({
   chat,
   messageId,
   dcId,
-  offset,
+  offset = DEFAULT_PRIMITIVES.STRING,
 }: {
   chat: ApiChat;
   messageId: number;
@@ -186,7 +186,7 @@ export async function fetchStoryPublicForwards({
   chat,
   storyId,
   dcId,
-  offset,
+  offset = DEFAULT_PRIMITIVES.STRING,
 }: {
   chat: ApiChat;
   storyId: number;
@@ -234,7 +234,7 @@ export async function fetchMonetizationRevenueWithdrawalUrl({
       return password;
     }
 
-    const result = await invokeRequest(new GramJs.stats.GetBroadcastRevenueWithdrawalUrl({
+    const result = await invokeRequest(new GramJs.payments.GetStarsRevenueWithdrawalUrl({
       peer: buildInputPeer(peer.id, peer.accessHash),
       password,
     }), {

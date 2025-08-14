@@ -7,15 +7,19 @@ import {
   useState,
 } from '../../lib/teact/teact';
 
+import type { ApiUser } from '../../api/types';
 import type { IconName } from '../../types/icons';
 import type { IRadioOption } from './CheckboxGroup';
 
 import buildClassName from '../../util/buildClassName';
+import { REM } from '../common/helpers/mediaDimensions';
 import renderText from '../common/helpers/renderText';
 
+import useCurrentOrPrev from '../../hooks/useCurrentOrPrev';
 import useLastCallback from '../../hooks/useLastCallback';
 import useOldLang from '../../hooks/useOldLang';
 
+import Avatar from '../common/Avatar';
 import Icon from '../common/icons/Icon';
 import Button from './Button';
 import Spinner from './Spinner';
@@ -26,6 +30,7 @@ type OwnProps = {
   id?: string;
   name?: string;
   value?: string;
+  user?: ApiUser;
   label?: TeactNode;
   labelText?: TeactNode;
   subLabel?: string;
@@ -41,21 +46,23 @@ type OwnProps = {
   onlyInput?: boolean;
   isRound?: boolean;
   className?: string;
-  onChange?: (e: ChangeEvent<HTMLInputElement>, nestedOptionList?: IRadioOption) => void;
-  onCheck?: (isChecked: boolean) => void;
-  onClickLabel?: (e: React.MouseEvent, value?: string) => void;
   nestedCheckbox?: boolean;
   nestedCheckboxCount?: number | undefined;
-  nestedOptionList?: IRadioOption;
+  nestedOptionList?: IRadioOption[];
   leftElement?: TeactNode;
   values?: string[];
+  onChange?: (e: ChangeEvent<HTMLInputElement>, nestedOptionList?: IRadioOption[]) => void;
+  onCheck?: (isChecked: boolean) => void;
+  onClickLabel?: (e: React.MouseEvent, value?: string) => void;
 };
+const AVATAR_SIZE = 1.25 * REM;
 
 const Checkbox: FC<OwnProps> = ({
   id,
   name,
   value,
   label,
+  user,
   labelText,
   subLabel,
   checked,
@@ -81,6 +88,7 @@ const Checkbox: FC<OwnProps> = ({
   const lang = useOldLang();
   const labelRef = useRef<HTMLLabelElement>();
   const [showNested, setShowNested] = useState(false);
+  const renderingUser = useCurrentOrPrev(user, true);
 
   const handleChange = useLastCallback((event: ChangeEvent<HTMLInputElement>) => {
     if (disabled) {
@@ -151,6 +159,14 @@ const Checkbox: FC<OwnProps> = ({
           Boolean(leftElement) && 'Nested-avatar-list',
         )}
         >
+          <div className={buildClassName('user-avatar', renderingUser && 'user-avatar-visible')}>
+            {renderingUser && (
+              <Avatar
+                peer={renderingUser}
+                size={AVATAR_SIZE}
+              />
+            )}
+          </div>
           <span className="label" dir="auto">
             {leftElement}
             {typeof label === 'string' ? renderText(label) : label}
@@ -174,7 +190,7 @@ const Checkbox: FC<OwnProps> = ({
         <div
           className={buildClassName('nested-checkbox-group', showNested && 'nested-checkbox-group-open')}
         >
-          {nestedOptionList?.nestedOptions?.map((nestedOption) => (
+          {nestedOptionList?.map((nestedOption) => (
             <Checkbox
               key={nestedOption.value}
               leftElement={leftElement}

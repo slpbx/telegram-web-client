@@ -68,7 +68,7 @@ export const MEDIA_PROGRESSIVE_CACHE_DISABLED = false;
 export const MEDIA_PROGRESSIVE_CACHE_NAME = 'tt-media-progressive';
 export const MEDIA_CACHE_MAX_BYTES = 512 * 1024; // 512 KB
 export const CUSTOM_BG_CACHE_NAME = 'tt-custom-bg';
-export const LANG_CACHE_NAME = 'tt-lang-packs-v49';
+export const LANG_CACHE_NAME = 'tt-lang-packs-v50';
 export const ASSET_CACHE_NAME = 'tt-assets';
 export const AUTODOWNLOAD_FILESIZE_MB_LIMITS = [1, 5, 10, 50, 100, 500];
 export const DATA_BROADCAST_CHANNEL_PREFIX = 'tt-global';
@@ -109,6 +109,24 @@ export const STORY_LIST_LIMIT = 100;
 export const API_GENERAL_ID_LIMIT = 100;
 export const STATISTICS_PUBLIC_FORWARDS_LIMIT = 50;
 export const RESALE_GIFTS_LIMIT = 50;
+export const TODO_ITEMS_LIMIT = 30;
+export const TODO_TITLE_LENGTH_LIMIT = 32;
+export const TODO_ITEM_LENGTH_LIMIT = 64;
+
+// Suggested Posts defaults
+export const STARS_SUGGESTED_POST_AMOUNT_MAX = 100000;
+export const STARS_SUGGESTED_POST_AMOUNT_MIN = 5;
+export const STARS_SUGGESTED_POST_COMMISSION_PERMILLE = 850;
+export const STARS_SUGGESTED_POST_AGE_MIN = 86400; // 24 hours in seconds
+export const STARS_SUGGESTED_POST_FUTURE_MAX = 2678400; // 31 days in seconds
+export const STARS_SUGGESTED_POST_FUTURE_MIN = 300; // 5 minutes in seconds
+export const TON_CURRENCY_CODE = 'TON';
+export const TON_SUGGESTED_POST_COMMISSION_PERMILLE = 850;
+export const TON_USD_RATE_DEFAULT = 3;
+export const VERIFY_AGE_MIN_DEFAULT = 18;
+export const TON_TOPUP_URL_DEFAULT = 'https://fragment.com/ads/topup';
+export const TON_SUGGESTED_POST_AMOUNT_MIN = 10000000; // 0.01 TON in nanos
+export const TON_SUGGESTED_POST_AMOUNT_MAX = 10000000000000; // 10 000 TON in nanos
 
 export const STORY_VIEWS_MIN_SEARCH = 15;
 export const STORY_MIN_REACTIONS_SORT = 10;
@@ -330,6 +348,8 @@ export const TME_WEB_DOMAINS = new Set(['t.me', 'web.t.me', 'a.t.me', 'k.t.me', 
 export const WEB_APP_PLATFORM = 'weba';
 export const LANG_PACK = 'weba';
 
+export const NSFW_RESTRICTION_REASON = 'sensitive';
+
 // eslint-disable-next-line @stylistic/max-len
 export const COUNTRIES_WITH_12H_TIME_FORMAT = new Set(['AU', 'BD', 'CA', 'CO', 'EG', 'HN', 'IE', 'IN', 'JO', 'MX', 'MY', 'NI', 'NZ', 'PH', 'PK', 'SA', 'SV', 'US']);
 
@@ -432,6 +452,7 @@ export const PREMIUM_FEATURE_SECTIONS = [
   'last_seen',
   'message_privacy',
   'effects',
+  'todo',
 ] as const;
 
 export const PREMIUM_BOTTOM_VIDEOS: ApiPremiumSection[] = [
@@ -447,6 +468,7 @@ export const PREMIUM_BOTTOM_VIDEOS: ApiPremiumSection[] = [
   'last_seen',
   'message_privacy',
   'effects',
+  'todo',
 ];
 
 export const PREMIUM_LIMITS_ORDER: ApiLimitTypeForPromo[] = [

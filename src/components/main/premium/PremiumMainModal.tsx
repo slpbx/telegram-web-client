@@ -1,21 +1,21 @@
-import type { FC } from '../../../lib/teact/teact';
-import type React from '../../../lib/teact/teact';
-import {
-  memo, useEffect, useMemo, useRef, useState,
-} from '../../../lib/teact/teact';
+import type { FC } from '@teact';
+import { memo, useEffect, useMemo, useRef, useState } from '@teact';
 import { getActions, withGlobal } from '../../../global';
 
 import type {
-  ApiPremiumPromo, ApiPremiumSection, ApiPremiumSubscriptionOption, ApiSticker, ApiStickerSet, ApiUser,
+  ApiPremiumPromo,
+  ApiPremiumSection,
+  ApiPremiumSubscriptionOption,
+  ApiSticker,
+  ApiStickerSet,
+  ApiUser,
 } from '../../../api/types';
 import type { GlobalState } from '../../../global/types';
+import type { LangPair } from '../../../types/language';
 
 import { PREMIUM_FEATURE_SECTIONS, TME_LINK_PREFIX } from '../../../config';
 import { getUserFullName } from '../../../global/helpers';
-import {
-  selectIsCurrentUserPremium, selectStickerSet,
-  selectTabState, selectUser,
-} from '../../../global/selectors';
+import { selectIsCurrentUserPremium, selectStickerSet, selectTabState, selectUser } from '../../../global/selectors';
 import { selectPremiumLimit } from '../../../global/selectors/limits';
 import buildClassName from '../../../util/buildClassName';
 import { formatCurrency } from '../../../util/formatCurrency';
@@ -30,14 +30,12 @@ import useSyncEffect from '../../../hooks/useSyncEffect';
 
 import CustomEmoji from '../../common/CustomEmoji';
 import Icon from '../../common/icons/Icon';
+import ParticlesHeader from '../../modals/common/ParticlesHeader.tsx';
 import Button from '../../ui/Button';
 import Modal from '../../ui/Modal';
 import Transition from '../../ui/Transition';
 import PremiumFeatureItem from './PremiumFeatureItem';
-import PremiumFeatureModal, {
-  PREMIUM_FEATURE_DESCRIPTIONS,
-  PREMIUM_FEATURE_TITLES,
-} from './PremiumFeatureModal';
+import PremiumFeatureModal, { PREMIUM_FEATURE_DESCRIPTIONS, PREMIUM_FEATURE_TITLES } from './PremiumFeatureModal';
 import PremiumSubscriptionOption from './PremiumSubscriptionOption';
 
 import styles from './PremiumMainModal.module.scss';
@@ -50,7 +48,6 @@ import PremiumEmoji from '../../../assets/premium/PremiumEmoji.svg';
 import PremiumFile from '../../../assets/premium/PremiumFile.svg';
 import PremiumLastSeen from '../../../assets/premium/PremiumLastSeen.svg';
 import PremiumLimits from '../../../assets/premium/PremiumLimits.svg';
-import PremiumLogo from '../../../assets/premium/PremiumLogo.svg';
 import PremiumMessagePrivacy from '../../../assets/premium/PremiumMessagePrivacy.svg';
 import PremiumReactions from '../../../assets/premium/PremiumReactions.svg';
 import PremiumSpeed from '../../../assets/premium/PremiumSpeed.svg';
@@ -83,6 +80,7 @@ const PREMIUM_FEATURE_COLOR_ICONS: Record<ApiPremiumSection, string> = {
   last_seen: PremiumLastSeen,
   message_privacy: PremiumMessagePrivacy,
   effects: PremiumEffects,
+  todo: PremiumBadge,
 };
 
 export type OwnProps = {
@@ -148,8 +146,10 @@ const PremiumMainModal: FC<OwnProps & StateProps> = ({
     if (!isOpen) {
       setHeaderHidden(true);
       setCurrentSection(undefined);
+    } else if (initialSection) {
+      setCurrentSection(initialSection);
     }
-  }, [isOpen]);
+  }, [isOpen, initialSection]);
 
   const handleOpenSection = useLastCallback((section: ApiPremiumSection) => {
     setCurrentSection(section);
@@ -370,29 +370,35 @@ const PremiumMainModal: FC<OwnProps & StateProps> = ({
               size="smaller"
               className={styles.closeButton}
               color="translucent"
-
               onClick={() => closePremiumModal()}
               ariaLabel={oldLang('Close')}
             >
               <Icon name="close" />
             </Button>
-            {(fromUserStatusEmoji && !isGift) ? (
-              <CustomEmoji
-                className={styles.statusEmoji}
-                onClick={handleOpenStatusSet}
-                documentId={fromUserStatusEmoji.id}
-                isBig
-                size={STATUS_EMOJI_SIZE}
+            {!fromUserStatusEmoji ? (
+              <ParticlesHeader
+                model="swaying-star"
+                color="purple"
+                title={getHeaderText()}
+                description={renderText(getHeaderDescription(), ['simple_markdown', 'emoji'])}
               />
             ) : (
-              <img className={styles.logo} src={PremiumLogo} alt="" draggable={false} />
+              <>
+                <CustomEmoji
+                  className={styles.statusEmoji}
+                  onClick={handleOpenStatusSet}
+                  documentId={fromUserStatusEmoji.id}
+                  isBig
+                  size={STATUS_EMOJI_SIZE}
+                />
+                <h2 className={buildClassName(styles.headerText, fromUserStatusSet && styles.stickerSetText)}>
+                  {getHeaderText()}
+                </h2>
+                <div className={styles.description}>
+                  {renderText(getHeaderDescription(), ['simple_markdown', 'emoji'])}
+                </div>
+              </>
             )}
-            <h2 className={buildClassName(styles.headerText, fromUserStatusSet && styles.stickerSetText)}>
-              {getHeaderText()}
-            </h2>
-            <div className={styles.description}>
-              {renderText(getHeaderDescription(), ['simple_markdown', 'emoji'])}
-            </div>
             {!isPremium && !isGift && renderSubscriptionOptions()}
             <div className={buildClassName(styles.header, isHeaderHidden && styles.hiddenHeader)}>
               <h2 className={styles.premiumHeaderText}>
@@ -401,14 +407,19 @@ const PremiumMainModal: FC<OwnProps & StateProps> = ({
             </div>
             <div className={buildClassName(styles.list, isPremium && styles.noButton)}>
               {filteredSections.map((section, index) => {
+                const shouldUseNewLang = section === 'todo';
                 return (
                   <PremiumFeatureItem
                     key={section}
-                    title={oldLang(PREMIUM_FEATURE_TITLES[section])}
+                    title={shouldUseNewLang
+                      ? lang(PREMIUM_FEATURE_TITLES[section] as keyof LangPair)
+                      : oldLang(PREMIUM_FEATURE_TITLES[section])}
                     text={section === 'double_limits'
                       ? oldLang(PREMIUM_FEATURE_DESCRIPTIONS[section],
                         [limitChannels, limitFolders, limitPins, limitLinks, LIMIT_ACCOUNTS])
-                      : oldLang(PREMIUM_FEATURE_DESCRIPTIONS[section])}
+                      : shouldUseNewLang
+                        ? lang(PREMIUM_FEATURE_DESCRIPTIONS[section] as keyof LangPair)
+                        : oldLang(PREMIUM_FEATURE_DESCRIPTIONS[section])}
                     icon={PREMIUM_FEATURE_COLOR_ICONS[section]}
                     index={index}
                     count={filteredSections.length}

@@ -16,6 +16,8 @@
 
   .options-header {
     margin-top: 0.5rem;
+    margin-bottom: 0.75rem;
+
     font-size: 1rem;
     font-weight: var(--font-weight-medium);
     color: var(--color-text-secondary);
@@ -69,13 +71,13 @@
   }
 
   .note {
-    font-size: smaller;
+    font-size: 0.875rem;
     color: var(--color-text-secondary);
   }
 
   .poll-error {
     margin: -1rem 0 1rem 0.25rem;
-    font-size: smaller;
+    font-size: 0.875rem;
     color: var(--color-error);
   }
 

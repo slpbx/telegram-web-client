@@ -24,6 +24,7 @@ export { default as SuggestedStatusModal } from '../components/modals/suggestedS
 export { default as BoostModal } from '../components/modals/boost/BoostModal';
 export { default as GiftCodeModal } from '../components/modals/giftcode/GiftCodeModal';
 export { default as DeleteAccountModal } from '../components/modals/deleteAccount/DeleteAccountModal';
+export { default as AgeVerificationModal } from '../components/modals/ageVerification/AgeVerificationModal';
 export { default as ChatlistModal } from '../components/modals/chatlist/ChatlistModal';
 export { default as ChatInviteModal } from '../components/modals/chatInvite/ChatInviteModal';
 
@@ -37,6 +38,9 @@ export { default as ReportModal } from '../components/modals/reportModal/ReportM
 export { default as PreparedMessageModal } from '../components/modals/preparedMessage/PreparedMessageModal';
 export { default as SharePreparedMessageModal }
   from '../components/modals/sharePreparedMessage/SharePreparedMessageModal';
+export { default as SuggestMessageModal } from '../components/modals/suggestMessage/SuggestMessageModal';
+export { default as SuggestedPostApprovalModal }
+  from '../components/modals/suggestedPostApproval/SuggestedPostApprovalModal';
 export { default as CalendarModal } from '../components/common/CalendarModal';
 export { default as DeleteMessageModal } from '../components/common/DeleteMessageModal';
 export { default as PinMessageModal } from '../components/common/PinMessageModal';
@@ -68,6 +72,7 @@ export { default as ReactionPicker } from '../components/middle/message/reaction
 
 export { default as AttachmentModal } from '../components/middle/composer/AttachmentModal';
 export { default as PollModal } from '../components/middle/composer/PollModal';
+export { default as ToDoListModal } from '../components/middle/composer/ToDoListModal';
 export { default as SymbolMenu } from '../components/middle/composer/SymbolMenu';
 export { default as ChatCommandTooltip } from '../components/middle/composer/ChatCommandTooltip';
 export { default as BotCommandMenu } from '../components/middle/composer/BotCommandMenu';

@@ -866,6 +866,14 @@ addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
       setGlobal(global);
       break;
     }
+
+    case 'failedMessageTranslations': {
+      const { chatId, messageIds, toLanguageCode } = update;
+
+      global = updateMessageTranslations(global, chatId, messageIds, toLanguageCode, []);
+
+      setGlobal(global);
+    }
   }
 });
 
@@ -940,7 +948,7 @@ function updateReactions<T extends GlobalState>(
   return global;
 }
 
-function updateWithLocalMedia(
+export function updateWithLocalMedia(
   global: RequiredGlobalState,
   chatId: string,
   id: number,

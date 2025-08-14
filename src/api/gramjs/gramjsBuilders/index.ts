@@ -15,7 +15,9 @@ import type {
   ApiInputPrivacyRules,
   ApiInputReplyInfo,
   ApiInputStorePaymentPurpose,
+  ApiInputSuggestedPostInfo,
   ApiMessageEntity,
+  ApiNewMediaTodo,
   ApiNewPoll,
   ApiPhoneCall,
   ApiPhoto,
@@ -31,16 +33,23 @@ import type {
   ApiStory,
   ApiStorySkipped,
   ApiThemeParameters,
+  ApiTypeCurrencyAmount,
   ApiVideo,
 } from '../../types';
 import {
   ApiMessageEntityTypes,
 } from '../../types';
 
-import { CHANNEL_ID_BASE, DEFAULT_STATUS_ICON_ID } from '../../../config';
+import { CHANNEL_ID_BASE, DEFAULT_STATUS_ICON_ID, STARS_CURRENCY_CODE } from '../../../config';
 import { pick } from '../../../util/iteratees';
 import { deserializeBytes } from '../helpers/misc';
 import localDb from '../localDb';
+
+export const DEFAULT_PRIMITIVES = {
+  INT: 0,
+  BIGINT: BigInt(0),
+  STRING: '',
+} as const;
 
 export function getEntityTypeById(peerId: string) {
   const n = Number(peerId);
@@ -254,6 +263,28 @@ export function buildInputPollFromExisting(poll: ApiPoll, shouldClose = false) {
     correctAnswers: poll.results.results?.filter((o) => o.isCorrect).map((o) => deserializeBytes(o.option)),
     solution: poll.results.solution,
     solutionEntities: poll.results.solutionEntities?.map(buildMtpMessageEntity),
+  });
+}
+
+export function buildInputTodo(todo: ApiNewMediaTodo) {
+  const { title, items } = todo.todo;
+
+  const todoItems = items.map((item) => {
+    return new GramJs.TodoItem({
+      id: item.id,
+      title: buildInputTextWithEntities(item.title),
+    });
+  });
+
+  const todoList = new GramJs.TodoList({
+    title: buildInputTextWithEntities(title),
+    list: todoItems,
+    othersCanAppend: todo.todo.othersCanAppend || undefined,
+    othersCanComplete: todo.todo.othersCanComplete || undefined,
+  });
+
+  return new GramJs.InputMediaTodo({
+    todo: todoList,
   });
 }
 
@@ -514,7 +545,7 @@ export function buildInputPrivacyKey(privacyKey: ApiPrivacyKey) {
   return undefined;
 }
 
-export function buildInputReportReason(reason: ApiReportReason) {
+export function buildInputReportReason(reason: ApiReportReason): GramJs.TypeReportReason {
   switch (reason) {
     case 'spam':
       return new GramJs.InputReportReasonSpam();
@@ -535,10 +566,9 @@ export function buildInputReportReason(reason: ApiReportReason) {
     case 'personalDetails':
       return new GramJs.InputReportReasonPersonalDetails();
     case 'other':
+    default:
       return new GramJs.InputReportReasonOther();
   }
-
-  return undefined;
 }
 
 export function buildSendMessageAction(action: ApiSendMessageAction) {
@@ -858,6 +888,26 @@ export function buildInputReplyTo(replyInfo: ApiInputReplyInfo) {
   }
 
   return undefined;
+}
+
+export function buildInputStarsAmount(amount: ApiTypeCurrencyAmount): GramJs.TypeStarsAmount {
+  if (amount.currency === STARS_CURRENCY_CODE) {
+    return new GramJs.StarsAmount({
+      amount: BigInt(amount.amount),
+      nanos: amount.nanos,
+    });
+  }
+
+  return new GramJs.StarsTonAmount({
+    amount: BigInt(amount.amount),
+  });
+}
+
+export function buildInputSuggestedPost(suggestedPostInfo: ApiInputSuggestedPostInfo): GramJs.SuggestedPost {
+  return new GramJs.SuggestedPost({
+    price: suggestedPostInfo.price && buildInputStarsAmount(suggestedPostInfo.price),
+    scheduleDate: suggestedPostInfo.scheduleDate,
+  });
 }
 
 export function buildInputPrivacyRules(

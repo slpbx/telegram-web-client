@@ -14,15 +14,18 @@ import type {
   ApiFormattedText,
   ApiGlobalMessageSearchType,
   ApiInputReplyInfo,
+  ApiInputSuggestedPostInfo,
   ApiMessage,
   ApiMessageEntity,
   ApiMessageSearchContext,
   ApiMessageSearchType,
+  ApiNewMediaTodo,
   ApiOnProgress,
   ApiPeer,
   ApiPoll,
   ApiReaction,
   ApiSendMessageAction,
+  ApiTodoItem,
   ApiUser,
   ApiUserStatus,
   MediaContent,
@@ -47,7 +50,7 @@ import {
 import { fetchFile } from '../../../util/files';
 import { compact, split } from '../../../util/iteratees';
 import { getMessageKey } from '../../../util/keys/messageKey';
-import { getServerTime, getServerTimeOffset } from '../../../util/serverTime';
+import { getServerTime } from '../../../util/serverTime';
 import { interpolateArray } from '../../../util/waveform';
 import {
   buildApiChatFromPreview,
@@ -74,19 +77,24 @@ import { getApiChatIdFromMtpPeer } from '../apiBuilders/peers';
 import { buildApiUser, buildApiUserStatuses } from '../apiBuilders/users';
 import {
   buildInputChannel,
+  buildInputDocument,
   buildInputMediaDocument,
   buildInputPeer,
+  buildInputPhoto,
   buildInputPoll,
   buildInputPollFromExisting,
   buildInputReaction,
   buildInputReplyTo,
   buildInputStory,
+  buildInputSuggestedPost,
   buildInputTextWithEntities,
+  buildInputTodo,
   buildInputUser,
   buildMessageFromUpdate,
   buildMtpMessageEntity,
   buildPeer,
   buildSendMessageAction,
+  DEFAULT_PRIMITIVES,
   generateRandomBigInt,
   getEntityTypeById,
 } from '../gramjsBuilders';
@@ -94,6 +102,7 @@ import {
   deserializeBytes,
   resolveMessageApiChatId,
 } from '../helpers/misc';
+import localDb from '../localDb';
 import { sendApiUpdate } from '../updates/apiUpdateEmitter';
 import { processMessageAndUpdateThreadInfo } from '../updates/entityProcessor';
 import { processAffectedHistory, updateChannelState } from '../updates/updateManager';
@@ -126,7 +135,8 @@ export async function fetchMessages({
   threadId,
   offsetId,
   isSavedDialog,
-  ...pagination
+  addOffset,
+  limit,
 }: {
   chat: ApiChat;
   threadId?: ThreadId;
@@ -142,15 +152,18 @@ export async function fetchMessages({
 
   try {
     result = await invokeRequest(new RequestClass({
+      hash: DEFAULT_PRIMITIVES.BIGINT,
+      maxId: DEFAULT_PRIMITIVES.INT,
+      minId: DEFAULT_PRIMITIVES.INT,
+      offsetDate: DEFAULT_PRIMITIVES.INT,
       peer: buildInputPeer(chat.id, chat.accessHash),
       ...(threadId !== MAIN_THREAD_ID && !isSavedDialog && {
         msgId: Number(threadId),
       }),
-      ...(offsetId && {
-        // Workaround for local message IDs overflowing some internal `Buffer` range check
-        offsetId: Math.min(offsetId, MAX_INT_32),
-      }),
-      ...pagination,
+      // Workaround for local message IDs overflowing some internal `Buffer` range check
+      offsetId: offsetId ? Math.min(offsetId, MAX_INT_32) : DEFAULT_PRIMITIVES.INT,
+      addOffset: addOffset ?? DEFAULT_PRIMITIVES.INT,
+      limit,
     }), {
       shouldThrow: true,
       abortControllerChatId: chat.id,
@@ -258,8 +271,8 @@ export function sendMessageLocal(
   params: SendMessageParams,
 ) {
   const {
-    chat, lastMessageId, text, entities, replyInfo, attachment, sticker, story, gif, poll, contact,
-    scheduledAt, groupedId, sendAs, wasDrafted, isInvertedMedia, effectId, isPending, messagePriceInStars,
+    chat, lastMessageId, text, entities, replyInfo, suggestedPostInfo, attachment, sticker, story, gif, poll, todo,
+    contact, scheduledAt, groupedId, sendAs, wasDrafted, isInvertedMedia, effectId, isPending, messagePriceInStars,
   } = params;
 
   if (!chat) return undefined;
@@ -273,10 +286,12 @@ export function sendMessageLocal(
     text,
     entities,
     replyInfo,
+    suggestedPostInfo,
     attachment,
     sticker,
     gif,
     poll,
+    todo,
     contact,
     groupedId,
     scheduledAt,
@@ -306,7 +321,9 @@ export function sendApiMessage(
   onProgress?: ApiOnProgress,
 ) {
   const {
-    chat, text, entities, replyInfo, attachment, sticker, story, gif, poll, contact,
+    chat, text, entities, replyInfo, suggestedPostInfo, suggestedMedia,
+    attachment, sticker, story, gif, poll, todo, contact,
+
     isSilent, scheduledAt, groupedId, noWebPage, sendAs, shouldUpdateStickerSetOrder,
     isInvertedMedia, effectId, webPageMediaSize, webPageUrl, messagePriceInStars,
   } = params;
@@ -334,6 +351,7 @@ export function sendApiMessage(
       text,
       entities,
       replyInfo,
+      suggestedPostInfo,
       attachment: attachment!,
       groupedId,
       isSilent,
@@ -344,7 +362,43 @@ export function sendApiMessage(
 
   const messagePromise = (async () => {
     let media: GramJs.TypeInputMedia | undefined;
-    if (attachment) {
+
+    if (suggestedPostInfo && suggestedMedia && !attachment) {
+      if (suggestedMedia.photo) {
+        const inputPhoto = buildInputPhoto(suggestedMedia.photo);
+        if (inputPhoto) {
+          media = new GramJs.InputMediaPhoto({
+            id: inputPhoto,
+            spoiler: suggestedMedia.photo.isSpoiler || undefined,
+          });
+        }
+      } else if (suggestedMedia.video) {
+        const inputDocument = buildInputDocument(suggestedMedia.video);
+        if (inputDocument) {
+          media = new GramJs.InputMediaDocument({
+            id: inputDocument,
+            spoiler: suggestedMedia.video.isSpoiler || undefined,
+          });
+        }
+      } else if (suggestedMedia.document) {
+        const document = suggestedMedia.document;
+        if (document.id) {
+          const localDocument = localDb.documents[document.id];
+          if (localDocument) {
+            const inputDocument = new GramJs.InputDocument({
+              id: localDocument.id,
+              accessHash: localDocument.accessHash,
+              fileReference: localDocument.fileReference,
+            });
+            media = new GramJs.InputMediaDocument({
+              id: inputDocument,
+            });
+          }
+        }
+      }
+    }
+
+    if (!media && attachment) {
       try {
         media = await uploadMedia(localMessage, attachment, onProgress!);
       } catch (err) {
@@ -363,6 +417,8 @@ export function sendApiMessage(
       media = buildInputMediaDocument(gif);
     } else if (poll) {
       media = buildInputPoll(poll, randomId);
+    } else if (todo) {
+      media = buildInputTodo(todo);
     } else if (story) {
       media = buildInputStory(story);
     } else if (webPageUrl && webPageMediaSize) {
@@ -376,33 +432,58 @@ export function sendApiMessage(
         phoneNumber: contact.phoneNumber,
         firstName: contact.firstName,
         lastName: contact.lastName,
-        vcard: '',
+        vcard: DEFAULT_PRIMITIVES.STRING,
       });
     }
 
-    const RequestClass = media ? GramJs.messages.SendMedia : GramJs.messages.SendMessage;
+    type SharedKeys<T, U> = {
+      [K in keyof T & keyof U]:
+      T[K] extends U[K] ? (U[K] extends T[K] ? K : never) : never
+    }[keyof T & keyof U];
+    type SharedRecord<T, U> = Pick<T, SharedKeys<T, U>>;
+
+    type SendMediaArgs = ConstructorParameters<typeof GramJs.messages.SendMedia>[0];
+    type SendMessageArgs = ConstructorParameters<typeof GramJs.messages.SendMessage>[0];
+
+    type SharedArgs = SharedRecord<SendMediaArgs, SendMessageArgs>;
+
+    const args: SharedArgs = {
+      clearDraft: true,
+      message: text || DEFAULT_PRIMITIVES.STRING,
+      entities: entities ? entities.map(buildMtpMessageEntity) : undefined,
+      peer: buildInputPeer(chat.id, chat.accessHash),
+      randomId,
+      replyTo: replyInfo && buildInputReplyTo(replyInfo),
+      silent: isSilent || undefined,
+      scheduleDate: scheduledAt,
+      sendAs: sendAs && buildInputPeer(sendAs.id, sendAs.accessHash),
+      updateStickersetsOrder: shouldUpdateStickerSetOrder || undefined,
+      invertMedia: isInvertedMedia || undefined,
+      effect: effectId ? BigInt(effectId) : undefined,
+      allowPaidStars: messagePriceInStars ? BigInt(messagePriceInStars) : undefined,
+      suggestedPost: suggestedPostInfo && buildInputSuggestedPost(suggestedPostInfo),
+    };
 
     try {
-      const update = await invokeRequest(new RequestClass({
-        clearDraft: true,
-        message: text || '',
-        entities: entities ? entities.map(buildMtpMessageEntity) : undefined,
-        peer: buildInputPeer(chat.id, chat.accessHash),
-        randomId,
-        replyTo: replyInfo && buildInputReplyTo(replyInfo),
-        ...(isSilent && { silent: isSilent }),
-        ...(scheduledAt && { scheduleDate: scheduledAt }),
-        ...(media && { media }),
-        ...(noWebPage && { noWebpage: noWebPage }),
-        ...(sendAs && { sendAs: buildInputPeer(sendAs.id, sendAs.accessHash) }),
-        ...(shouldUpdateStickerSetOrder && { updateStickersetsOrder: shouldUpdateStickerSetOrder }),
-        ...(isInvertedMedia && { invertMedia: isInvertedMedia }),
-        ...(effectId && { effect: BigInt(effectId) }),
-        ...(messagePriceInStars && { allowPaidStars: BigInt(messagePriceInStars) }),
-      }), {
-        shouldThrow: true,
-        shouldIgnoreUpdates: true,
-      });
+      let update;
+      if (media) {
+        update = await invokeRequest(new GramJs.messages.SendMedia({
+          ...args,
+          media,
+        }), {
+          shouldThrow: true,
+          shouldIgnoreUpdates: true,
+        });
+      } else {
+        update = await invokeRequest(new GramJs.messages.SendMessage({
+          ...args,
+          noWebpage: noWebPage || undefined,
+        }), {
+          shouldThrow: true,
+          shouldIgnoreUpdates: true,
+        });
+      }
+
       if (update) handleLocalMessageUpdate(localMessage, update);
     } catch (error: any) {
       if (error.errorMessage === 'PRIVACY_PREMIUM_REQUIRED') {
@@ -439,9 +520,10 @@ const groupedUploads: Record<string, {
 function sendGroupedMedia(
   {
     chat,
-    text,
+    text = DEFAULT_PRIMITIVES.STRING,
     entities,
     replyInfo,
+    suggestedPostInfo,
     attachment,
     groupedId,
     isSilent,
@@ -453,6 +535,7 @@ function sendGroupedMedia(
     text?: string;
     entities?: ApiMessageEntity[];
     replyInfo?: ApiInputReplyInfo;
+    suggestedPostInfo?: ApiInputSuggestedPostInfo;
     attachment: ApiAttachment;
     groupedId: string;
     isSilent?: boolean;
@@ -514,7 +597,7 @@ function sendGroupedMedia(
     groupedUploads[groupedId].singleMediaByIndex[groupIndex] = new GramJs.InputSingleMedia({
       media: inputMedia,
       randomId,
-      message: text || '',
+      message: text,
       entities: entities ? entities.map(buildMtpMessageEntity) : undefined,
     });
     groupedUploads[groupedId].localMessages[randomId.toString()] = localMessage;
@@ -536,6 +619,7 @@ function sendGroupedMedia(
       ...(scheduledAt && { scheduleDate: scheduledAt }),
       ...(sendAs && { sendAs: buildInputPeer(sendAs.id, sendAs.accessHash) }),
       ...(messagePriceInStars && { allowPaidStars: BigInt(messagePriceInStars * count) }),
+      ...(suggestedPostInfo && { suggestedPost: buildInputSuggestedPost(suggestedPostInfo) }),
     }), {
       shouldIgnoreUpdates: true,
     });
@@ -600,7 +684,7 @@ export async function editMessage({
   attachment?: ApiAttachment;
   noWebPage?: boolean;
 }, onProgress?: ApiOnProgress) {
-  const isScheduled = message.date * 1000 > Date.now() + getServerTimeOffset() * 1000;
+  const isScheduled = message.date * 1000 > getServerTime() * 1000;
 
   const media = attachment && buildUploadingMedia(attachment);
 
@@ -638,7 +722,7 @@ export async function editMessage({
     const mtpEntities = entities && entities.map(buildMtpMessageEntity);
 
     await invokeRequest(new GramJs.messages.EditMessage({
-      message: text || '',
+      message: text,
       entities: mtpEntities,
       media: mediaUpdate,
       peer: buildInputPeer(chat.id, chat.accessHash),
@@ -669,6 +753,110 @@ export async function editMessage({
       id: message.id,
       chatId: chat.id,
       message,
+    });
+  }
+}
+
+export async function editTodo({
+  chat,
+  message,
+  todo,
+}: {
+  chat: ApiChat;
+  message: ApiMessage;
+  todo: ApiNewMediaTodo;
+}) {
+  const media = buildInputTodo(todo);
+  const isScheduled = message.date * 1000 > getServerTime() * 1000;
+
+  const newContent: MediaContent = {
+    ...message.content,
+    todo: {
+      mediaType: 'todo',
+      todo: todo.todo,
+    },
+  };
+
+  const messageUpdate: Partial<ApiMessage> = {
+    ...message,
+    content: newContent,
+  };
+
+  sendApiUpdate({
+    '@type': isScheduled ? 'updateScheduledMessage' : 'updateMessage',
+    id: message.id,
+    chatId: chat.id,
+    message: messageUpdate,
+  });
+
+  try {
+    await invokeRequest(new GramJs.messages.EditMessage({
+      media,
+      peer: buildInputPeer(chat.id, chat.accessHash),
+      id: message.id,
+    }), { shouldThrow: true });
+  } catch (err) {
+    if (DEBUG) {
+      // eslint-disable-next-line no-console
+      console.warn(err);
+    }
+
+    const { message: messageErr } = err as Error;
+
+    sendApiUpdate({
+      '@type': 'error',
+      error: {
+        message: messageErr,
+        hasErrorKey: true,
+      },
+    });
+
+    // Rollback changes
+    sendApiUpdate({
+      '@type': 'updateMessage',
+      id: message.id,
+      chatId: chat.id,
+      message,
+    });
+  }
+}
+
+export async function appendTodoList({
+  chat,
+  message,
+  items,
+}: {
+  chat: ApiChat;
+  message: ApiMessage;
+  items: ApiTodoItem[];
+}) {
+  const todoItems = items.map((item) => {
+    return new GramJs.TodoItem({
+      id: item.id,
+      title: buildInputTextWithEntities(item.title),
+    });
+  });
+
+  try {
+    await invokeRequest(new GramJs.messages.AppendTodoList({
+      peer: buildInputPeer(chat.id, chat.accessHash),
+      msgId: message.id,
+      list: todoItems,
+    }), { shouldThrow: true });
+  } catch (err) {
+    if (DEBUG) {
+      // eslint-disable-next-line no-console
+      console.warn(err);
+    }
+
+    const { message: messageErr } = err as Error;
+
+    sendApiUpdate({
+      '@type': 'error',
+      error: {
+        message: messageErr,
+        hasErrorKey: true,
+      },
     });
   }
 }
@@ -871,7 +1059,7 @@ export function deleteScheduledMessages({
 }
 
 export async function deleteHistory({
-  chat, shouldDeleteForAll,
+  chat, shouldDeleteForAll, maxId,
 }: {
   chat: ApiChat; shouldDeleteForAll?: boolean; maxId?: number;
 }) {
@@ -880,9 +1068,11 @@ export async function deleteHistory({
     isChannel
       ? new GramJs.channels.DeleteHistory({
         channel: buildInputChannel(chat.id, chat.accessHash),
+        maxId: maxId ?? DEFAULT_PRIMITIVES.INT,
       })
       : new GramJs.messages.DeleteHistory({
         peer: buildInputPeer(chat.id, chat.accessHash),
+        maxId: maxId ?? DEFAULT_PRIMITIVES.INT,
         ...(shouldDeleteForAll && { revoke: true }),
         ...(!shouldDeleteForAll && { just_clear: true }),
       }),
@@ -914,6 +1104,7 @@ export async function deleteSavedHistory({
 }) {
   const result = await invokeRequest(new GramJs.messages.DeleteSavedHistory({
     peer: buildInputPeer(chat.id, chat.accessHash),
+    maxId: DEFAULT_PRIMITIVES.INT,
   }));
 
   if (!result) {
@@ -931,6 +1122,30 @@ export async function deleteSavedHistory({
     '@type': 'deleteSavedHistory',
     chatId: chat.id,
   });
+}
+
+export async function toggleSuggestedPostApproval({
+  chat,
+  messageId,
+  reject,
+  scheduleDate,
+  rejectComment,
+}: {
+  chat: ApiChat;
+  messageId: number;
+  reject?: boolean;
+  scheduleDate?: number;
+  rejectComment?: string;
+}) {
+  const result = await invokeRequest(new GramJs.messages.ToggleSuggestedPostApproval({
+    peer: buildInputPeer(chat.id, chat.accessHash),
+    msgId: messageId,
+    reject: reject || undefined,
+    scheduleDate,
+    rejectComment,
+  }));
+
+  return result;
 }
 
 export async function reportMessages({
@@ -1101,7 +1316,7 @@ export async function fetchMessageViews({
     invokeRequest(new GramJs.messages.GetMessagesViews({
       peer: buildInputPeer(chat.id, chat.accessHash),
       id: chunkIds,
-      increment: shouldIncrement,
+      increment: Boolean(shouldIncrement),
     }))
   )));
 
@@ -1208,7 +1423,17 @@ export async function fetchDiscussionMessage({
 }
 
 export async function searchMessagesInChat({
-  peer, isSavedDialog, savedTag, type, query = '', threadId, minDate, maxDate, ...pagination
+  peer,
+  isSavedDialog,
+  savedTag,
+  type,
+  query = DEFAULT_PRIMITIVES.STRING,
+  threadId,
+  minDate,
+  maxDate,
+  offsetId,
+  addOffset,
+  limit,
 }: {
   peer: ApiPeer;
   isSavedDialog?: boolean;
@@ -1257,9 +1482,14 @@ export async function searchMessagesInChat({
     topMsgId: threadId !== MAIN_THREAD_ID && !isSavedDialog ? Number(threadId) : undefined,
     filter,
     q: query,
-    minDate,
-    maxDate,
-    ...pagination,
+    minDate: minDate ?? DEFAULT_PRIMITIVES.INT,
+    maxDate: maxDate ?? DEFAULT_PRIMITIVES.INT,
+    maxId: DEFAULT_PRIMITIVES.INT,
+    minId: DEFAULT_PRIMITIVES.INT,
+    hash: DEFAULT_PRIMITIVES.BIGINT,
+    offsetId: offsetId ?? DEFAULT_PRIMITIVES.INT,
+    addOffset: addOffset ?? DEFAULT_PRIMITIVES.INT,
+    limit,
   }), {
     abortControllerChatId: peer.id,
     abortControllerThreadId: threadId,
@@ -1340,14 +1570,14 @@ export async function searchMessagesGlobal({
     q: query,
     offsetRate,
     offsetPeer: peer,
-    offsetId,
+    offsetId: offsetId ?? DEFAULT_PRIMITIVES.INT,
     broadcastsOnly: type === 'channels' || context === 'channels' || undefined,
     groupsOnly: context === 'groups' || undefined,
     usersOnly: context === 'users' || undefined,
     limit,
     filter,
-    minDate,
-    maxDate,
+    minDate: minDate ?? DEFAULT_PRIMITIVES.INT,
+    maxDate: maxDate ?? DEFAULT_PRIMITIVES.INT,
   }));
 
   if (
@@ -1395,10 +1625,10 @@ export async function searchHashtagPosts({
   const peer = (offsetPeer && buildInputPeer(offsetPeer.id, offsetPeer.accessHash)) || new GramJs.InputPeerEmpty();
   const result = await invokeRequest(new GramJs.channels.SearchPosts({
     hashtag,
-    offsetRate,
-    offsetId,
+    offsetRate: offsetRate ?? DEFAULT_PRIMITIVES.INT,
+    offsetId: offsetId ?? DEFAULT_PRIMITIVES.INT,
     offsetPeer: peer,
-    limit,
+    limit: limit ?? DEFAULT_PRIMITIVES.INT,
   }));
 
   if (!result || result instanceof GramJs.messages.MessagesNotModified) {
@@ -1460,6 +1690,24 @@ export async function sendPollVote({
   }));
 }
 
+export async function toggleTodoCompleted({
+  chat, messageId, completedIds, incompletedIds,
+}: {
+  chat: ApiChat;
+  messageId: number;
+  completedIds: number[];
+  incompletedIds: number[];
+}) {
+  const { id, accessHash } = chat;
+
+  await invokeRequest(new GramJs.messages.ToggleTodoCompleted({
+    peer: buildInputPeer(id, accessHash),
+    msgId: messageId,
+    completed: completedIds,
+    incompleted: incompletedIds,
+  }));
+}
+
 export async function closePoll({
   chat, messageId, poll,
 }: {
@@ -1491,9 +1739,9 @@ export async function loadPollOptionResults({
   const result = await invokeRequest(new GramJs.messages.GetPollVotes({
     peer: buildInputPeer(id, accessHash),
     id: messageId,
-    ...(option && { option: deserializeBytes(option) }),
-    ...(offset && { offset }),
-    ...(limit && { limit }),
+    limit: limit ?? DEFAULT_PRIMITIVES.INT,
+    option: option ? deserializeBytes(option) : undefined,
+    offset,
   }));
 
   if (!result) {
@@ -1635,6 +1883,10 @@ export async function findFirstMessageIdAfterDate({
     offsetDate: timestamp,
     addOffset: -1,
     limit: 1,
+    offsetId: DEFAULT_PRIMITIVES.INT,
+    maxId: DEFAULT_PRIMITIVES.INT,
+    minId: DEFAULT_PRIMITIVES.INT,
+    hash: DEFAULT_PRIMITIVES.BIGINT,
   }));
 
   if (
@@ -1653,6 +1905,7 @@ export async function fetchScheduledHistory({ chat }: { chat: ApiChat }) {
 
   const result = await invokeRequest(new GramJs.messages.GetScheduledHistory({
     peer: buildInputPeer(id, accessHash),
+    hash: DEFAULT_PRIMITIVES.BIGINT,
   }), {
     abortControllerChatId: id,
   });
@@ -1686,9 +1939,16 @@ export async function fetchPinnedMessages({ chat, threadId }: { chat: ApiChat; t
     {
       peer: buildInputPeer(chat.id, chat.accessHash),
       filter: new GramJs.InputMessagesFilterPinned(),
-      q: '',
+      q: DEFAULT_PRIMITIVES.STRING,
       limit: PINNED_MESSAGES_LIMIT,
       topMsgId: Number(threadId),
+      minDate: DEFAULT_PRIMITIVES.INT,
+      maxDate: DEFAULT_PRIMITIVES.INT,
+      offsetId: DEFAULT_PRIMITIVES.INT,
+      addOffset: DEFAULT_PRIMITIVES.INT,
+      maxId: DEFAULT_PRIMITIVES.INT,
+      minId: DEFAULT_PRIMITIVES.INT,
+      hash: DEFAULT_PRIMITIVES.BIGINT,
     },
   ), {
     abortControllerChatId: chat.id,
@@ -1871,7 +2131,7 @@ export async function readAllReactions({
 }
 
 export async function fetchUnreadMentions({
-  chat, threadId, ...pagination
+  chat, threadId, offsetId, addOffset, maxId, minId,
 }: {
   chat: ApiChat;
   threadId?: ThreadId;
@@ -1884,7 +2144,10 @@ export async function fetchUnreadMentions({
     peer: buildInputPeer(chat.id, chat.accessHash),
     topMsgId: threadId ? Number(threadId) : undefined,
     limit: MENTION_UNREAD_SLICE,
-    ...pagination,
+    offsetId: offsetId ?? DEFAULT_PRIMITIVES.INT,
+    addOffset: addOffset ?? DEFAULT_PRIMITIVES.INT,
+    maxId: maxId ?? DEFAULT_PRIMITIVES.INT,
+    minId: minId ?? DEFAULT_PRIMITIVES.INT,
   }));
 
   if (
@@ -1903,7 +2166,7 @@ export async function fetchUnreadMentions({
 }
 
 export async function fetchUnreadReactions({
-  chat, threadId, ...pagination
+  chat, threadId, offsetId, addOffset, maxId, minId,
 }: {
   chat: ApiChat;
   threadId?: ThreadId;
@@ -1916,7 +2179,10 @@ export async function fetchUnreadReactions({
     peer: buildInputPeer(chat.id, chat.accessHash),
     topMsgId: threadId ? Number(threadId) : undefined,
     limit: REACTION_UNREAD_SLICE,
-    ...pagination,
+    offsetId: offsetId ?? DEFAULT_PRIMITIVES.INT,
+    addOffset: addOffset ?? DEFAULT_PRIMITIVES.INT,
+    maxId: maxId ?? DEFAULT_PRIMITIVES.INT,
+    minId: minId ?? DEFAULT_PRIMITIVES.INT,
   }));
 
   if (
@@ -1974,7 +2240,17 @@ export async function translateText(params: TranslateTextParams) {
     }));
   }
 
-  if (!result) return undefined;
+  if (!result) {
+    if (isMessageTranslation) {
+      sendApiUpdate({
+        '@type': 'failedMessageTranslations',
+        chatId: params.chat.id,
+        messageIds: params.messageIds,
+        toLanguageCode: params.toLanguageCode,
+      });
+    }
+    return undefined;
+  }
 
   const formattedText = result.result.map((r) => buildApiFormattedText(r));
 
@@ -2124,7 +2400,9 @@ export async function fetchOutboxReadDate({ chat, messageId }: { chat: ApiChat; 
 }
 
 export async function fetchQuickReplies() {
-  const result = await invokeRequest(new GramJs.messages.GetQuickReplies({}));
+  const result = await invokeRequest(new GramJs.messages.GetQuickReplies({
+    hash: DEFAULT_PRIMITIVES.BIGINT,
+  }));
   if (!result || result instanceof GramJs.messages.QuickRepliesNotModified) return undefined;
 
   const messages = result.messages.map(buildApiMessage).filter(Boolean);
@@ -2147,6 +2425,7 @@ export async function sendQuickReply({
   // Remove this request when the client fully supports quick replies and caches them
   const messages = await invokeRequest(new GramJs.messages.GetQuickReplyMessages({
     shortcutId,
+    hash: DEFAULT_PRIMITIVES.BIGINT,
   }));
   if (!messages || messages instanceof GramJs.messages.MessagesNotModified) return;
 

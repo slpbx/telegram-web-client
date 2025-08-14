@@ -44,7 +44,7 @@ import {
 
 const TYPING_STATUS_CLEAR_DELAY = 6000; // 6 seconds
 const INVALIDATE_FULL_CHAT_FIELDS = new Set<keyof ApiChat>([
-  'boostLevel', 'isForum', 'isLinkedInDiscussion', 'fakeType', 'restrictionReason', 'isJoinToSend', 'isJoinRequest',
+  'boostLevel', 'isForum', 'isLinkedInDiscussion', 'fakeType', 'restrictionReasons', 'isJoinToSend', 'isJoinRequest',
   'type',
 ]);
 
@@ -171,7 +171,8 @@ addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
     case 'newMessage': {
       const { message } = update;
 
-      if (message.senderId === global.currentUserId && !message.isFromScheduled) {
+      const isOur = message.senderId ? message.senderId === global.currentUserId : message.isOutgoing;
+      if (isOur && !message.isFromScheduled) {
         return undefined;
       }
 

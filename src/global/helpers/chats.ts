@@ -25,6 +25,7 @@ import {
 import { formatDateToString, formatTime } from '../../util/dates/dateFormat';
 import { getPeerIdDividend, isUserId } from '../../util/entities/ids';
 import { getServerTime } from '../../util/serverTime';
+import { selectIsChatRestricted } from '../selectors';
 import { getGlobal } from '..';
 import { isSystemBot } from './bots';
 import { getMainUsername } from './users';
@@ -155,7 +156,9 @@ export function getCanPostInChat(
     }
   }
 
-  if (chat.isRestricted || chat.isForbidden || chat.migratedTo
+  const global = getGlobal();
+  const isRestricted = selectIsChatRestricted(global, chat.id);
+  if (isRestricted || chat.isForbidden || chat.migratedTo
     || (chat.isNotJoined && !isChatMonoforum(chat) && !isMessageThread)
     || isSystemBot(chat.id) || isAnonymousForwardsChat(chat.id)) {
     return false;
@@ -189,6 +192,7 @@ export interface IAllowedAttachmentOptions {
   canSendVoices: boolean;
   canSendPlainText: boolean;
   canSendDocuments: boolean;
+  canAttachToDoLists: boolean;
 }
 
 export function getAllowedAttachmentOptions(
@@ -214,6 +218,7 @@ export function getAllowedAttachmentOptions(
       canSendVoices: false,
       canSendPlainText: false,
       canSendDocuments: false,
+      canAttachToDoLists: false,
     };
   }
 
@@ -224,6 +229,7 @@ export function getAllowedAttachmentOptions(
     canAttachPolls: !isStoryReply && !chat.isMonoforum
       && (isAdmin || !isUserRightBanned(chat, 'sendPolls', chatFullInfo))
       && (!isUserId(chat.id) || isChatWithBot || isSavedMessages),
+    canAttachToDoLists: !isStoryReply && !chat.isMonoforum && !isChatChannel(chat),
     canSendStickers: isAdmin || isStoryReply || !isUserRightBanned(chat, 'sendStickers', chatFullInfo),
     canSendGifs: isAdmin || isStoryReply || !isUserRightBanned(chat, 'sendGifs', chatFullInfo),
     canAttachEmbedLinks: !isStoryReply && (isAdmin || !isUserRightBanned(chat, 'embedLinks', chatFullInfo)),
@@ -377,7 +383,9 @@ export function getGroupStatus(lang: OldLangFn, chat: ApiChat) {
   const chatTypeString = lang(getChatTypeString(chat));
   const { membersCount } = chat;
 
-  if (chat.isRestricted) {
+  const global = getGlobal();
+  const isRestricted = selectIsChatRestricted(global, chat.id);
+  if (isRestricted) {
     return chatTypeString === 'Channel' ? 'channel is inaccessible' : 'group is inaccessible';
   }
 

@@ -32,6 +32,7 @@ import {
   isChatChannel,
 } from '../../helpers';
 import { getMessageSummaryText } from '../../helpers/messageSummary';
+import { addTabStateResetterAction } from '../../helpers/meta';
 import { getPeerTitle } from '../../helpers/peers';
 import { renderMessageSummaryHtml } from '../../helpers/renderMessageSummaryHtml';
 import { addActionHandler, getGlobal, setGlobal } from '../../index';
@@ -762,6 +763,22 @@ addActionHandler('closePollModal', (global, actions, payload): ActionReturnType 
   }, tabId);
 });
 
+addActionHandler('openTodoListModal', (global, actions, payload): ActionReturnType => {
+  const {
+    chatId, messageId, forNewTask, tabId = getCurrentTabId(),
+  } = payload;
+
+  return updateTabState(global, {
+    todoListModal: {
+      chatId,
+      messageId,
+      forNewTask,
+    },
+  }, tabId);
+});
+
+addTabStateResetterAction('closeTodoListModal', 'todoListModal');
+
 addActionHandler('checkVersionNotification', (global, actions): ActionReturnType => {
   if (RELEASE_DATETIME && Date.now() > Number(RELEASE_DATETIME) + VERSION_NOTIFICATION_DURATION) {
     return;
@@ -1000,6 +1017,34 @@ addActionHandler('closePaidReactionModal', (global, actions, payload): ActionRet
   const { tabId = getCurrentTabId() } = payload || {};
   return updateTabState(global, {
     paidReactionModal: undefined,
+  }, tabId);
+});
+
+addActionHandler('openSuggestMessageModal', (global, actions, payload): ActionReturnType => {
+  const { chatId, messageId, tabId = getCurrentTabId() } = payload;
+  return updateTabState(global, {
+    suggestMessageModal: { chatId, messageId },
+  }, tabId);
+});
+
+addActionHandler('closeSuggestMessageModal', (global, actions, payload): ActionReturnType => {
+  const { tabId = getCurrentTabId() } = payload || {};
+  return updateTabState(global, {
+    suggestMessageModal: undefined,
+  }, tabId);
+});
+
+addActionHandler('openSuggestedPostApprovalModal', (global, actions, payload): ActionReturnType => {
+  const { chatId, messageId, tabId = getCurrentTabId() } = payload;
+  return updateTabState(global, {
+    suggestedPostApprovalModal: { chatId, messageId },
+  }, tabId);
+});
+
+addActionHandler('closeSuggestedPostApprovalModal', (global, actions, payload): ActionReturnType => {
+  const { tabId = getCurrentTabId() } = payload || {};
+  return updateTabState(global, {
+    suggestedPostApprovalModal: undefined,
   }, tabId);
 });
 
