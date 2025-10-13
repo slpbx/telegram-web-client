@@ -2,6 +2,7 @@ import type BigInt from 'big-integer';
 
 import type { TLMessage } from '../tl/core';
 
+import { sendToOrigin } from '../../../api/gramjs/worker/worker';
 import { RPCError, RPCMessageToError } from '../errors';
 import {
   BinaryReader, type Logger, MessagePacker,
@@ -268,6 +269,17 @@ export default class MTProtoSender {
 
   logWithIndexCallback(level: 'debug' | 'log' | 'warn' | 'error') {
     return (...args: unknown[]) => {
+      if (level !== 'debug') {
+        sendToOrigin({
+          type: 'mtprotoSenderLog',
+          level,
+          args: JSON.parse(JSON.stringify(args, (key, value) => (typeof value === 'bigint'
+            ? value.toString()
+            : value))),
+          prefix: `[${this._isExported ? `idx=${this._senderIndex} ` : 'M '}dcId=${this._dcId}]`,
+        });
+      }
+
       if (!this._getShouldDebugExportedSenders
         || !this._getShouldDebugExportedSenders()) return;
       // eslint-disable-next-line no-console
@@ -324,6 +336,7 @@ export default class MTProtoSender {
           this._updateCallback?.(new UpdateConnectionState(UpdateConnectionState.disconnected));
         }
         this._log.error(`${this._isFallback ? 'HTTP' : 'WebSocket'} connection failed attempt: ${attempt + 1}`);
+        this.logWithIndex.error(`${this._isFallback ? 'HTTP' : 'WebSocket'} connection failed attempt: ${attempt + 1}: ${String(err)}`);
         // eslint-disable-next-line no-console
         console.error(err);
         await sleep(this._delay);

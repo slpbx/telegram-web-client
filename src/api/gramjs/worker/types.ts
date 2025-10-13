@@ -41,6 +41,13 @@ export type WorkerPayload =
     type: 'debugLog';
     level: DebugLevel;
     args: any[];
+  }
+  |
+  {
+    type: 'mtprotoSenderLog';
+    level: string;
+    args: any[];
+    prefix: string;
   };
 
 export type WorkerMessageData = {

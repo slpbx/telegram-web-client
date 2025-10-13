@@ -181,7 +181,7 @@ const sendToOriginOnTickEnd = throttleWithTickEnd(() => {
   }
 });
 
-function sendToOrigin(payload: WorkerPayload, transferable?: Transferable) {
+export function sendToOrigin(payload: WorkerPayload, transferable?: Transferable) {
   pendingPayloads.push(payload);
 
   if (transferable) {

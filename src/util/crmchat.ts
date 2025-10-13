@@ -1,10 +1,10 @@
-/* eslint-disable no-restricted-globals */
 /* eslint-disable no-console */
 import { addCallback } from '../lib/teact/teactn';
 import {
   addActionHandler, getActions, getGlobal, setGlobal,
 } from '../global';
 
+import type { WorkerMessageEvent } from '../api/gramjs/worker/types';
 import type { ApiChatFullInfo, ApiSessionData, ApiUserFullInfo } from '../api/types';
 import type { ActionPayloads, GlobalState } from '../global/types';
 
@@ -207,6 +207,13 @@ window.Worker = class PatchedWorker extends OriginalWorker {
     newUrl.searchParams.set('accountId', new URLSearchParams(self.location.search).get('accountId') ?? '');
     newUrl.searchParams.set('_dcAuth', dcAuthParams ?? '');
     super(newUrl, options);
+
+    this.addEventListener('message', (event: WorkerMessageEvent) => {
+      const logs = event.data.payloads.filter((payload) => payload.type === 'mtprotoSenderLog');
+      if (logs.length > 0) {
+        sendMessage({ type: 'mtprotoSenderLogs', logs });
+      }
+    });
   }
 } satisfies typeof Worker;
 
