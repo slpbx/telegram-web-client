@@ -185,7 +185,7 @@ export function getDisplayName(entity: Entity) {
  */
 export function getDC(dcId: number, downloadDC = false) {
   const isDevelopment = process.env.NODE_ENV === 'development';
-  const postfix = isDevelopment ? '.dc.localhost' : '.dcx.crmchat.ai';
+  const postfix = isDevelopment ? '.dc.localhost' : '.dc.crmchat.ai';
   const port = isDevelopment ? 80 : 443;
   // TODO Move to external config
   switch (dcId) {

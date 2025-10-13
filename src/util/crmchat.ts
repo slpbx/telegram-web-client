@@ -12,6 +12,8 @@ import { getChatAvatarHash } from '../global/helpers';
 import { getCurrentTabId } from './establishMultitabRole';
 import * as mediaLoader from './mediaLoader';
 
+const INFINITE_LOOP_MARKER = 100;
+
 export type DisplayedProperty = {
   name: string;
   type?: string;
@@ -105,10 +107,14 @@ async function callActionWhenAvailable<Action extends keyof ActionPayloads>(
   action: Action,
   data: ActionPayloads[Action],
 ) {
+  let i = 0;
   while (typeof getActions()[action] !== 'function') {
     await new Promise((resolve) => {
       setTimeout(resolve, 100);
     });
+    if (i++ >= INFINITE_LOOP_MARKER) {
+      return;
+    }
   }
   getActions()[action](data as any);
 }
