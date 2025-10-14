@@ -63,7 +63,6 @@ const CollectibleInfoModal: FC<OwnProps & StateProps> = ({
   const handleOpenUrl = useLastCallback(() => {
     openUrl({
       url: modal!.url,
-      shouldSkipModal: true,
     });
     handleClose();
   });
@@ -146,7 +145,7 @@ const CollectibleInfoModal: FC<OwnProps & StateProps> = ({
 };
 
 export default memo(withGlobal<OwnProps>(
-  (global): StateProps => {
+  (global): Complete<StateProps> => {
     const { countryList } = global;
 
     return {

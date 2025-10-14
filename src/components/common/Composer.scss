@@ -1,7 +1,7 @@
 @use '../../styles/mixins';
 
 .Composer {
-  --base-height: 3.5rem;
+  --base-height: 3rem;
 
   align-items: flex-end;
 
@@ -264,11 +264,6 @@
       animation-duration: 0ms !important;
     }
 
-    @media (max-width: 600px) {
-      width: 2.875rem;
-      height: 2.875rem;
-    }
-
     @media (hover: hover) {
       &:not(:active):not(:focus):not(:hover) {
         .icon-send,
@@ -420,7 +415,7 @@
 
   flex-grow: 1;
 
-  max-width: calc(100% - 4rem);
+  max-width: calc(100% - 3.5rem);
   border-radius: var(--border-radius-messages);
   border-bottom-right-radius: 0;
 
@@ -459,14 +454,15 @@
 }
 
 .message-input-wrapper {
-  --action-button-size: var(--base-height, 3.5rem);
-  --action-button-compact-fix: -1rem;
+  --action-button-size: var(--base-height, 3rem);
+  --action-button-compact-fix: -0.75rem;
 
   display: flex;
 
   .input-scroller {
     --_scroller-right-gap: calc((var(--action-button-size) + var(--action-button-compact-fix) - 0.125rem));
 
+    scrollbar-gutter: stable;
     margin-right: calc(-1 * var(--_scroller-right-gap));
     padding-right: var(--_scroller-right-gap);
   }
@@ -508,7 +504,7 @@
       width: 2rem;
       max-width: clamp(0px, 12rem, 25vw);
       height: 2rem;
-      margin: 0 0.5rem 0.75rem;
+      margin: 0 0.5rem 0.5rem;
       padding: 0 var(--padding-sides);
       border-radius: 0.5rem;
 
@@ -522,10 +518,6 @@
       &.open {
         width: calc(var(--bot-menu-text-width) + var(--padding-sides) * 2 + var(--icon-gap) + var(--icon-width));
         border-radius: 1rem;
-      }
-
-      @media (max-width: 600px) {
-        margin-bottom: 0.4375rem;
       }
     }
 
@@ -565,21 +557,14 @@
 
       position: absolute;
       top: 0.75rem;
-      right: 0.875rem;
+      right: 0.75rem;
 
       box-sizing: content-box;
       width: 0.5rem;
       height: 0.5rem;
-      border: 0.1875rem solid var(--color-background);
       border-radius: 50%;
 
       background: var(--color-green-darker);
-      box-shadow: -0.375rem -0.25rem 0 -0.1875rem var(--color-background);
-
-      @media (max-width: 600px) {
-        top: 0.5rem;
-        right: 0.5rem;
-      }
     }
   }
 
@@ -616,16 +601,6 @@
 
       animation: recording-blink-like-macos 1.5s infinite;
     }
-
-    @media (max-width: 600px) {
-      height: 2.875rem;
-      line-height: 2.875rem;
-    }
-  }
-
-  @media (max-width: 600px) {
-    --action-button-size: 2.875rem;
-    --action-button-compact-fix: -0.6875rem;
   }
 }
 
@@ -648,7 +623,7 @@
 
 .input-scroller {
   overflow: hidden;
-  min-height: var(--base-height, 3.5rem);
+  min-height: var(--base-height, 3rem);
   max-height: 26rem;
 
   /* stylelint-disable-next-line plugin/no-low-performance-animation-properties */
@@ -693,7 +668,6 @@
   }
 
   @media (max-width: 600px) {
-    min-height: 2.875rem;
     max-height: 16rem;
   }
 }
@@ -709,7 +683,7 @@
     overflow: hidden;
 
     height: auto;
-    padding: calc((var(--base-height, 3.5rem) - var(--composer-text-size, 1rem) * 1.375) / 2) 0.875rem;
+    padding: calc((var(--base-height, 3rem) - var(--composer-text-size, 1rem) * 1.375) / 2) 0.875rem;
     border: none !important;
     border-radius: 0 !important;
 
@@ -847,23 +821,15 @@
   .form-control {
     height: auto;
     margin-bottom: 0;
-    padding: calc((var(--base-height, 3.5rem) - var(--composer-text-size, 1rem) * 1.3125) / 2) 0;
+    padding: calc((var(--base-height, 3rem) - var(--composer-text-size, 1rem) * 1.3125) / 2) 0;
 
     line-height: 1.3125;
     white-space: pre-wrap;
-
-    @media (max-width: 600px) {
-      padding: calc((2.875rem - var(--composer-text-size, 1rem) * 1.3125) / 2) 0;
-    }
   }
 
   .forced-placeholder,
   .placeholder-text {
-    top: calc((var(--base-height, 3.5rem) - var(--composer-text-size, 1rem) * 1.3125) / 2);
-
-    @media (max-width: 600px) {
-      top: calc((2.875rem - var(--composer-text-size, 1rem) * 1.3125) / 2);
-    }
+    top: calc((var(--base-height, 3rem) - var(--composer-text-size, 1rem) * 1.3125) / 2);
   }
 
   &:not(:only-child) {
@@ -889,7 +855,7 @@
 #caption-input-text {
   --margin-for-scrollbar: 2rem;
   .input-scroller {
-    min-height: var(--base-height, 3.5rem);
+    min-height: var(--base-height, 3rem);
     max-height: 10rem;
     margin-right: calc((var(--margin-for-scrollbar) + 1rem) * -1);
 
@@ -933,19 +899,15 @@
 }
 
 #caption-input-text .placeholder-text {
-  bottom: 1.0625rem;
+  bottom: 0.8125rem;
 }
 
 #story-input-text .placeholder-text {
-  top: calc((var(--base-height, 3.5rem) - var(--composer-text-size, 1rem) * 1.3125) / 2);
+  top: calc((var(--base-height, 3rem) - var(--composer-text-size, 1rem) * 1.3125) / 2);
   left: 0.875rem;
 
   &.is-need-premium {
     pointer-events: auto;
-  }
-
-  @media (max-width: 600px) {
-    top: calc((2.875rem - var(--composer-text-size, 1rem) * 1.3125) / 2);
   }
 }
 

@@ -81,7 +81,7 @@
 .starGiftsContainer,
 .premiumGiftsGallery {
   display: flex;
-  gap: 0.625rem;
+  gap: 0.5rem;
   align-items: center;
   justify-content: center;
 
@@ -197,6 +197,15 @@
 
   margin-top: 1rem;
   padding: 1rem;
+}
+
+.avatar {
+  z-index: 2;
+  transition: transform 0.25s ease-out;
+
+  &:hover {
+    transform: scale(1.1);
+  }
 }
 
 .logoBackground {

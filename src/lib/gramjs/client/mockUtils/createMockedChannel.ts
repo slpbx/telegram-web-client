@@ -1,7 +1,6 @@
-import BigInt from 'big-integer';
-
 import type { MockTypes } from './MockTypes';
 
+import { CHANNEL_ID_BASE } from '../../../../config';
 import Api from '../../tl/api';
 import createMockedChatAdminRights from './createMockedChatAdminRights';
 import createMockedChatBannedRights from './createMockedChatBannedRights';
@@ -9,12 +8,12 @@ import createMockedChatBannedRights from './createMockedChatBannedRights';
 import { MOCK_STARTING_DATE } from './MockTypes';
 
 export default function createMockedChannel(id: string, mockData: MockTypes): Api.Channel {
-  const channel = mockData.channels.find((channel) => channel.id === id);
+  const channel = mockData.channels.find((c) => c.id === id);
 
   if (!channel) throw Error('No such channel ' + id);
 
   const {
-    accessHash = BigInt(1),
+    accessHash = 1n,
     title = 'Channel',
     date = MOCK_STARTING_DATE,
     bannedRights = createMockedChatBannedRights(id, mockData),
@@ -24,7 +23,7 @@ export default function createMockedChannel(id: string, mockData: MockTypes): Ap
 
   return new Api.Channel({
     ...rest,
-    id: BigInt(Number(id) + 1000000000),
+    id: -BigInt(id) - CHANNEL_ID_BASE,
     accessHash,
     title,
     bannedRights,

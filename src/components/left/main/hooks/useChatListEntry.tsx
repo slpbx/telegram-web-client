@@ -12,8 +12,6 @@ import { ANIMATION_END_DELAY, CHAT_HEIGHT_PX } from '../../../../config';
 import { requestMutation } from '../../../../lib/fasterdom/fasterdom';
 import {
   getMessageIsSpoiler,
-  getMessageMediaHash,
-  getMessageMediaThumbDataUri,
   getMessageRoundVideo,
   getMessageSticker,
   getMessageVideo,
@@ -24,9 +22,11 @@ import renderText from '../../../common/helpers/renderText';
 import { renderTextWithEntities } from '../../../common/helpers/renderTextWithEntities';
 import { ChatAnimationTypes } from './useChatAnimationType';
 
+import useMessageMediaHash from '../../../../hooks/media/useMessageMediaHash';
+import useThumbnail from '../../../../hooks/media/useThumbnail';
 import useEnsureStory from '../../../../hooks/useEnsureStory';
+import useLang from '../../../../hooks/useLang';
 import useMedia from '../../../../hooks/useMedia';
-import useOldLang from '../../../../hooks/useOldLang';
 
 import ChatForumLastMessage from '../../../common/ChatForumLastMessage';
 import Icon from '../../../common/icons/Icon';
@@ -52,6 +52,7 @@ export default function useChatListEntry({
   isTopic,
   isSavedDialog,
   isPreview,
+  noForumTitle,
 }: {
   chat?: ApiChat;
   topics?: Record<number, ApiTopic>;
@@ -70,8 +71,9 @@ export default function useChatListEntry({
   animationType: ChatAnimationTypes;
   orderDiff: number;
   withInterfaceAnimations?: boolean;
+  noForumTitle?: boolean;
 }) {
-  const oldLang = useOldLang();
+  const lang = useLang();
   const ref = useRef<HTMLDivElement>();
 
   const storyData = lastMessage?.content.storyData;
@@ -82,8 +84,11 @@ export default function useChatListEntry({
   const mediaContent = statefulMediaContent?.story || lastMessage;
   const mediaHasPreview = mediaContent && !getMessageSticker(mediaContent);
 
-  const mediaThumbnail = mediaHasPreview ? getMessageMediaThumbDataUri(mediaContent) : undefined;
-  const mediaBlobUrl = useMedia(mediaHasPreview ? getMessageMediaHash(mediaContent, 'micro') : undefined);
+  const thumbDataUri = useThumbnail(mediaContent);
+
+  const mediaThumbnail = mediaHasPreview ? thumbDataUri : undefined;
+  const mediaHash = useMessageMediaHash(mediaContent, 'micro');
+  const mediaBlobUrl = useMedia(mediaHasPreview ? mediaHash : undefined);
   const isRoundVideo = Boolean(lastMessage && getMessageRoundVideo(lastMessage));
 
   const renderLastMessageOrTyping = useCallback(() => {
@@ -100,14 +105,16 @@ export default function useChatListEntry({
 
     if (canDisplayDraft) {
       return (
-        <p className="last-message" dir={oldLang.isRtl ? 'auto' : 'ltr'}>
-          <span className="draft">{oldLang('Draft')}</span>
-          {renderTextWithEntities({
-            text: draft.text?.text || '',
-            entities: draft.text?.entities,
-            asPreview: true,
-            withTranslucentThumbs: true,
-          })}
+        <p className="last-message" dir={lang.isRtl ? 'auto' : 'ltr'}>
+          <span className="draft">{lang('ChatDraftPrefix')}</span>
+          <span className="last-message-summary" dir="auto">
+            {renderTextWithEntities({
+              text: draft.text?.text || '',
+              entities: draft.text?.entities,
+              asPreview: true,
+              withTranslucentThumbs: true,
+            })}
+          </span>
         </p>
       );
     }
@@ -117,11 +124,11 @@ export default function useChatListEntry({
     }
 
     const senderName = lastMessageSender
-      ? getMessageSenderName(oldLang, chatId, lastMessageSender)
+      ? getMessageSenderName(lang, chatId, lastMessageSender)
       : undefined;
 
     return (
-      <p className="last-message shared-canvas-container" dir={oldLang.isRtl ? 'auto' : 'ltr'}>
+      <p className="last-message shared-canvas-container" dir={lang.isRtl ? 'auto' : 'ltr'}>
         {senderName && (
           <>
             <span className="sender-name">{renderText(senderName)}</span>
@@ -130,11 +137,13 @@ export default function useChatListEntry({
         )}
         {!isSavedDialog && lastMessage.forwardInfo && (<Icon name="share-filled" className="chat-prefix-icon" />)}
         {lastMessage.replyInfo?.type === 'story' && (<Icon name="story-reply" className="chat-prefix-icon" />)}
-        {renderSummary(lastMessage, observeIntersection, mediaBlobUrl || mediaThumbnail, isRoundVideo)}
+        <span className="last-message-summary" dir="auto">
+          {renderSummary(lastMessage, observeIntersection, mediaBlobUrl || mediaThumbnail, isRoundVideo)}
+        </span>
       </p>
     );
   }, [
-    chat, chatId, draft, isRoundVideo, isTopic, oldLang, lastMessage, lastMessageSender, lastMessageTopic,
+    chat, chatId, draft, isRoundVideo, isTopic, lang, lastMessage, lastMessageSender, lastMessageTopic,
     mediaBlobUrl, mediaThumbnail, observeIntersection, typingStatus, isSavedDialog, isPreview,
   ]);
 
@@ -146,6 +155,7 @@ export default function useChatListEntry({
           renderLastMessage={renderLastMessageOrTyping}
           observeIntersection={observeIntersection}
           topics={topics}
+          noForumTitle={noForumTitle}
         />
       );
     }

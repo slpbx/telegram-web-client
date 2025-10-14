@@ -6,7 +6,7 @@
       "dom",
       "dom.iterable",
       "webworker",
-      "es2021"
+      "es2022"
     ],
     "allowJs": true,
     "skipLibCheck": true,
@@ -33,13 +33,10 @@
     "tests",
     "plugins",
     "dev",
-    "webpack.config.ts",
-    "webpack-electron.config.ts",
-    "babel.config.js",
-    "eslint.config.mjs",
+    "*.config.ts",
+    "*.config.js",
     ".fantasticonrc.cjs",
-    "playwright.config.ts",
-    "jest.config.js",
-    ".github/workflows/*.js"
+    ".github/workflows/*.js",
+    "deploy/*.js"
   ]
 }

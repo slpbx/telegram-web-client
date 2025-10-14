@@ -11,10 +11,9 @@ import type { ObserveFn } from '../../../hooks/useIntersectionObserver';
 import type { ChatTranslatedMessages } from '../../../types';
 import type { IconName } from '../../../types/icons';
 
-import { CONTENT_NOT_SUPPORTED, TON_CURRENCY_CODE } from '../../../config';
+import { TON_CURRENCY_CODE } from '../../../config';
 import {
   getMessageIsSpoiler,
-  getMessageMediaHash,
   getMessageRoundVideo,
   isChatChannel,
   isChatGroup,
@@ -31,12 +30,13 @@ import { getPictogramDimensions } from '../helpers/mediaDimensions';
 import renderText from '../helpers/renderText';
 import { renderTextWithEntities } from '../helpers/renderTextWithEntities';
 
+import useMessageMediaHash from '../../../hooks/media/useMessageMediaHash';
+import useThumbnail from '../../../hooks/media/useThumbnail';
 import { useFastClick } from '../../../hooks/useFastClick';
 import { useIsIntersecting } from '../../../hooks/useIntersectionObserver';
 import useLang from '../../../hooks/useLang';
 import useMedia from '../../../hooks/useMedia';
 import useOldLang from '../../../hooks/useOldLang';
-import useThumbnail from '../../../hooks/useThumbnail';
 import useMessageTranslation from '../../middle/message/hooks/useMessageTranslation';
 
 import RippleEffect from '../../ui/RippleEffect';
@@ -65,6 +65,7 @@ type OwnProps = {
   requestedChatTranslationLanguage?: string;
   isOpen?: boolean;
   isMediaNsfw?: boolean;
+  noCaptions?: boolean;
   observeIntersectionForLoading?: ObserveFn;
   observeIntersectionForPlaying?: ObserveFn;
   onClick: ((e: React.MouseEvent) => void);
@@ -90,6 +91,7 @@ const EmbeddedMessage: FC<OwnProps> = ({
   chatTranslations,
   requestedChatTranslationLanguage,
   isMediaNsfw,
+  noCaptions,
   observeIntersectionForLoading,
   observeIntersectionForPlaying,
   onClick,
@@ -111,7 +113,7 @@ const EmbeddedMessage: FC<OwnProps> = ({
   const gif = containedMedia?.content?.video?.isGif ? containedMedia.content.video : undefined;
   const isVideoThumbnail = Boolean(gif && !gif.previewPhotoSizes?.length);
 
-  const mediaHash = containedMedia && getMessageMediaHash(containedMedia, isVideoThumbnail ? 'full' : 'pictogram');
+  const mediaHash = useMessageMediaHash(containedMedia, isVideoThumbnail ? 'full' : 'pictogram');
   const mediaBlobUrl = useMedia(mediaHash, !isIntersecting);
   const mediaThumbnail = useThumbnail(containedMedia);
 
@@ -199,6 +201,10 @@ const EmbeddedMessage: FC<OwnProps> = ({
       return customText || renderMediaContentType(containedMedia) || NBSP;
     }
 
+    if (noCaptions) {
+      return lang('EmbeddedMessageNoCaption');
+    }
+
     return (
       <MessageSummary
         message={message}
@@ -213,8 +219,8 @@ const EmbeddedMessage: FC<OwnProps> = ({
 
   function renderMediaContentType(media?: MediaContainer) {
     if (!media || media.content.text) return NBSP;
-    const description = getMediaContentTypeDescription(oldLang, media.content, {});
-    if (!description || description === CONTENT_NOT_SUPPORTED) return NBSP;
+    const description = getMediaContentTypeDescription(lang, media.content, {});
+    if (!description) return NBSP;
     return (
       <span>
         {renderText(description)}

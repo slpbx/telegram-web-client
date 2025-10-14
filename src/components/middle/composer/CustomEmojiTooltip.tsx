@@ -74,7 +74,7 @@ const CustomEmojiTooltip: FC<OwnProps & StateProps> = ({
 
   const className = buildClassName(
     styles.root,
-    'composer-tooltip custom-scroll-x',
+    'composer-tooltip no-scrollbar',
     transitionClassNames,
     !displayedStickers?.length && styles.hidden,
   );
@@ -108,7 +108,7 @@ const CustomEmojiTooltip: FC<OwnProps & StateProps> = ({
 };
 
 export default memo(withGlobal<OwnProps>(
-  (global, { chatId }): StateProps => {
+  (global, { chatId }): Complete<StateProps> => {
     const { stickers: customEmoji } = global.customEmojis.forEmoji;
     const isSavedMessages = selectIsChatWithSelf(global, chatId);
     const isCurrentUserPremium = selectIsCurrentUserPremium(global);

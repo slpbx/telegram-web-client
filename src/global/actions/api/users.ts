@@ -74,6 +74,7 @@ addActionHandler('loadFullUser', async (global, actions, payload): Promise<void>
   global = updateUserFullInfo(global, userId, result.fullInfo);
   global = updateUsers(global, buildCollectionByKey(result.users, 'id'));
   global = updateChats(global, buildCollectionByKey(result.chats, 'id'));
+  global = addUserStatuses(global, result.userStatusesById);
 
   setGlobal(global);
   if (withPhotos || (profilePhotos?.count && hasChangedPhoto)) {
@@ -173,7 +174,10 @@ addActionHandler('loadCommonChats', async (global, actions, payload): Promise<vo
     return;
   }
 
-  const result = await callApi('fetchCommonChats', user, commonChats?.maxId);
+  const result = await callApi('fetchCommonChats', {
+    user,
+    maxId: commonChats?.maxId,
+  });
   if (!result) {
     return;
   }
@@ -235,7 +239,7 @@ addActionHandler('openChatRefundModal', async (global, actions, payload): Promis
 
 addActionHandler('updateContact', async (global, actions, payload): Promise<void> => {
   const {
-    userId, isMuted = false, firstName, lastName, shouldSharePhoneNumber,
+    userId, firstName, lastName, shouldSharePhoneNumber,
     tabId = getCurrentTabId(),
   } = payload;
 
@@ -243,8 +247,6 @@ addActionHandler('updateContact', async (global, actions, payload): Promise<void
   if (!user) {
     return;
   }
-
-  actions.updateChatMutedState({ chatId: userId, isMuted });
 
   global = getGlobal();
   global = updateManagementProgress(global, ManagementProgress.InProgress, tabId);

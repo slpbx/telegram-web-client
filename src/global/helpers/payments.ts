@@ -6,8 +6,6 @@ import type {
   ApiRequestInputSavedStarGift,
   ApiStarsAmount,
   ApiStarsTransaction,
-  ApiStarsTransactionPeer,
-  ApiStarsTransactionPeerPeer,
   ApiTypeCurrencyAmount,
 } from '../../api/types';
 import type { CustomPeer } from '../../types';
@@ -16,7 +14,7 @@ import type { GlobalState } from '../types';
 
 import { STARS_CURRENCY_CODE, TON_CURRENCY_CODE } from '../../config';
 import arePropsShallowEqual from '../../util/arePropsShallowEqual';
-import { convertCurrencyFromBaseUnit } from '../../util/formatCurrency';
+import { convertTonFromNanos } from '../../util/formatCurrency';
 import { selectChat, selectPeer, selectUser } from '../selectors';
 
 export function getRequestInputInvoice<T extends GlobalState>(
@@ -37,6 +35,7 @@ export function getRequestInputInvoice<T extends GlobalState>(
       type: 'stargiftResale',
       slug,
       peer,
+      currency: inputInvoice.currency,
     };
   }
 
@@ -258,10 +257,25 @@ export function getRequestInputSavedStarGift<T extends GlobalState>(
   return undefined;
 }
 
+export function shouldUseCustomPeer(transaction: ApiStarsTransaction) {
+  return transaction.peer.type !== 'peer' || Boolean(transaction.isPostsSearch);
+}
+
 export function buildStarsTransactionCustomPeer(
-  peer: Exclude<ApiStarsTransactionPeer, ApiStarsTransactionPeerPeer>,
-  isForTon?: boolean,
+  transaction: ApiStarsTransaction,
 ): CustomPeer {
+  const { peer } = transaction;
+  const isForTon = transaction.amount.currency === TON_CURRENCY_CODE;
+
+  if (transaction.isPostsSearch) {
+    return {
+      avatarIcon: 'search',
+      isCustomPeer: true,
+      title: '',
+      peerColorId: 5,
+    };
+  }
+
   if (peer.type === 'appStore') {
     return {
       avatarIcon: 'star',
@@ -352,15 +366,14 @@ export function formatStarsTransactionAmount(lang: LangFn, currencyAmount: ApiTy
   }
 
   if (currencyAmount.currency === TON_CURRENCY_CODE) {
-    const amount = convertCurrencyFromBaseUnit(currencyAmount.amount, currencyAmount.currency);
+    const amount = convertTonFromNanos(currencyAmount.amount);
     const absAmount = Math.abs(amount);
-    const tonText = lang('TonAmountText', { amount: absAmount }, { pluralValue: absAmount });
 
     if (amount < 0) {
-      return `- ${tonText}`;
+      return `- ${lang.preciseNumber(absAmount)}`;
     }
 
-    return `+ ${tonText}`;
+    return `+ ${lang.preciseNumber(absAmount)}`;
   }
 
   return undefined;

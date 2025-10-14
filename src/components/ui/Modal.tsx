@@ -30,6 +30,7 @@ export type OwnProps = {
   className?: string;
   contentClassName?: string;
   headerClassName?: string;
+  dialogClassName?: string;
   isOpen?: boolean;
   header?: TeactNode;
   isSlim?: boolean;
@@ -49,8 +50,11 @@ export type OwnProps = {
   onCloseAnimationEnd?: () => void;
   onEnter?: () => void;
   withBalanceBar?: boolean;
+  currencyInBalanceBar?: 'TON' | 'XTR';
   isCondensedHeader?: boolean;
 };
+
+const NBSP = '\u00A0';
 
 const Modal: FC<OwnProps> = ({
   dialogRef,
@@ -71,11 +75,13 @@ const Modal: FC<OwnProps> = ({
   dialogStyle,
   isLowStackPriority,
   dialogContent,
+  dialogClassName,
   onClose,
   onCloseAnimationEnd,
   onEnter,
   withBalanceBar,
   isCondensedHeader,
+  currencyInBalanceBar = 'XTR',
 }) => {
   const {
     ref: modalRef,
@@ -142,27 +148,22 @@ const Modal: FC<OwnProps> = ({
     }
 
     if (!title && !withCloseButton) return undefined;
-    const closeButton = (
-      <Button
-        className={buildClassName(hasAbsoluteCloseButton && 'modal-absolute-close-button')}
-        round
-        color={absoluteCloseButtonColor}
-        size="smaller"
-        ariaLabel={lang('Close')}
-        onClick={onClose}
-      >
-        <Icon name="close" />
-      </Button>
-    );
-
-    if (hasAbsoluteCloseButton) {
-      return closeButton;
-    }
 
     return (
       <div className={buildClassName('modal-header', headerClassName, isCondensedHeader && 'modal-header-condensed')}>
-        {withCloseButton && closeButton}
-        <div className="modal-title">{title}</div>
+        {withCloseButton && (
+          <Button
+            className={buildClassName(hasAbsoluteCloseButton && 'modal-absolute-close-button')}
+            round
+            color={absoluteCloseButtonColor}
+            size="smaller"
+            ariaLabel={lang('Close')}
+            onClick={onClose}
+          >
+            <Icon name="close" />
+          </Button>
+        )}
+        <div className="modal-title">{title || NBSP}</div>
       </div>
     );
   }
@@ -176,6 +177,11 @@ const Modal: FC<OwnProps> = ({
     withBalanceBar && 'with-balance-bar',
   );
 
+  const modalDialogClassName = buildClassName(
+    'modal-dialog',
+    dialogClassName,
+  );
+
   return (
     <Portal>
       <div
@@ -187,11 +193,12 @@ const Modal: FC<OwnProps> = ({
         {withBalanceBar && (
           <ModalStarBalanceBar
             isModalOpen={isOpen}
+            currency={currencyInBalanceBar}
           />
         )}
         <div className="modal-container">
           <div className="modal-backdrop" onClick={!noBackdropClose ? onClose : undefined} />
-          <div className="modal-dialog" ref={dialogRef} style={dialogStyle}>
+          <div className={modalDialogClassName} ref={dialogRef} style={dialogStyle}>
             {renderHeader()}
             {dialogContent}
             <div className={buildClassName('modal-content custom-scroll', contentClassName)} style={style}>

@@ -6,6 +6,7 @@ import type {
   ApiPremiumPromo,
   ApiPremiumSection,
   ApiPremiumSubscriptionOption,
+  ApiStarGift,
   ApiSticker,
   ApiStickerSet,
   ApiUser,
@@ -15,10 +16,17 @@ import type { LangPair } from '../../../types/language';
 
 import { PREMIUM_FEATURE_SECTIONS, TME_LINK_PREFIX } from '../../../config';
 import { getUserFullName } from '../../../global/helpers';
-import { selectIsCurrentUserPremium, selectStickerSet, selectTabState, selectUser } from '../../../global/selectors';
+import {
+  selectCustomEmoji,
+  selectIsCurrentUserPremium,
+  selectStickerSet,
+  selectTabState,
+  selectUser,
+} from '../../../global/selectors';
 import { selectPremiumLimit } from '../../../global/selectors/limits';
 import buildClassName from '../../../util/buildClassName';
 import { formatCurrency } from '../../../util/formatCurrency';
+import { getStickerFromGift } from '../../common/helpers/gifts';
 import { REM } from '../../common/helpers/mediaDimensions';
 import renderText from '../../common/helpers/renderText';
 import { renderTextWithEntities } from '../../common/helpers/renderTextWithEntities';
@@ -99,6 +107,7 @@ type StateProps = {
   isSuccess?: boolean;
   isGift?: boolean;
   monthsAmount?: number;
+  gift?: ApiStarGift;
   limitChannels: number;
   limitPins: number;
   limitLinks: number;
@@ -130,6 +139,7 @@ const PremiumMainModal: FC<OwnProps & StateProps> = ({
   toUser,
   monthsAmount,
   premiumPromoOrder,
+  gift,
 }) => {
   const dialogRef = useRef<HTMLDivElement>();
   const {
@@ -273,6 +283,10 @@ const PremiumMainModal: FC<OwnProps & StateProps> = ({
   if (!promo || (fromUserStatusEmoji && !fromUserStatusSet)) return undefined;
 
   function getHeaderText() {
+    if (gift) {
+      return lang('PremiumGiftHeader');
+    }
+
     if (isGift) {
       return renderText(
         fromUser?.id === currentUserId
@@ -307,6 +321,12 @@ const PremiumMainModal: FC<OwnProps & StateProps> = ({
   }
 
   function getHeaderDescription() {
+    if (gift && gift.type !== 'starGiftUnique' && gift.perUserTotal) {
+      return lang('DescriptionGiftPremiumRequired2', { count: gift.perUserTotal }, {
+        pluralValue: gift.perUserTotal,
+      });
+    }
+
     if (isGift) {
       return fromUser?.id === currentUserId
         ? oldLang('TelegramPremiumUserGiftedPremiumOutboundDialogSubtitle', getUserFullName(toUser))
@@ -320,6 +340,52 @@ const PremiumMainModal: FC<OwnProps & StateProps> = ({
     return fromUser
       ? oldLang('TelegramPremiumUserDialogSubtitle')
       : oldLang(isPremium ? 'TelegramPremiumSubscribedSubtitle' : 'TelegramPremiumSubtitle');
+  }
+
+  function renderHeader() {
+    if (gift) {
+      const giftSticker = getStickerFromGift(gift);
+      return (
+        <ParticlesHeader
+          model="sticker"
+          sticker={giftSticker}
+          color="purple"
+          title={getHeaderText()}
+          description={renderText(getHeaderDescription(), ['simple_markdown', 'emoji'])}
+          className={styles.giftParticlesHeader}
+        />
+      );
+    }
+
+    if (!fromUserStatusEmoji) {
+      return (
+        <ParticlesHeader
+          model="swaying-star"
+          color="purple"
+          title={getHeaderText()}
+          description={renderText(getHeaderDescription(), ['simple_markdown', 'emoji'])}
+          className={styles.starParticlesHeader}
+        />
+      );
+    }
+
+    return (
+      <>
+        <CustomEmoji
+          className={styles.statusEmoji}
+          onClick={handleOpenStatusSet}
+          documentId={fromUserStatusEmoji.id}
+          isBig
+          size={STATUS_EMOJI_SIZE}
+        />
+        <h2 className={buildClassName(styles.headerText, fromUserStatusSet && styles.stickerSetText)}>
+          {getHeaderText()}
+        </h2>
+        <div className={styles.description}>
+          {renderText(getHeaderDescription(), ['simple_markdown', 'emoji'])}
+        </div>
+      </>
+    );
   }
 
   function renderFooterText() {
@@ -375,30 +441,7 @@ const PremiumMainModal: FC<OwnProps & StateProps> = ({
             >
               <Icon name="close" />
             </Button>
-            {!fromUserStatusEmoji ? (
-              <ParticlesHeader
-                model="swaying-star"
-                color="purple"
-                title={getHeaderText()}
-                description={renderText(getHeaderDescription(), ['simple_markdown', 'emoji'])}
-              />
-            ) : (
-              <>
-                <CustomEmoji
-                  className={styles.statusEmoji}
-                  onClick={handleOpenStatusSet}
-                  documentId={fromUserStatusEmoji.id}
-                  isBig
-                  size={STATUS_EMOJI_SIZE}
-                />
-                <h2 className={buildClassName(styles.headerText, fromUserStatusSet && styles.stickerSetText)}>
-                  {getHeaderText()}
-                </h2>
-                <div className={styles.description}>
-                  {renderText(getHeaderDescription(), ['simple_markdown', 'emoji'])}
-                </div>
-              </>
-            )}
+            {renderHeader()}
             {!isPremium && !isGift && renderSubscriptionOptions()}
             <div className={buildClassName(styles.header, isHeaderHidden && styles.hiddenHeader)}>
               <h2 className={styles.premiumHeaderText}>
@@ -466,13 +509,13 @@ const PremiumMainModal: FC<OwnProps & StateProps> = ({
   );
 };
 
-export default memo(withGlobal<OwnProps>((global): StateProps => {
+export default memo(withGlobal<OwnProps>((global): Complete<StateProps> => {
   const {
     premiumModal,
   } = selectTabState(global);
 
   const fromUser = premiumModal?.fromUserId ? selectUser(global, premiumModal.fromUserId) : undefined;
-  const fromUserStatusEmoji = fromUser?.emojiStatus ? global.customEmojis.byId[fromUser.emojiStatus.documentId]
+  const fromUserStatusEmoji = fromUser?.emojiStatus ? selectCustomEmoji(global, fromUser.emojiStatus.documentId)
     : undefined;
   const fromUserStatusSet = fromUserStatusEmoji ? selectStickerSet(global, fromUserStatusEmoji.stickerSetInfo)
     : undefined;
@@ -483,6 +526,7 @@ export default memo(withGlobal<OwnProps>((global): StateProps => {
     isSuccess: premiumModal?.isSuccess,
     isGift: premiumModal?.isGift,
     monthsAmount: premiumModal?.monthsAmount,
+    gift: premiumModal?.gift,
     fromUser,
     fromUserStatusEmoji,
     fromUserStatusSet,
@@ -493,9 +537,9 @@ export default memo(withGlobal<OwnProps>((global): StateProps => {
     limitFolders: selectPremiumLimit(global, 'dialogFilters'),
     limitPins: selectPremiumLimit(global, 'dialogFolderPinned'),
     limitLinks: selectPremiumLimit(global, 'channelsPublic'),
-    limits: global.appConfig?.limits,
-    premiumSlug: global.appConfig?.premiumInvoiceSlug,
-    premiumBotUsername: global.appConfig?.premiumBotUsername,
-    premiumPromoOrder: global.appConfig?.premiumPromoOrder,
+    limits: global.appConfig.limits,
+    premiumSlug: global.appConfig.premiumInvoiceSlug,
+    premiumBotUsername: global.appConfig.premiumBotUsername,
+    premiumPromoOrder: global.appConfig.premiumPromoOrder,
   };
 })(PremiumMainModal));

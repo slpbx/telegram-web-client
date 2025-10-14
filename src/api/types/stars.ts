@@ -22,11 +22,17 @@ export interface ApiStarGiftRegular {
   resellMinStars?: number;
   releasedByPeerId?: string;
   title?: string;
+  requirePremium?: true;
+  limitedPerUser?: true;
+  perUserTotal?: number;
+  perUserRemains?: number;
+  lockedUntilDate?: number;
 }
 
 export interface ApiStarGiftUnique {
   type: 'starGiftUnique';
   id: string;
+  regularGiftId: string;
   title: string;
   number: number;
   ownerId?: string;
@@ -37,8 +43,12 @@ export interface ApiStarGiftUnique {
   attributes: ApiStarGiftAttribute[];
   slug: string;
   giftAddress?: string;
-  resellPriceInStars?: number;
+  resellPrice?: ApiTypeCurrencyAmount[];
   releasedByPeerId?: string;
+  requirePremium?: true;
+  resaleTonOnly?: true;
+  valueCurrency?: string;
+  valueAmount?: number;
 }
 
 export type ApiStarGift = ApiStarGiftRegular | ApiStarGiftUnique;
@@ -233,6 +243,7 @@ export interface ApiStarsTransaction {
   isGiftUpgrade?: true;
   isGiftResale?: true;
   paidMessages?: number;
+  isPostsSearch?: true;
 }
 
 export interface ApiStarsSubscription {
@@ -273,4 +284,19 @@ export interface ApiDisallowedGiftsSettings {
   shouldDisallowLimitedStarGifts?: true;
   shouldDisallowUniqueStarGifts?: true;
   shouldDisallowPremiumGifts?: true;
+}
+
+export interface ApiStarGiftCollection {
+  collectionId: number;
+  title: string;
+  icon?: ApiSticker;
+  giftsCount: number;
+  hash: string;
+}
+
+export interface ApiStarsRating {
+  level: number;
+  currentLevelStars: number;
+  stars: number;
+  nextLevelStars?: number;
 }

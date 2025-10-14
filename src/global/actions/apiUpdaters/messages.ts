@@ -43,6 +43,7 @@ import {
   deleteTopic,
   removeChatFromChatLists,
   replaceThreadParam,
+  replaceWebPage,
   updateChat,
   updateChatLastMessageId,
   updateChatMediaLoadingState,
@@ -101,9 +102,9 @@ addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
   switch (update['@type']) {
     case 'newMessage': {
       const {
-        chatId, id, message, shouldForceReply, wasDrafted, poll,
+        chatId, id, message, shouldForceReply, wasDrafted, poll, webPage,
       } = update;
-      global = updateWithLocalMedia(global, chatId, id, message);
+      global = updateWithLocalMedia(global, chatId, id, true, message);
       global = updateListedAndViewportIds(global, actions, message as ApiMessage);
 
       const newMessage = selectChatMessage(global, chatId, id)!;
@@ -169,6 +170,10 @@ addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
         global = updatePoll(global, poll.id, poll);
       }
 
+      if (webPage) {
+        global = replaceWebPage(global, webPage.id, webPage);
+      }
+
       if (message.reportDeliveryUntilDate && message.reportDeliveryUntilDate > getServerTime()) {
         actions.reportMessageDelivery({ chatId, messageId: id });
       }
@@ -228,10 +233,10 @@ addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
 
     case 'newScheduledMessage': {
       const {
-        chatId, id, message, poll,
+        chatId, id, message, poll, webPage,
       } = update;
 
-      global = updateWithLocalMedia(global, chatId, id, message, true);
+      global = updateWithLocalMedia(global, chatId, id, true, message, true);
 
       const scheduledIds = selectScheduledIds(global, chatId, MAIN_THREAD_ID) || [];
       global = replaceThreadParam(global, chatId, MAIN_THREAD_ID, 'scheduledIds', unique([...scheduledIds, id]));
@@ -246,6 +251,10 @@ addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
         global = updatePoll(global, poll.id, poll);
       }
 
+      if (webPage) {
+        global = replaceWebPage(global, webPage.id, webPage);
+      }
+
       global = updatePeerFullInfo(global, chatId, {
         hasScheduledMessages: true,
       });
@@ -257,7 +266,7 @@ addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
 
     case 'updateScheduledMessage': {
       const {
-        chatId, id, message, poll, isFromNew,
+        chatId, id, message, poll, webPage, isFromNew,
       } = update;
 
       const currentMessage = selectScheduledMessage(global, chatId, id);
@@ -269,12 +278,13 @@ addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
             chatId: update.chatId,
             message: update.message as ApiMessage,
             poll: update.poll,
+            webPage: update.webPage,
           });
         }
         return;
       }
 
-      global = updateWithLocalMedia(global, chatId, id, message, true);
+      global = updateWithLocalMedia(global, chatId, id, false, message, true);
       const ids = Object.keys(selectChatScheduledMessages(global, chatId) || {}).map(Number).sort((a, b) => b - a);
       global = replaceThreadParam(global, chatId, MAIN_THREAD_ID, 'scheduledIds', ids);
 
@@ -287,6 +297,10 @@ addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
         global = updatePoll(global, poll.id, poll);
       }
 
+      if (webPage) {
+        global = replaceWebPage(global, webPage.id, webPage);
+      }
+
       setGlobal(global);
 
       break;
@@ -294,7 +308,7 @@ addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
 
     case 'updateMessage': {
       const {
-        chatId, id, message, poll, isFromNew, shouldForceReply,
+        chatId, id, message, poll, webPage, isFromNew, shouldForceReply,
       } = update;
 
       const currentMessage = selectChatMessage(global, chatId, id);
@@ -307,6 +321,7 @@ addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
             chatId: update.chatId,
             message: update.message,
             poll: update.poll,
+            webPage: update.webPage,
             shouldForceReply,
           });
         }
@@ -315,7 +330,7 @@ addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
 
       const chat = selectChat(global, chatId);
 
-      global = updateWithLocalMedia(global, chatId, id, message);
+      global = updateWithLocalMedia(global, chatId, id, false, message);
 
       const newMessage = selectChatMessage(global, chatId, id)!;
 
@@ -333,18 +348,26 @@ addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
         global = updatePoll(global, poll.id, poll);
       }
 
+      if (webPage) {
+        global = replaceWebPage(global, webPage.id, webPage);
+      }
+
       setGlobal(global);
 
       break;
     }
 
     case 'updateQuickReplyMessage': {
-      const { id, message, poll } = update;
+      const { id, message, poll, webPage } = update;
 
       global = updateQuickReplyMessage(global, id, message);
 
       if (poll) {
         global = updatePoll(global, poll.id, poll);
+      }
+
+      if (webPage) {
+        global = replaceWebPage(global, webPage.id, webPage);
       }
 
       setGlobal(global);
@@ -856,6 +879,20 @@ addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
       break;
     }
 
+    case 'updateScheduledMessageSendFailed': {
+      const { chatId, localId, error } = update;
+
+      if (error.match(/CHAT_SEND_.+?FORBIDDEN/)) {
+        Object.values(global.byTabId).forEach(({ id: tabId }) => {
+          actions.showAllowedMessageTypesNotification({ chatId, tabId });
+        });
+      }
+
+      global = updateScheduledMessage(global, chatId, localId, { sendingState: 'messageSendingStateFailed' });
+      setGlobal(global);
+      break;
+    }
+
     case 'updateMessageTranslations': {
       const {
         chatId, messageIds, toLanguageCode, translations,
@@ -952,12 +989,15 @@ export function updateWithLocalMedia(
   global: RequiredGlobalState,
   chatId: string,
   id: number,
+  isNew: boolean,
   messageUpdate: Partial<ApiMessage>,
   isScheduled = false,
 ) {
   const currentMessage = isScheduled
     ? selectScheduledMessage(global, chatId, id)
     : selectChatMessage(global, chatId, id);
+
+  if (!currentMessage && !isNew) return global;
 
   // Preserve locally uploaded media.
   if (currentMessage && messageUpdate.content && !isLocalMessageId(id)) {

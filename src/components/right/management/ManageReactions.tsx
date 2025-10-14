@@ -10,9 +10,6 @@ import type {
   ApiAvailableReaction, ApiChat, ApiChatReactions, ApiReaction,
 } from '../../../api/types';
 
-import {
-  MAX_UNIQUE_REACTIONS,
-} from '../../../config';
 import { isChatChannel, isSameReaction } from '../../../global/helpers';
 import { selectChat, selectChatFullInfo } from '../../../global/selectors';
 
@@ -269,9 +266,9 @@ const ManageReactions: FC<OwnProps & StateProps> = ({
 };
 
 export default memo(withGlobal<OwnProps>(
-  (global, { chatId }): StateProps => {
+  (global, { chatId }): Complete<StateProps> => {
     const chat = selectChat(global, chatId)!;
-    const { maxUniqueReactions = MAX_UNIQUE_REACTIONS } = global.appConfig || {};
+    const { maxUniqueReactions } = global.appConfig;
 
     const chatFullInfo = selectChatFullInfo(global, chatId);
     const reactionsLimit = chatFullInfo?.reactionsLimit || maxUniqueReactions;

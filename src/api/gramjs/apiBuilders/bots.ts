@@ -22,9 +22,9 @@ import type {
   MediaContent,
 } from '../../types';
 
-import { numberToHexColor } from '../../../util/colors';
+import { int2hex } from '../../../util/colors';
 import { pick } from '../../../util/iteratees';
-import { generateRandomInt } from '../gramjsBuilders';
+import { toJSNumber } from '../../../util/numbers';
 import { addDocumentToLocalDb } from '../helpers/localDb';
 import { serializeBytes } from '../helpers/misc';
 import { buildApiMessageEntity, buildApiPhoto } from './common';
@@ -253,17 +253,7 @@ export function buildBotInlineMessage(
       description: sendMessage.description,
       photo: buildApiWebDocument(sendMessage.photo),
       currency: sendMessage.currency,
-      amount: sendMessage.totalAmount.toJSNumber(),
-    };
-  } else {
-    const mediaSize = sendMessage.forceSmallMedia ? 'small' : sendMessage.forceLargeMedia ? 'large' : undefined;
-
-    content.webPage = {
-      mediaType: 'webpage',
-      id: generateRandomInt(),
-      mediaSize,
-      url: sendMessage.url,
-      displayUrl: sendMessage.url,
+      amount: toJSNumber(sendMessage.totalAmount),
     };
   }
 
@@ -390,10 +380,10 @@ export function buildApiBotInfo(botInfo: GramJs.BotInfo, chatId: string): ApiBot
 export function buildBotAppSettings(settings: GramJs.BotAppSettings): ApiBotAppSettings {
   const placeholderPath = settings.placeholderPath && buildSvgPath(settings.placeholderPath);
   return {
-    backgroundColor: settings.backgroundColor ? numberToHexColor(settings.backgroundColor) : undefined,
-    backgroundDarkColor: settings.backgroundDarkColor ? numberToHexColor(settings.backgroundDarkColor) : undefined,
-    headerColor: settings.headerColor ? numberToHexColor(settings.headerColor) : undefined,
-    headerDarkColor: settings.headerDarkColor ? numberToHexColor(settings.headerDarkColor) : undefined,
+    backgroundColor: settings.backgroundColor ? int2hex(settings.backgroundColor) : undefined,
+    backgroundDarkColor: settings.backgroundDarkColor ? int2hex(settings.backgroundDarkColor) : undefined,
+    headerColor: settings.headerColor ? int2hex(settings.headerColor) : undefined,
+    headerDarkColor: settings.headerDarkColor ? int2hex(settings.headerDarkColor) : undefined,
     placeholderPath,
   };
 }

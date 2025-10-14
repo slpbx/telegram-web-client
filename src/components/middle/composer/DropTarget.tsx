@@ -4,10 +4,9 @@ import { memo, useRef } from '../../../lib/teact/teact';
 
 import buildClassName from '../../../util/buildClassName';
 
-import useEffectOnce from '../../../hooks/useEffectOnce';
 import useFlag from '../../../hooks/useFlag';
+import useLang from '../../../hooks/useLang';
 import useLastCallback from '../../../hooks/useLastCallback';
-import useResizeObserver from '../../../hooks/useResizeObserver';
 
 import Icon from '../../common/icons/Icon';
 
@@ -21,7 +20,8 @@ export type OwnProps = {
 
 const DropTarget: FC<OwnProps> = ({ isQuick, isGeneric, onFileSelect }) => {
   const ref = useRef<HTMLDivElement>();
-  const svgRef = useRef<SVGSVGElement>();
+
+  const lang = useLang();
 
   const [isHovered, markHovered, unmarkHovered] = useFlag();
 
@@ -34,22 +34,6 @@ const DropTarget: FC<OwnProps> = ({ isQuick, isGeneric, onFileSelect }) => {
 
     unmarkHovered();
   });
-
-  const handleResize = useLastCallback(() => {
-    const svg = svgRef.current;
-    if (!svg) {
-      return;
-    }
-
-    const { width, height } = svg.getBoundingClientRect();
-    svg.viewBox.baseVal.width = width;
-    svg.viewBox.baseVal.height = height;
-  });
-
-  // Can't listen for SVG resize
-  useResizeObserver(ref, handleResize);
-
-  useEffectOnce(handleResize);
 
   const className = buildClassName(
     'DropTarget',
@@ -70,8 +54,12 @@ const DropTarget: FC<OwnProps> = ({ isQuick, isGeneric, onFileSelect }) => {
       </svg>
       <div className="target-content">
         <Icon name={isQuick ? 'photo' : 'document'} />
-        <div className="title">Drop files here to send them</div>
-        {!isGeneric && <div className="description">{isQuick ? 'in a quick way' : 'without compression'}</div>}
+        <div className="title">{lang('FileDropZoneTitle')}</div>
+        {!isGeneric && (
+          <div className="description">
+            {isQuick ? lang('FileDropZoneQuick') : lang('FileDropZoneNoCompression')}
+          </div>
+        )}
       </div>
     </div>
   );

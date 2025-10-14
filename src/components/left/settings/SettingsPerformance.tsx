@@ -12,7 +12,7 @@ import {
 } from '../../../config';
 import {
   INITIAL_PERFORMANCE_STATE_MAX,
-  INITIAL_PERFORMANCE_STATE_MID,
+  INITIAL_PERFORMANCE_STATE_MED,
   INITIAL_PERFORMANCE_STATE_MIN,
 } from '../../../global/initialState';
 import { selectPerformanceSettings } from '../../../global/selectors';
@@ -109,7 +109,7 @@ function SettingsPerformance({
     if (areDeepEqual(performanceSettings, INITIAL_PERFORMANCE_STATE_MIN)) {
       return ANIMATION_LEVEL_MIN;
     }
-    if (areDeepEqual(performanceSettings, INITIAL_PERFORMANCE_STATE_MID)) {
+    if (areDeepEqual(performanceSettings, INITIAL_PERFORMANCE_STATE_MED)) {
       return ANIMATION_LEVEL_MED;
     }
 
@@ -137,9 +137,9 @@ function SettingsPerformance({
   const handleAnimationLevelChange = useCallback((newLevel: number) => {
     const performance = newLevel === ANIMATION_LEVEL_MIN
       ? INITIAL_PERFORMANCE_STATE_MIN
-      : (newLevel === ANIMATION_LEVEL_MED ? INITIAL_PERFORMANCE_STATE_MID : INITIAL_PERFORMANCE_STATE_MAX);
+      : (newLevel === ANIMATION_LEVEL_MED ? INITIAL_PERFORMANCE_STATE_MED : INITIAL_PERFORMANCE_STATE_MAX);
 
-    setSharedSettingOption({ animationLevel: newLevel as AnimationLevel });
+    setSharedSettingOption({ animationLevel: newLevel as AnimationLevel, wasAnimationLevelSetManually: true });
     updatePerformanceSettings(performance);
   }, []);
 
@@ -182,7 +182,7 @@ function SettingsPerformance({
       </div>
 
       <div className="settings-item-simple settings-item__with-shifted-dropdown">
-        <h3 className="settings-item-header" dir="auto">Resource-Intensive Processes</h3>
+        <h3 className="settings-item-header" dir="auto">{lang('SettingsPerformanceGranularTitle')}</h3>
 
         {PERFORMANCE_OPTIONS.map(([sectionName, options], index) => {
           return (
@@ -226,7 +226,7 @@ function SettingsPerformance({
   );
 }
 
-export default memo(withGlobal<OwnProps>((global): StateProps => {
+export default memo(withGlobal<OwnProps>((global): Complete<StateProps> => {
   return {
     performanceSettings: selectPerformanceSettings(global),
   };

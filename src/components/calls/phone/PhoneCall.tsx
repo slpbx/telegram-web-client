@@ -20,6 +20,7 @@ import {
 } from '../../../util/browser/windowEnvironment';
 import buildClassName from '../../../util/buildClassName';
 import { formatMediaDuration } from '../../../util/dates/dateFormat';
+import { getServerTime } from '../../../util/serverTime';
 import { LOCAL_TGS_URLS } from '../../common/helpers/animatedAssets';
 import renderText from '../../common/helpers/renderText';
 
@@ -215,7 +216,7 @@ const PhoneCall: FC<StateProps> = ({
     setTimeout(stopFlipping, 250);
   }, [startFlipping, stopFlipping]);
 
-  const timeElapsed = phoneCall?.startDate && (Number(new Date()) / 1000 - phoneCall.startDate);
+  const timeElapsed = phoneCall?.startDate && (getServerTime() - phoneCall.startDate);
 
   useEffect(() => {
     if (phoneCall?.state === 'discarded') {
@@ -363,7 +364,7 @@ const PhoneCall: FC<StateProps> = ({
 };
 
 export default memo(withGlobal(
-  (global): StateProps => {
+  (global): Complete<StateProps> => {
     const { phoneCall, currentUserId } = global;
     const { isCallPanelVisible, isMasterTab } = selectTabState(global);
     const user = selectPhoneCallUser(global);

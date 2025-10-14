@@ -132,41 +132,57 @@ export function forceOnHeavyAnimationOnce() {
 }
 
 let actionQueue: NoneToVoidFunction[] = [];
+let afterActionQueue: NoneToVoidFunction[] = [];
 
 function handleAction(name: string, payload?: ActionPayload, options?: ActionOptions): Promise<void> {
   const deferred = new Deferred<void>();
   actionQueue.push(() => {
     actionHandlers[name]?.forEach((handler) => {
-      const response = handler(DEBUG ? getUntypedGlobal() : currentGlobal, actions, payload);
-      if (!response) {
+      const result = handler(DEBUG ? getUntypedGlobal() : currentGlobal, actions, payload);
+      if (!result) {
         deferred.resolve();
         return;
       }
 
-      if (typeof response.then === 'function') {
-        response.then(() => {
+      if (typeof result.then === 'function') {
+        result.then(() => {
           deferred.resolve();
         });
         return;
       }
 
-      setUntypedGlobal(response as GlobalState, options);
+      setUntypedGlobal(result as GlobalState, options);
       deferred.resolve();
     });
   });
 
+  // Important: Keep 1 as start requirement to avoid immediate nested action calls
+  // Do not remove element from array before it is executed for the same reason
   if (actionQueue.length === 1) {
     try {
       while (actionQueue.length) {
         actionQueue[0]();
         actionQueue.shift();
       }
+      while (afterActionQueue.length) {
+        afterActionQueue[0]();
+        afterActionQueue.shift();
+      }
     } finally {
       actionQueue = [];
+      afterActionQueue = [];
     }
   }
 
   return deferred.promise;
+}
+
+/**
+ * Execute a function after all actions in stack are executed
+ * Call only from action handlers
+ */
+export function execAfterActions(fn: NoneToVoidFunction) {
+  afterActionQueue.push(fn);
 }
 
 function updateContainers() {
@@ -342,6 +358,11 @@ export function typify<
     ) => ProjectGlobalState | void | Promise<void>;
   };
 
+  type WithGlobalFn = <OwnProps extends AnyLiteral>(
+    mapStateToProps: (global: ProjectGlobalState, ownProps: OwnProps) => AnyLiteral,
+    activationFn?: (global: ProjectGlobalState, ownProps: OwnProps, stickToFirst: StickToFirstFn) => boolean,
+  ) => (Component: FC) => FC<OwnProps>;
+
   return {
     getGlobal: getUntypedGlobal as <T extends ProjectGlobalState>() => T,
     setGlobal: setUntypedGlobal as (state: ProjectGlobalState, options?: ActionOptions) => void,
@@ -351,10 +372,8 @@ export function typify<
       name: ActionName,
       handler: ActionHandlers[ActionName],
     ) => void,
-    withGlobal: withUntypedGlobal as <OwnProps extends AnyLiteral>(
-      mapStateToProps: (global: ProjectGlobalState, ownProps: OwnProps) => AnyLiteral,
-      activationFn?: (global: ProjectGlobalState, ownProps: OwnProps, stickToFirst: StickToFirstFn) => boolean,
-    ) => (Component: FC) => FC<OwnProps>,
+    withGlobal: withUntypedGlobal as WithGlobalFn,
+    execAfterActions,
   };
 }
 

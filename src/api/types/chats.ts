@@ -2,9 +2,17 @@ import type { ApiBotCommand } from './bots';
 import type {
   ApiChatReactions, ApiFormattedText, ApiInputMessageReplyInfo, ApiInputSuggestedPostInfo, ApiPhoto, ApiStickerSet,
 } from './messages';
-import type { ApiBotVerification, ApiChatInviteImporter, ApiPeerNotifySettings, ApiRestrictionReason } from './misc';
+import type { ApiChatInviteImporter, ApiPeerNotifySettings, ApiRestrictionReason } from './misc';
 import type {
-  ApiEmojiStatusType, ApiFakeType, ApiUser, ApiUsername,
+  ApiBotVerification,
+  ApiEmojiStatusType,
+  ApiFakeType,
+  ApiPeerColor,
+  ApiProfileTab,
+  ApiSendAsPeerId,
+} from './peers';
+import type {
+  ApiUser, ApiUsername,
 } from './users';
 
 type ApiChatType = (
@@ -44,6 +52,7 @@ export interface ApiChat {
   isProtected?: boolean;
   fakeType?: ApiFakeType;
   color?: ApiPeerColor;
+  profileColor?: ApiPeerColor;
   emojiStatus?: ApiEmojiStatusType;
   isForum?: boolean;
   isForumAsMessages?: true;
@@ -155,6 +164,7 @@ export interface ApiChatFullInfo {
   boostsApplied?: number;
   boostsToUnrestrict?: number;
   botVerification?: ApiBotVerification;
+  mainTab?: ApiProfileTab;
 }
 
 export interface ApiChatMember {
@@ -223,6 +233,7 @@ export interface ApiChatFolder {
   groups?: true;
   channels?: true;
   bots?: true;
+  color?: number;
   excludeMuted?: true;
   excludeRead?: true;
   excludeArchived?: true;
@@ -231,23 +242,6 @@ export interface ApiChatFolder {
   excludedChatIds: string[];
   isChatList?: true;
   hasMyInvites?: true;
-}
-
-export interface ApiPeerSettings {
-  isAutoArchived?: boolean;
-  canReportSpam?: boolean;
-  canAddContact?: boolean;
-  canBlockContact?: boolean;
-  chargedPaidMessageStars?: number;
-  registrationMonth?: string;
-  phoneCountry?: string;
-  nameChangeDate?: number;
-  photoChangeDate?: number;
-}
-
-export interface ApiSendAsPeerId {
-  id: string;
-  isPremium?: boolean;
 }
 
 export interface ApiTopic {
@@ -292,11 +286,6 @@ export interface ApiChatlistExportedInvite {
   title: string;
   url: string;
   peerIds: string[];
-}
-
-export interface ApiPeerColor {
-  color?: number;
-  backgroundEmojiId?: string;
 }
 
 export interface ApiMissingInvitedUser {

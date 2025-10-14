@@ -274,18 +274,38 @@ const AuthPhoneNumber: FC<StateProps> = ({
           />
           {canSubmit && (
             isAuthReady ? (
-              <Button size="smaller" type="submit" ripple isLoading={authIsLoading}>{lang('LoginNext')}</Button>
+              <Button
+                className="auth-button"
+                type="submit"
+                ripple
+                isLoading={authIsLoading}
+              >
+                {lang('LoginNext')}
+              </Button>
             ) : (
               <Loading />
             )
           )}
           {isAuthReady && (
-            <Button size="smaller" isText ripple isLoading={authIsLoadingQrCode} onClick={handleGoToAuthQrCode}>
+            <Button
+              className="auth-button"
+              isText
+              ripple
+              isLoading={authIsLoadingQrCode}
+              onClick={handleGoToAuthQrCode}
+            >
               {lang('LoginQRLogin')}
             </Button>
           )}
           {suggestedLanguage && suggestedLanguage !== language && continueText && (
-            <Button size="smaller" isText isLoading={isLoading} onClick={handleLangChange}>{continueText}</Button>
+            <Button
+              className="auth-button"
+              isText
+              isLoading={isLoading}
+              onClick={handleLangChange}
+            >
+              {continueText}
+            </Button>
           )}
         </form>
       </div>
@@ -294,7 +314,7 @@ const AuthPhoneNumber: FC<StateProps> = ({
 };
 
 export default memo(withGlobal(
-  (global): StateProps => {
+  (global): Complete<StateProps> => {
     const {
       sharedState: { settings: { language } },
       countryList: { phoneCodes: phoneCodeList },
@@ -315,6 +335,6 @@ export default memo(withGlobal(
       language,
       phoneCodeList,
       isTestServer: config?.isTestServer,
-    };
+    } as Complete<StateProps>;
   },
 )(AuthPhoneNumber));

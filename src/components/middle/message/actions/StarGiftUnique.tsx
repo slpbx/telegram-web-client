@@ -1,4 +1,4 @@
-import { memo, useMemo, useRef } from '../../../../lib/teact/teact';
+import { memo, useMemo, useRef } from '@teact';
 import { withGlobal } from '../../../../global';
 
 import type { ApiMessage, ApiPeer } from '../../../../api/types';
@@ -11,11 +11,14 @@ import {
   selectSender,
   selectUser,
 } from '../../../../global/selectors';
+import { IS_TOUCH_ENV } from '../../../../util/browser/windowEnvironment.ts';
 import buildClassName from '../../../../util/buildClassName';
 import buildStyle from '../../../../util/buildStyle';
 import { getGiftAttributes, getStickerFromGift } from '../../../common/helpers/gifts';
+import { REM } from '../../../common/helpers/mediaDimensions.ts';
 import { renderPeerLink } from '../helpers/messageActions';
 
+import useFlag from '../../../../hooks/useFlag.ts';
 import { type ObserveFn } from '../../../../hooks/useIntersectionObserver';
 import useLang from '../../../../hooks/useLang';
 
@@ -56,6 +59,8 @@ const StarGiftAction = ({
   const stickerRef = useRef<HTMLDivElement>();
   const lang = useLang();
 
+  const [isHover, markHover, unmarkHover] = useFlag();
+
   const { isOutgoing } = message;
 
   const sticker = getStickerFromGift(action.gift)!;
@@ -81,17 +86,20 @@ const StarGiftAction = ({
 
   return (
     <div
-      className={buildClassName(styles.contentBox, styles.starGift, styles.uniqueGift)}
+      className={buildClassName('interactive-gift', styles.contentBox, styles.starGift, styles.uniqueGift)}
       tabIndex={0}
       role="button"
       onClick={onClick}
+      onMouseEnter={!IS_TOUCH_ENV ? markHover : undefined}
+      onMouseLeave={!IS_TOUCH_ENV ? unmarkHover : undefined}
     >
       <div className={styles.uniqueBackgroundWrapper}>
         <RadialPatternBackground
           className={styles.uniqueBackground}
           backgroundColors={backgroundColors}
-          patternColor={backdrop.patternColor}
           patternIcon={pattern.sticker}
+          patternSize={14}
+          yPosition={9.5 * REM}
           clearBottomSector
         />
       </div>
@@ -105,6 +113,7 @@ const StarGiftAction = ({
             containerRef={stickerRef}
             sticker={sticker}
             size={STICKER_SIZE}
+            shouldLoop={isHover}
             observeIntersectionForLoading={observeIntersectionForLoading}
             observeIntersectionForPlaying={observeIntersectionForPlaying}
             noLoad={!canPlayAnimatedEmojis}
@@ -144,7 +153,7 @@ const StarGiftAction = ({
 };
 
 export default memo(withGlobal<OwnProps>(
-  (global, { message, action }): StateProps => {
+  (global, { message, action }): Complete<StateProps> => {
     const currentUser = selectUser(global, global.currentUserId!);
     const canPlayAnimatedEmojis = selectCanPlayAnimatedEmojis(global);
     const messageSender = selectSender(global, message);

@@ -198,7 +198,7 @@ const StarPaymentModal = ({
       <div className={styles.description}>
         {renderText(descriptionText, ['simple_markdown', 'emoji'])}
       </div>
-      <Button className={styles.paymentButton} size="smaller" onClick={handlePayment} isLoading={isLoading}>
+      <Button className={styles.paymentButton} onClick={handlePayment} isLoading={isLoading}>
         {lang(isBotSubscription ? 'StarsSubscribeBotButtonMonth' : 'StarsPay', {
           amount: formatStarsAsIcon(lang, amount!, { asFont: true }),
         }, {
@@ -215,7 +215,7 @@ const StarPaymentModal = ({
 };
 
 export default memo(withGlobal<OwnProps>(
-  (global, { modal }): StateProps => {
+  (global, { modal }): Complete<StateProps> => {
     const bot = modal?.form?.botId ? selectUser(global, modal.form.botId) : undefined;
 
     const messageInputInvoice = modal?.inputInvoice?.type === 'message' ? modal.inputInvoice : undefined;

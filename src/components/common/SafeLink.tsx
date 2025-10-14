@@ -1,9 +1,10 @@
 import type { TeactNode } from '../../lib/teact/teact';
-import type React from '../../lib/teact/teact';
 import { getActions } from '../../global';
 
+import type { ThreadId } from '../../types';
 import { ApiMessageEntityTypes } from '../../api/types';
 
+import { IS_TAURI } from '../../util/browser/globalEnvironment';
 import { ensureProtocol, getUnicodeUrl, isMixedScriptUrl } from '../../util/browser/url';
 import buildClassName from '../../util/buildClassName';
 
@@ -16,6 +17,11 @@ type OwnProps = {
   children?: TeactNode;
   isRtl?: boolean;
   shouldSkipModal?: boolean;
+  chatId?: string;
+  messageId?: number;
+  threadId?: ThreadId;
+  entityType?: ApiMessageEntityTypes.Url | ApiMessageEntityTypes.TextUrl |
+    `${ApiMessageEntityTypes.TextUrl}` | `${ApiMessageEntityTypes.Url}`;
 };
 
 const SafeLink = ({
@@ -25,6 +31,10 @@ const SafeLink = ({
   children,
   isRtl,
   shouldSkipModal,
+  chatId,
+  messageId,
+  threadId,
+  entityType = ApiMessageEntityTypes.Url,
 }: OwnProps) => {
   const { openUrl } = getActions();
 
@@ -37,7 +47,13 @@ const SafeLink = ({
     e.preventDefault();
 
     const isTrustedLink = isRegularLink && !isMixedScriptUrl(url);
-    openUrl({ url, shouldSkipModal: shouldSkipModal || isTrustedLink });
+    openUrl({
+      url,
+      shouldSkipModal: shouldSkipModal || isTrustedLink,
+      ...(chatId && messageId && {
+        linkContext: { type: 'message', chatId, threadId, messageId },
+      }),
+    });
 
     return false;
   });
@@ -55,12 +71,12 @@ const SafeLink = ({
     <a
       href={ensureProtocol(url)}
       title={getUnicodeUrl(url)}
-      target="_blank"
+      target={IS_TAURI ? '_self' : '_blank'}
       rel="noopener noreferrer"
       className={classNames}
       onClick={handleClick}
       dir={isRtl ? 'rtl' : 'auto'}
-      data-entity-type={ApiMessageEntityTypes.Url}
+      data-entity-type={entityType}
     >
       {content}
     </a>

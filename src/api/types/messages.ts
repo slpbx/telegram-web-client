@@ -4,12 +4,12 @@ import type {
   ApiBotInlineResult,
   ApiWebDocument,
 } from './bots';
-import type { ApiPeerColor } from './chats';
 import type { ApiMessageAction } from './messageActions';
 import type { ApiRestrictionReason } from './misc';
 import type {
   ApiLabeledPrice,
 } from './payments';
+import type { ApiPeerColor } from './peers';
 import type { ApiStarGiftUnique, ApiTypeCurrencyAmount } from './stars';
 import type {
   ApiMessageStoryData, ApiStory, ApiWebPageStickerData, ApiWebPageStoryData,
@@ -153,7 +153,7 @@ export interface ApiDocument {
   previewPhotoSizes?: ApiPhotoSize[];
   previewBlobUrl?: string;
   innerMediaType?: 'photo' | 'video';
-  mediaSize?: ApiDimensions;
+  mediaSize?: ApiDimensions & { fromDocumentAttribute?: boolean; fromPreload?: true };
 }
 
 export interface ApiContact {
@@ -361,9 +361,26 @@ export type ApiNewMediaTodo = {
   todo: ApiTodoList;
 };
 
-export interface ApiWebPage {
+export interface ApiWebPagePending {
   mediaType: 'webpage';
-  id: number;
+  webpageType: 'pending';
+  id: string;
+  url?: string;
+  isSafe?: true;
+}
+
+export interface ApiWebPageEmpty {
+  mediaType: 'webpage';
+  webpageType: 'empty';
+  id: string;
+  url?: string;
+  isSafe?: true;
+}
+
+export interface ApiWebPageFull {
+  mediaType: 'webpage';
+  webpageType: 'full';
+  id: string;
   url: string;
   displayUrl: string;
   type?: string;
@@ -378,8 +395,18 @@ export interface ApiWebPage {
   story?: ApiWebPageStoryData;
   gift?: ApiStarGiftUnique;
   stickers?: ApiWebPageStickerData;
-  mediaSize?: WebPageMediaSize;
   hasLargeMedia?: boolean;
+}
+
+export type ApiWebPage = ApiWebPagePending | ApiWebPageEmpty | ApiWebPageFull;
+
+/**
+ * Wrapper with message-specific fields
+ */
+export interface ApiMessageWebPage {
+  id: string;
+  isSafe?: true;
+  mediaSize?: WebPageMediaSize;
 }
 
 export type ApiReplyInfo = ApiMessageReplyInfo | ApiStoryReplyInfo;
@@ -550,8 +577,12 @@ export interface ApiFormattedText {
   entities?: ApiMessageEntity[];
 }
 
+export interface ApiFormattedTextWithEmojiOnlyCount extends ApiFormattedText {
+  emojiOnlyCount?: number;
+}
+
 export type MediaContent = {
-  text?: ApiFormattedText;
+  text?: ApiFormattedTextWithEmojiOnlyCount;
   photo?: ApiPhoto;
   video?: ApiVideo;
   altVideos?: ApiVideo[];
@@ -561,7 +592,7 @@ export type MediaContent = {
   pollId?: string;
   todo?: ApiMediaTodo;
   action?: ApiMessageAction;
-  webPage?: ApiWebPage;
+  webPage?: ApiMessageWebPage;
   audio?: ApiAudio;
   voice?: ApiVoice;
   invoice?: ApiMediaInvoice;
@@ -580,7 +611,16 @@ export type MediaContainer = {
 export type StatefulMediaContent = {
   poll?: ApiPoll;
   story?: ApiStory;
+  webPage?: ApiWebPage;
 };
+
+export type SizeTarget =
+  'micro'
+  | 'pictogram'
+  | 'inline'
+  | 'preview'
+  | 'full'
+  | 'download';
 
 export type BoughtPaidMedia = Pick<MediaContent, 'photo' | 'video'>;
 
@@ -625,7 +665,6 @@ export interface ApiMessage {
   isForwardingAllowed?: boolean;
   transcriptionId?: string;
   isTranscriptionError?: boolean;
-  emojiOnlyCount?: number;
   reactors?: {
     nextOffset?: string;
     count: number;
@@ -918,8 +957,10 @@ export type ApiTranscription = {
   transcriptionId: string;
 };
 
-export type ApiMessageSearchType = 'text' | 'media' | 'documents' | 'links' | 'audio' | 'voice' | 'profilePhoto';
-export type ApiGlobalMessageSearchType = 'text' | 'channels' | 'media' | 'documents' | 'links' | 'audio' | 'voice';
+export type ApiMessageSearchType = 'text' | 'media' | 'documents' | 'links' | 'audio' | 'voice' | 'gif'
+  | 'profilePhoto';
+export type ApiGlobalMessageSearchType = 'text' |
+  'channels' | 'media' | 'documents' | 'links' | 'audio' | 'voice' | 'publicPosts';
 export type ApiMessageSearchContext = 'all' | 'users' | 'groups' | 'channels';
 
 export type ApiReportReason = 'spam' | 'violence' | 'pornography' | 'childAbuse'
@@ -990,6 +1031,22 @@ export type ApiPreparedInlineMessage = {
   result: ApiBotInlineResult | ApiBotInlineMediaResult;
   peerTypes: ApiInlineQueryPeerType[];
   cacheTime: number;
+};
+
+export type ApiSearchPostsFlood = {
+  query?: string;
+  queryIsFree?: boolean;
+  totalDaily: number;
+  remains: number;
+  waitTill?: number;
+  starsAmount: number;
+};
+
+export type LinkContext = {
+  type: 'message';
+  threadId?: ThreadId;
+  chatId: string;
+  messageId: number;
 };
 
 export const MAIN_THREAD_ID = -1;

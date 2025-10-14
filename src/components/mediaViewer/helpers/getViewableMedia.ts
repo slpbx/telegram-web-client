@@ -1,9 +1,11 @@
 import type {
   ApiMessage, ApiPeer, ApiPeerPhotos, ApiSponsoredMessage,
 } from '../../../api/types';
-import type { MediaViewerMedia } from '../../../types';
+import type { GlobalState } from '../../../global/types';
+import { type MediaViewerMedia, MediaViewerOrigin } from '../../../types';
 
 import { getMessageContent, isDocumentPhoto, isDocumentVideo } from '../../../global/helpers';
+import { selectWebPageFromMessage } from '../../../global/selectors';
 
 export type MediaViewerItem = {
   type: 'message';
@@ -24,8 +26,9 @@ export type MediaViewerItem = {
   mediaIndex?: number;
 };
 
-type ViewableMedia = {
+export type ViewableMedia = {
   media: MediaViewerMedia;
+  isGif?: boolean;
   isSingle?: boolean;
 };
 
@@ -75,12 +78,16 @@ export function getMediaViewerItem({
   return undefined;
 }
 
-export default function getViewableMedia(params?: MediaViewerItem): ViewableMedia | undefined {
+export default function selectViewableMedia(
+  global: GlobalState, origin?: MediaViewerOrigin, params?: MediaViewerItem,
+): ViewableMedia | undefined {
   if (!params) return undefined;
 
   if (params.type === 'standalone') {
+    const media = params.media[params.mediaIndex];
     return {
-      media: params.media[params.mediaIndex],
+      media,
+      isGif: media.mediaType === 'video' && media.isGif,
       isSingle: params.media.length === 1,
     };
   }
@@ -96,7 +103,7 @@ export default function getViewableMedia(params?: MediaViewerItem): ViewableMedi
   }
 
   const {
-    action, document, photo, video, webPage, paidMedia,
+    action, document, photo, video, paidMedia,
   } = getMessageContent(params.message);
 
   if (action?.type === 'chatEditPhoto' || action?.type === 'suggestProfilePhoto') {
@@ -112,7 +119,8 @@ export default function getViewableMedia(params?: MediaViewerItem): ViewableMedi
     };
   }
 
-  if (webPage) {
+  const webPage = selectWebPageFromMessage(global, params.message);
+  if (webPage?.webpageType === 'full') {
     const { photo: webPagePhoto, video: webPageVideo, document: webPageDocument } = webPage;
     const isDocumentMedia = webPageDocument && (isDocumentPhoto(webPageDocument) || isDocumentVideo(webPageDocument));
     const mediaDocument = isDocumentMedia ? webPageDocument : undefined;
@@ -131,6 +139,7 @@ export default function getViewableMedia(params?: MediaViewerItem): ViewableMedi
       const { photo: extendedPhoto, video: extendedVideo } = extendedMedia;
       return {
         media: (extendedPhoto || extendedVideo)!,
+        isGif: extendedVideo?.isGif,
       };
     }
   }
@@ -140,7 +149,8 @@ export default function getViewableMedia(params?: MediaViewerItem): ViewableMedi
   if (media) {
     return {
       media,
-      isSingle: video?.isGif,
+      isGif: video?.isGif,
+      isSingle: video?.isGif && origin !== MediaViewerOrigin.SharedMedia,
     };
   }
 

@@ -12,7 +12,7 @@ import {
 } from '../../../config';
 import {
   getMainUsername,
-  getMessageInvoice, getMessageText, isChatChannel,
+  getMessageInvoice, getMessageTextWithFallback, isChatChannel,
 } from '../../../global/helpers';
 import { getMessageContent } from '../../../global/helpers';
 import { getPeerTitle } from '../../../global/helpers/peers';
@@ -116,7 +116,7 @@ const ActionMessageText = ({
     switch (action.type) {
       case 'pinMessage': {
         if (replyMessage) {
-          const formattedText = getMessageText(replyMessage);
+          const formattedText = getMessageTextWithFallback(lang, replyMessage);
           if (formattedText) {
             const textLink = renderMessageLink(
               replyMessage,
@@ -607,7 +607,7 @@ const ActionMessageText = ({
 
       case 'starGiftUnique': {
         const {
-          isTransferred, isUpgrade, savedId, peerId, fromId, resaleStars, gift,
+          isTransferred, isUpgrade, savedId, peerId, fromId, resaleAmount, gift, transferStars,
         } = action;
 
         const isToChannel = Boolean(peerId && savedId);
@@ -616,14 +616,18 @@ const ActionMessageText = ({
         const fromTitle = (fromPeer && getPeerTitle(lang, fromPeer)) || userFallbackText;
         const fromLink = renderPeerLink(fromPeer?.id, fromTitle, asPreview);
 
-        if (resaleStars) {
+        if (resaleAmount && !transferStars) {
+          const amountText = resaleAmount.currency === TON_CURRENCY_CODE
+            ? formatTonAsText(lang, convertTonFromNanos(resaleAmount.amount))
+            : formatStarsAsText(lang, resaleAmount.amount);
+
           return lang(
             isOutgoing
               ? 'ApiMessageMessageActionResaleStarGiftUniqueOutgoing'
               : 'ApiMessageMessageActionResaleStarGiftUniqueIncoming',
             {
               gift: lang('GiftUnique', { title: gift.title, number: gift.number }),
-              stars: renderStrong(formatStarsAsText(lang, resaleStars)),
+              stars: renderStrong(amountText),
             },
             { withNodes: true },
           );
@@ -671,7 +675,7 @@ const ActionMessageText = ({
           return lang('ActionStarGiftUpgradedUser', { user: senderLink }, { withNodes: true });
         }
 
-        if (isTransferred) {
+        if ((isTransferred || transferStars) && !resaleAmount) {
           if (sender?.id === SERVICE_NOTIFICATIONS_USER_ID) {
             return lang('ActionStarGiftTransferredUnknown');
           }
@@ -780,10 +784,6 @@ const ActionMessageText = ({
       case 'suggestedPostRefund': {
         const { payerInitiated } = action;
 
-        const replyMessage = message.replyInfo?.type === 'message' && message.replyInfo.replyToMsgId
-          ? selectChatMessage(global, chatId, message.replyInfo.replyToMsgId)
-          : undefined;
-
         const postSender = replyMessage ? selectSender(global, replyMessage) : sender;
         const postSenderTitle = postSender && getPeerTitle(lang, postSender);
         const postSenderLink = renderPeerLink(postSender?.id, postSenderTitle || userFallbackText, asPreview);
@@ -818,9 +818,6 @@ const ActionMessageText = ({
         const { isRejected, isBalanceTooLow, rejectComment } = action;
 
         if (isRejected) {
-          const senderTitle = sender && getPeerTitle(lang, sender);
-          const senderLink = renderPeerLink(sender?.id, senderTitle || userFallbackText, asPreview);
-
           return translateWithYou(
             lang,
             rejectComment ? 'SuggestedPostRejectedWithReason' : 'SuggestedPostRejected',
@@ -831,10 +828,6 @@ const ActionMessageText = ({
         }
 
         if (isBalanceTooLow) {
-          const replyMessage = message.replyInfo?.type === 'message' && message.replyInfo.replyToMsgId
-            ? selectChatMessage(global, chatId, message.replyInfo.replyToMsgId)
-            : undefined;
-
           const replyMessageSender = replyMessage ? selectSender(global, replyMessage) : sender;
           const replyPeerTitle = replyMessageSender && getPeerTitle(lang, replyMessageSender);
           const userLink = renderPeerLink(replyMessageSender?.id, replyPeerTitle || userFallbackText, asPreview);
@@ -1019,7 +1012,7 @@ const ActionMessageText = ({
 };
 
 export default memo(withGlobal<OwnProps>(
-  (global, { message }): StateProps => {
+  (global, { message }): Complete<StateProps> => {
     const chat = selectChat(global, message.chatId);
     const sender = selectSender(global, message);
 

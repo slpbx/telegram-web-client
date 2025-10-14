@@ -1,13 +1,14 @@
 import type { FC } from '../../../lib/teact/teact';
 import { memo, useCallback, useMemo } from '../../../lib/teact/teact';
-import { getActions, withGlobal } from '../../../global';
+import { getActions, getGlobal, withGlobal } from '../../../global';
 
 import type { ApiMessage } from '../../../api/types';
 import type { StateProps } from './helpers/createMapStateToProps';
 import { AudioOrigin, LoadMoreDirection } from '../../../types';
 
 import { SLIDE_TRANSITION_DURATION } from '../../../config';
-import { getIsDownloading, getMessageDownloadableMedia } from '../../../global/helpers';
+import { getIsDownloading } from '../../../global/helpers';
+import { selectMessageDownloadableMedia } from '../../../global/selectors/media';
 import { formatMonthAndYear, toYearMonth } from '../../../util/dates/dateFormat';
 import { parseSearchResultKey } from '../../../util/keys/searchResultKey';
 import { MEMO_EMPTY_ARRAY } from '../../../util/memo';
@@ -22,6 +23,7 @@ import Audio from '../../common/Audio';
 import NothingFound from '../../common/NothingFound';
 import InfiniteScroll from '../../ui/InfiniteScroll';
 import Loading from '../../ui/Loading';
+import Transition from '../../ui/Transition.tsx';
 
 export type OwnProps = {
   isVoice?: boolean;
@@ -82,11 +84,12 @@ const AudioResults: FC<OwnProps & StateProps> = ({
 
   function renderList() {
     return foundMessages.map((message, index) => {
+      const global = getGlobal();
       const isFirst = index === 0;
       const shouldDrawDateDivider = isFirst
         || toYearMonth(message.date) !== toYearMonth(foundMessages[index - 1].date);
 
-      const media = getMessageDownloadableMedia(message)!;
+      const media = selectMessageDownloadableMedia(global, message)!;
       return (
         <>
           {shouldDrawDateDivider && (
@@ -124,7 +127,12 @@ const AudioResults: FC<OwnProps & StateProps> = ({
   const canRenderContents = useAsyncRendering([searchQuery], SLIDE_TRANSITION_DURATION) && !isLoading;
 
   return (
-    <div className="LeftSearch--content">
+    <Transition
+      slideClassName="LeftSearch--content"
+      name="fade"
+      activeKey={canRenderContents ? 1 : 0}
+      shouldCleanup
+    >
       <InfiniteScroll
         className="search-content documents-list custom-scroll"
         items={canRenderContents ? foundMessages : undefined}
@@ -134,13 +142,14 @@ const AudioResults: FC<OwnProps & StateProps> = ({
         {!canRenderContents && <Loading />}
         {canRenderContents && (!foundIds || foundIds.length === 0) && (
           <NothingFound
+            withSticker
             text={lang('ChatList.Search.NoResults')}
             description={lang('ChatList.Search.NoResultsDescription')}
           />
         )}
         {canRenderContents && foundIds && foundIds.length > 0 && renderList()}
       </InfiniteScroll>
-    </div>
+    </Transition>
   );
 };
 

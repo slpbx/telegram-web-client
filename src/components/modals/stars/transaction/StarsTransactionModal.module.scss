@@ -32,6 +32,7 @@
 .amount {
   display: flex;
   gap: 0.25rem;
+  align-items: center;
 
   font-size: 1rem;
   font-weight: var(--font-weight-medium);
@@ -69,6 +70,7 @@
 }
 
 .refunded {
+  margin-bottom: 0;
   padding: 0.25em 0.5em;
   border-radius: var(--border-radius-messages-small);
 
@@ -90,7 +92,7 @@
 }
 
 .footer {
-  margin-block: 0.5rem;
+  margin-top: 0.5rem;
   font-size: 0.875rem;
   color: var(--color-text-secondary);
   text-align: center;
@@ -133,4 +135,13 @@
   position: relative;
   width: 150px;
   height: 150px;
+}
+
+.avatar {
+  z-index: 2;
+  transition: transform 0.25s ease-out;
+
+  &:hover {
+    transform: scale(1.1);
+  }
 }

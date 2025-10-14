@@ -12,18 +12,18 @@ import { MediaViewerOrigin } from '../../../types';
 import {
   getIsDownloading,
   getMessageContent,
-  getMessageDownloadableMedia,
 } from '../../../global/helpers';
 import {
   selectActiveDownloads, selectCanAutoLoadMedia, selectCanAutoPlayMedia,
   selectSponsoredMessage,
   selectTheme,
 } from '../../../global/selectors';
+import { selectMessageDownloadableMedia } from '../../../global/selectors/media';
 import { IS_ANDROID } from '../../../util/browser/windowEnvironment';
 import buildClassName from '../../../util/buildClassName';
 import { renderTextWithEntities } from '../../common/helpers/renderTextWithEntities';
 import { preventMessageInputBlur } from '../helpers/preventMessageInputBlur';
-import { calculateMediaDimensions, getMinMediaWidth, MIN_MEDIA_WIDTH_WITH_TEXT } from './helpers/mediaDimensions';
+import { calculateMediaDimensions, getMinMediaWidth, getMinMediaWidthWithText } from './helpers/mediaDimensions';
 
 import useAppLayout from '../../../hooks/useAppLayout';
 import useContextMenuHandlers from '../../../hooks/useContextMenuHandlers';
@@ -116,9 +116,10 @@ const SponsoredMessage: FC<OwnProps & StateProps> = ({
     hideSponsored();
   });
 
+  const content = message && getMessageContent(message);
   const {
-    photo, video,
-  } = message ? getMessageContent(message) : { photo: undefined, video: undefined };
+    photo, video, text,
+  } = content || {};
 
   const isGif = video?.isGif;
   const hasMedia = Boolean(photo || video);
@@ -173,10 +174,10 @@ const SponsoredMessage: FC<OwnProps & StateProps> = ({
       }
 
       if (width) {
-        if (width < MIN_MEDIA_WIDTH_WITH_TEXT) {
+        if (width < getMinMediaWidthWithText(isMobile)) {
           contentWidth = width;
         }
-        calculatedWidth = Math.max(getMinMediaWidth(), width);
+        calculatedWidth = Math.max(getMinMediaWidth(text?.text, isMobile), width);
       }
     }
 
@@ -187,7 +188,7 @@ const SponsoredMessage: FC<OwnProps & StateProps> = ({
     return {
       contentWidth, noMediaCorners, style,
     };
-  }, [photo, video, isMobile]);
+  }, [photo, video, isMobile, text?.text]);
 
   const {
     contentWidth, style,
@@ -337,11 +338,11 @@ const SponsoredMessage: FC<OwnProps & StateProps> = ({
 };
 
 export default memo(withGlobal<OwnProps>(
-  (global, { chatId }): StateProps => {
+  (global, { chatId }): Complete<StateProps> => {
     const message = selectSponsoredMessage(global, chatId);
 
     const activeDownloads = selectActiveDownloads(global);
-    const downloadableMedia = message ? getMessageDownloadableMedia(message) : undefined;
+    const downloadableMedia = message ? selectMessageDownloadableMedia(global, message) : undefined;
     const isDownloading = downloadableMedia && getIsDownloading(activeDownloads, downloadableMedia);
 
     return {

@@ -56,7 +56,7 @@ const PasswordConfirm: FC<OwnProps & StateProps> = ({
         hint={passwordHint}
         description={oldLang('PaymentConfirmationMessage', cardName)}
         placeholder={oldLang('Password')}
-        clearError={clearPaymentError}
+        onClearError={clearPaymentError}
         shouldShowSubmit={false}
         shouldResetValue={isActive}
         isPasswordVisible={shouldShowPassword}
@@ -67,7 +67,7 @@ const PasswordConfirm: FC<OwnProps & StateProps> = ({
   );
 };
 
-export default memo(withGlobal<OwnProps>((global): StateProps => {
+export default memo(withGlobal<OwnProps>((global): Complete<StateProps> => {
   const { payment } = selectTabState(global);
   return {
     errorKey: payment.error?.messageKey,

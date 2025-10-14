@@ -22,6 +22,7 @@ import type {
   ApiPreparedInlineMessage,
   ApiQuickReply,
   ApiReplyInfo,
+  ApiSearchPostsFlood,
   ApiSponsoredMessage,
   ApiSticker,
   ApiStory,
@@ -44,12 +45,13 @@ import {
 import { getEmojiOnlyCountForMessage } from '../../../global/helpers/getEmojiOnlyCountForMessage';
 import { addTimestampEntities } from '../../../util/dates/timestamp';
 import { omitUndefined, pick } from '../../../util/iteratees';
+import { toJSNumber } from '../../../util/numbers';
 import { getServerTime, getServerTimeOffset } from '../../../util/serverTime';
 import { interpolateArray } from '../../../util/waveform';
 import {
   buildApiCurrencyAmount,
 } from '../apiBuilders/payments';
-import { buildPeer } from '../gramjsBuilders';
+import { buildPeer, getEntityTypeById } from '../gramjsBuilders';
 import {
   addDocumentToLocalDb,
   addPhotoToLocalDb,
@@ -186,7 +188,11 @@ export function buildApiMessageWithChatId(
   chatId: string,
   mtpMessage: UniversalMessage,
 ): ApiMessage {
-  const fromId = mtpMessage.fromId ? getApiChatIdFromMtpPeer(mtpMessage.fromId) : undefined;
+  const isPrivateChat = getEntityTypeById(chatId) === 'user';
+  // Server can return `fromId` for our own messages in private chats, but not for incoming ones
+  // This can break grouping logic, as we do not fill `fromId` for `UpdateShortMessage` case
+  const fromId = mtpMessage.fromId && !isPrivateChat
+    ? getApiChatIdFromMtpPeer(mtpMessage.fromId) : undefined;
 
   const isChatWithSelf = !fromId && chatId === currentUserId;
   const forwardInfo = mtpMessage.fwdFrom && buildApiMessageForwardInfo(mtpMessage.fwdFrom, isChatWithSelf);
@@ -213,7 +219,7 @@ export function buildApiMessageWithChatId(
     mtpMessage.media instanceof GramJs.MessageMediaInvoice ? mtpMessage.media.receiptMsgId : undefined,
   ) || {};
   const { mediaUnread: isMediaUnread, postAuthor } = mtpMessage;
-  const groupedId = mtpMessage.groupedId && String(mtpMessage.groupedId);
+  const groupedId = mtpMessage.groupedId !== undefined ? String(mtpMessage.groupedId) : undefined;
   const isInAlbum = Boolean(groupedId) && !(content.document || content.audio || content.sticker);
   const shouldHideKeyboardButtons = mtpMessage.replyMarkup instanceof GramJs.ReplyKeyboardHide;
   const isHideKeyboardSelective = mtpMessage.replyMarkup instanceof GramJs.ReplyKeyboardHide
@@ -221,6 +227,8 @@ export function buildApiMessageWithChatId(
   const isProtected = mtpMessage.noforwards || isInvoiceMedia;
   const isForwardingAllowed = !mtpMessage.noforwards;
   const emojiOnlyCount = getEmojiOnlyCountForMessage(content, groupedId);
+  if (content.text && emojiOnlyCount) content.text.emojiOnlyCount = emojiOnlyCount;
+
   const hasComments = mtpMessage.replies?.comments;
   const senderBoosts = mtpMessage.fromBoostsApplied;
   const factCheck = mtpMessage.factcheck && buildApiFactCheck(mtpMessage.factcheck);
@@ -247,7 +255,6 @@ export function buildApiMessageWithChatId(
     isSilent: mtpMessage.silent,
     isPinned: mtpMessage.pinned,
     reactions: mtpMessage.reactions && buildMessageReactions(mtpMessage.reactions),
-    emojiOnlyCount,
     ...(mtpMessage.replyTo && { replyInfo: buildApiReplyInfo(mtpMessage.replyTo, mtpMessage) }),
     ...(mtpMessage.suggestedPost && { suggestedPostInfo: buildApiSuggestedPost(mtpMessage.suggestedPost) }),
     forwardInfo,
@@ -279,7 +286,7 @@ export function buildApiMessageWithChatId(
     isInvertedMedia,
     isVideoProcessingPending,
     reportDeliveryUntilDate: mtpMessage.reportDeliveryUntilDate,
-    paidMessageStars: mtpMessage.paidMessageStars?.toJSNumber(),
+    paidMessageStars: toJSNumber(mtpMessage.paidMessageStars),
     restrictionReasons,
   };
 }
@@ -448,7 +455,9 @@ export function buildLocalMessage(
   const localPoll = poll && buildNewPoll(poll, localId);
   const localTodo = todo && buildNewTodo(todo);
 
-  const formattedText = text ? addTimestampEntities({ text, entities }) : undefined;
+  const formattedText = text ? addTimestampEntities(
+    { text, entities, emojiOnlyCount: undefined },
+  ) : undefined;
 
   const message = {
     id: localId,
@@ -481,14 +490,10 @@ export function buildLocalMessage(
   } satisfies ApiMessage;
 
   const emojiOnlyCount = getEmojiOnlyCountForMessage(message.content, message.groupedId);
-
-  const finalMessage: ApiMessage = {
-    ...message,
-    ...(emojiOnlyCount && { emojiOnlyCount }),
-  };
+  if (emojiOnlyCount && message.content.text) message.content.text.emojiOnlyCount = emojiOnlyCount;
 
   return {
-    message: finalMessage,
+    message,
     poll: localPoll,
   };
 }
@@ -537,6 +542,7 @@ export function buildLocalForwardedMessage({
   } : content.text;
   const textWithTimestamps = strippedText && addTimestampEntities(strippedText);
   const emojiOnlyCount = getEmojiOnlyCountForMessage(content, groupedId);
+  if (emojiOnlyCount && textWithTimestamps) textWithTimestamps.emojiOnlyCount = emojiOnlyCount;
 
   const updatedContent = {
     ...content,
@@ -567,7 +573,6 @@ export function buildLocalForwardedMessage({
     isInvertedMedia,
     ...(toThreadId && toChat?.isForum && { isTopicReply: true }),
 
-    ...(emojiOnlyCount && { emojiOnlyCount }),
     // Forward info doesn't get added when user forwards own messages and when forwarding audio
     ...(message.chatId !== currentUserId && !isAudio && !noAuthors && {
       forwardInfo: {
@@ -818,5 +823,19 @@ export function buildPreparedInlineMessage(
     result: processInlineBotResult(queryId, result.result),
     peerTypes: result.peerTypes?.map(buildApiInlineQueryPeerType),
     cacheTime: result.cacheTime,
+  };
+}
+
+export function buildApiSearchPostsFlood(
+  searchFlood: GramJs.SearchPostsFlood,
+  query?: string,
+): ApiSearchPostsFlood {
+  return {
+    query,
+    queryIsFree: searchFlood.queryIsFree,
+    totalDaily: searchFlood.totalDaily,
+    remains: searchFlood.remains,
+    waitTill: searchFlood.waitTill,
+    starsAmount: toJSNumber(searchFlood.starsAmount),
   };
 }

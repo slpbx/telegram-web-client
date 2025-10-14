@@ -22,10 +22,10 @@ import {
   selectForwardedSender,
   selectIsChatWithSelf,
   selectIsCurrentUserPremium,
-  selectIsMediaNsfw,
   selectSender,
   selectTabState,
 } from '../../../global/selectors';
+import { selectIsMediaNsfw } from '../../../global/selectors/media';
 import buildClassName from '../../../util/buildClassName';
 import captureEscKeyListener from '../../../util/captureEscKeyListener';
 import { unique } from '../../../util/iteratees';
@@ -310,6 +310,7 @@ const ComposerEmbeddedMessage: FC<OwnProps & StateProps> = ({
           sender={!noAuthors ? sender : undefined}
           composerForwardSenders={forwardSenders}
           customText={customText}
+          noCaptions={noCaptions}
           title={(editingId && !isShowingReply) ? oldLang('EditMessage')
             : noAuthors ? oldLang('HiddenSendersNameDescription') : undefined}
           onClick={handleMessageClick}
@@ -428,7 +429,7 @@ const ComposerEmbeddedMessage: FC<OwnProps & StateProps> = ({
 export default memo(withGlobal<OwnProps>(
   (global, {
     shouldForceShowEditing, chatId, threadId, messageListType,
-  }): StateProps => {
+  }): Complete<StateProps> => {
     const {
       forwardMessages: {
         fromChatId, toChatId, messageIds: forwardMessageIds, noAuthors, noCaptions,

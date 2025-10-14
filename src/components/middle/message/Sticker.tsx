@@ -230,9 +230,9 @@ const Sticker: FC<OwnProps & StateProps> = ({
   );
 };
 
-export default memo(withGlobal<OwnProps>((global): StateProps => {
+export default memo(withGlobal<OwnProps>((global): Complete<StateProps> => {
   const appConfig = global.appConfig;
-  const needsAgeVerification = appConfig?.needAgeVideoVerification;
+  const needsAgeVerification = appConfig.needAgeVideoVerification;
 
   return {
     needsAgeVerification,

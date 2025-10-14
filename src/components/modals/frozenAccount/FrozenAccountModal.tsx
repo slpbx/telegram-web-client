@@ -75,7 +75,6 @@ const FrozenAccountModal = ({
       <div className={styles.footer}>
         <Button
           className={styles.buttonAppeal}
-          size="smaller"
           onClick={handleAppeal}
           noForcedUpperCase
         >
@@ -83,7 +82,6 @@ const FrozenAccountModal = ({
         </Button>
         <Button
           isText
-          size="smaller"
           onClick={handleClose}
           noForcedUpperCase
         >
@@ -128,9 +126,9 @@ const FrozenAccountModal = ({
 };
 
 export default memo(withGlobal<OwnProps>(
-  (global): StateProps => {
-    const freezeUntilDate = global.appConfig?.freezeUntilDate;
-    const freezeAppealUrl = global.appConfig?.freezeAppealUrl;
+  (global): Complete<StateProps> => {
+    const freezeUntilDate = global.appConfig.freezeUntilDate;
+    const freezeAppealUrl = global.appConfig.freezeAppealUrl;
     const botFreezeAppeal = global.botFreezeAppealId ? selectUser(global, global.botFreezeAppealId) : undefined;
     const botFreezeAppealUsername = botFreezeAppeal && getMainUsername(botFreezeAppeal);
 

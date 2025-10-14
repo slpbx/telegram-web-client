@@ -1,22 +1,24 @@
 import type {
-  ElementRef } from '../../lib/teact/teact';
+  ElementRef } from '@teact';
 import {
   memo, useEffect, useMemo, useState,
-} from '../../lib/teact/teact';
+} from '@teact';
 import { getActions, withGlobal } from '../../global';
 
 import type { GlobalState } from '../../global/types';
 import type { FoldersActions } from '../../hooks/reducers/useFoldersReducer';
 import type { ReducerAction } from '../../hooks/useReducer';
-import { LeftColumnContent, SettingsScreens } from '../../types';
+import { type AnimationLevel, LeftColumnContent, SettingsScreens } from '../../types';
 
 import {
   selectCurrentChat, selectIsCurrentUserFrozen, selectIsForumPanelOpen, selectTabState,
 } from '../../global/selectors';
+import { selectSharedSettings } from '../../global/selectors/sharedState';
 import {
-  IS_APP, IS_FIREFOX, IS_MAC_OS, IS_TOUCH_ENV, LAYERS_ANIMATION_NAME,
+  IS_APP, IS_FIREFOX, IS_MAC_OS, IS_TOUCH_ENV,
 } from '../../util/browser/windowEnvironment';
 import captureEscKeyListener from '../../util/captureEscKeyListener';
+import { resolveTransitionName } from '../../util/resolveTransitionName';
 import { captureControlledSwipe } from '../../util/swipeController';
 
 import useFoldersReducer from '../../hooks/reducers/useFoldersReducer';
@@ -44,13 +46,13 @@ type StateProps = {
   searchQuery?: string;
   searchDate?: number;
   isFirstChatFolderActive: boolean;
+  animationLevel: AnimationLevel;
   shouldSkipHistoryAnimations?: boolean;
   currentUserId?: string;
   hasPasscode?: boolean;
   nextFoldersAction?: ReducerAction<FoldersActions>;
   isChatOpen: boolean;
   isAppUpdateAvailable?: boolean;
-  isElectronUpdateAvailable?: boolean;
   isForumPanelOpen?: boolean;
   forumPanelChatId?: string;
   isClosingSearch?: boolean;
@@ -62,6 +64,7 @@ type StateProps = {
 enum ContentType {
   Main,
 
+  // eslint-disable-next-line @typescript-eslint/no-shadow
   Settings,
   Archived,
 
@@ -80,13 +83,13 @@ function LeftColumn({
   searchQuery,
   searchDate,
   isFirstChatFolderActive,
+  animationLevel,
   shouldSkipHistoryAnimations,
   currentUserId,
   hasPasscode,
   nextFoldersAction,
   isChatOpen,
   isAppUpdateAvailable,
-  isElectronUpdateAvailable,
   isForumPanelOpen,
   forumPanelChatId,
   isClosingSearch,
@@ -496,6 +499,7 @@ function LeftColumn({
             currentScreen={settingsScreen}
             foldersState={foldersState}
             foldersDispatch={foldersDispatch}
+            animationLevel={animationLevel}
             shouldSkipTransition={shouldSkipHistoryAnimations}
             onReset={handleReset}
           />
@@ -507,6 +511,7 @@ function LeftColumn({
             isActive={isActive}
             isChannel
             content={contentKey}
+            animationLevel={animationLevel}
             onReset={handleReset}
           />
         );
@@ -516,6 +521,7 @@ function LeftColumn({
             key={lastResetTime}
             isActive={isActive}
             content={contentKey}
+            animationLevel={animationLevel}
             onReset={handleReset}
           />
         );
@@ -532,7 +538,6 @@ function LeftColumn({
             onReset={handleReset}
             shouldSkipTransition={shouldSkipHistoryAnimations}
             isAppUpdateAvailable={isAppUpdateAvailable}
-            isElectronUpdateAvailable={isElectronUpdateAvailable}
             isForumPanelOpen={isForumPanelOpen}
             onTopicSearch={handleTopicSearch}
             isAccountFrozen={isAccountFrozen}
@@ -544,7 +549,7 @@ function LeftColumn({
   return (
     <Transition
       ref={ref}
-      name={shouldSkipHistoryAnimations ? 'none' : LAYERS_ANIMATION_NAME}
+      name={resolveTransitionName('layers', animationLevel, shouldSkipHistoryAnimations)}
       renderCount={RENDER_COUNT}
       activeKey={contentType}
       shouldCleanup
@@ -560,7 +565,7 @@ function LeftColumn({
 }
 
 export default memo(withGlobal<OwnProps>(
-  (global): StateProps => {
+  (global): Complete<StateProps> => {
     const tabState = selectTabState(global);
     const {
       globalSearch: {
@@ -581,10 +586,10 @@ export default memo(withGlobal<OwnProps>(
         hasPasscode,
       },
       isAppUpdateAvailable,
-      isElectronUpdateAvailable,
       archiveSettings,
     } = global;
 
+    const { animationLevel } = selectSharedSettings(global);
     const currentChat = selectCurrentChat(global);
     const isChatOpen = Boolean(currentChat?.id);
     const isForumPanelOpen = selectIsForumPanelOpen(global);
@@ -595,13 +600,13 @@ export default memo(withGlobal<OwnProps>(
       searchQuery: query,
       searchDate: minDate,
       isFirstChatFolderActive: activeChatFolder === 0,
+      animationLevel,
       shouldSkipHistoryAnimations,
       currentUserId,
       hasPasscode,
       nextFoldersAction,
       isChatOpen,
       isAppUpdateAvailable,
-      isElectronUpdateAvailable,
       isForumPanelOpen,
       forumPanelChatId,
       isClosingSearch: tabState.globalSearch.isClosing,

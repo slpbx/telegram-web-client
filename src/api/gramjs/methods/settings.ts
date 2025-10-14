@@ -1,4 +1,3 @@
-import BigInt from 'big-integer';
 import { Api as GramJs } from '../../../lib/gramjs';
 import { RPCError } from '../../../lib/gramjs/errors';
 
@@ -18,11 +17,13 @@ import type {
 
 import {
   ACCEPTABLE_USERNAME_ERRORS,
-  BLOCKED_LIST_LIMIT,
   LANG_PACK,
-  MAX_INT_32,
+  MUTE_INDEFINITE_TIMESTAMP,
+  UNMUTE_TIMESTAMP,
 } from '../../../config';
 import { buildCollectionByKey } from '../../../util/iteratees';
+import { toJSNumber } from '../../../util/numbers';
+import { BLOCKED_LIST_LIMIT } from '../../../limits';
 import { buildAppConfig } from '../apiBuilders/appConfig';
 import { buildApiPhoto, buildPrivacyRules } from '../apiBuilders/common';
 import { buildApiDisallowedGiftsSettings } from '../apiBuilders/gifts';
@@ -30,8 +31,6 @@ import {
   buildApiConfig,
   buildApiCountryList,
   buildApiLanguage,
-  buildApiPeerColors,
-  buildApiPeerNotifySettings,
   buildApiSession,
   buildApiTimezone,
   buildApiWallpaper,
@@ -39,7 +38,12 @@ import {
   buildLangStrings,
   oldBuildLangPack,
 } from '../apiBuilders/misc';
-import { getApiChatIdFromMtpPeer } from '../apiBuilders/peers';
+import {
+  buildApiPeerColors,
+  buildApiPeerNotifySettings,
+  buildApiPeerProfileColors,
+  getApiChatIdFromMtpPeer,
+} from '../apiBuilders/peers';
 import {
   buildDisallowedGiftsSettings,
   buildInputChannel,
@@ -394,7 +398,7 @@ export function updateNotificationSettings(peerType: ApiNotifyPeerType, {
 
   const settings = {
     showPreviews: shouldShowPreviews,
-    muteUntil: isMuted ? MAX_INT_32 : 0,
+    muteUntil: isMuted ? MUTE_INDEFINITE_TIMESTAMP : UNMUTE_TIMESTAMP,
   };
 
   return invokeRequest(new GramJs.account.UpdateNotifySettings({
@@ -630,6 +634,23 @@ export async function fetchPeerColors(hash?: number) {
   };
 }
 
+export async function fetchPeerProfileColors(hash?: number) {
+  const result = await invokeRequest(new GramJs.help.GetPeerProfileColors({
+    hash: hash ?? DEFAULT_PRIMITIVES.INT,
+  }));
+  if (!result) return undefined;
+
+  const colors = buildApiPeerProfileColors(result);
+  if (!colors) return undefined;
+
+  const newHash = result instanceof GramJs.help.PeerColors ? result.hash : undefined;
+
+  return {
+    colors,
+    hash: newHash,
+  };
+}
+
 export async function fetchTimezones(hash?: number) {
   const result = await invokeRequest(new GramJs.help.GetTimezonesList({
     hash: hash ?? DEFAULT_PRIMITIVES.INT,
@@ -667,7 +688,7 @@ export async function fetchGlobalPrivacySettings() {
     shouldArchiveAndMuteNewNonContact: Boolean(result.archiveAndMuteNewNoncontactPeers),
     shouldHideReadMarks: Boolean(result.hideReadMarks),
     shouldNewNonContactPeersRequirePremium: Boolean(result.newNoncontactPeersRequirePremium),
-    nonContactPeersPaidStars: Number(result.noncontactPeersPaidStars),
+    nonContactPeersPaidStars: toJSNumber(result.noncontactPeersPaidStars),
     shouldDisplayGiftsButton: Boolean(result.displayGiftsButton),
     disallowedGifts: result.disallowedGifts && buildApiDisallowedGiftsSettings(result.disallowedGifts),
   };
@@ -707,7 +728,7 @@ export async function updateGlobalPrivacySettings({
     shouldArchiveAndMuteNewNonContact: Boolean(result.archiveAndMuteNewNoncontactPeers),
     shouldHideReadMarks: Boolean(result.hideReadMarks),
     shouldNewNonContactPeersRequirePremium: Boolean(result.newNoncontactPeersRequirePremium),
-    nonContactPeersPaidStars: Number(result.noncontactPeersPaidStars),
+    nonContactPeersPaidStars: toJSNumber(result.noncontactPeersPaidStars),
     shouldDisplayGiftsButton,
     disallowedGifts,
   };

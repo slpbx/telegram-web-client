@@ -274,13 +274,13 @@ const ManageGroupMembers: FC<OwnProps & StateProps> = ({
 };
 
 export default memo(withGlobal<OwnProps>(
-  (global, { chatId }): StateProps => {
+  (global, { chatId }): Complete<StateProps> => {
     const chat = selectChat(global, chatId);
     const { statusesById: userStatusesById } = global.users;
     const { members, adminMembersById, areParticipantsHidden } = selectChatFullInfo(global, chatId) || {};
     const isChannel = chat && isChatChannel(chat);
     const { userIds: localContactIds } = global.contactList || {};
-    const hiddenMembersMinCount = global.appConfig?.hiddenMembersMinCount;
+    const hiddenMembersMinCount = global.appConfig.hiddenMembersMinCount;
 
     const canDeleteMembers = chat && (chat.isCreator || getHasAdminRight(chat, 'banUsers'));
 

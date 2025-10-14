@@ -218,8 +218,8 @@ const PremiumLimitReachedModal: FC<OwnProps & StateProps> = ({
 };
 
 export default memo(withGlobal<OwnProps>(
-  (global, { limit }): StateProps => {
-    const { limits } = global.appConfig || {};
+  (global, { limit }): Complete<StateProps> => {
+    const { limits } = global.appConfig;
     const isPremium = selectIsCurrentUserPremium(global);
 
     return {

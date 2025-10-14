@@ -1,10 +1,10 @@
 import type { MouseEvent as ReactMouseEvent } from 'react';
 import type { ElementRef, FC } from '../../lib/teact/teact';
-import type React from '../../lib/teact/teact';
 import {
   memo, useEffect, useRef,
 } from '../../lib/teact/teact';
 
+import { IS_TAURI } from '../../util/browser/globalEnvironment';
 import buildClassName from '../../util/buildClassName';
 
 import useFlag from '../../hooks/useFlag';
@@ -49,6 +49,7 @@ type OwnProps = {
   onUpClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   onDownClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   onSpinnerClick?: NoneToVoidFunction;
+  onEnter?: NoneToVoidFunction;
 };
 
 const SearchInput: FC<OwnProps> = ({
@@ -80,6 +81,7 @@ const SearchInput: FC<OwnProps> = ({
   onUpClick,
   onDownClick,
   onSpinnerClick,
+  onEnter,
 }) => {
   let inputRef = useRef<HTMLInputElement>();
   if (ref) {
@@ -125,8 +127,22 @@ const SearchInput: FC<OwnProps> = ({
   }
 
   const handleKeyDown = useLastCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (!resultsItemSelector) return;
-    if (e.key === 'ArrowDown' || e.key === 'Enter') {
+    if (e.key === 'Enter') {
+      if (onEnter) {
+        e.preventDefault();
+        onEnter();
+        return;
+      }
+
+      if (resultsItemSelector) {
+        const element = document.querySelector(resultsItemSelector) as HTMLElement;
+        if (element) {
+          element.focus();
+        }
+      }
+    }
+
+    if (resultsItemSelector && e.key === 'ArrowDown') {
       const element = document.querySelector(resultsItemSelector) as HTMLElement;
       if (element) {
         element.focus();
@@ -170,6 +186,7 @@ const SearchInput: FC<OwnProps> = ({
         value={value}
         disabled={disabled}
         autoComplete={autoComplete}
+        spellCheck={IS_TAURI ? false : undefined}
         onChange={handleChange}
         onFocus={handleFocus}
         onBlur={handleBlur}

@@ -9,11 +9,6 @@ import type { ApiNewMediaTodo } from '../../../api/types';
 import type { ApiMessage } from '../../../api/types';
 import type { TabState } from '../../../global/types/tabState';
 
-import {
-  TODO_ITEM_LENGTH_LIMIT,
-  TODO_ITEMS_LIMIT,
-  TODO_TITLE_LENGTH_LIMIT,
-} from '../../../config';
 import { requestMeasure, requestNextMutation } from '../../../lib/fasterdom/fasterdom';
 import { selectChatMessage } from '../../../global/selectors';
 import captureEscKeyListener from '../../../util/captureEscKeyListener';
@@ -40,9 +35,9 @@ export type OwnProps = {
 
 export type StateProps = {
   editingMessage?: ApiMessage;
-  maxItemsCount?: number;
-  maxTitleLength?: number;
-  maxItemLength?: number;
+  maxItemsCount: number;
+  maxTitleLength: number;
+  maxItemLength: number;
 };
 
 type Item = {
@@ -56,9 +51,9 @@ const MAX_OPTION_LENGTH = 100;
 
 const ToDoListModal = ({
   modal,
-  maxItemsCount = TODO_ITEMS_LIMIT,
-  maxTitleLength = TODO_TITLE_LENGTH_LIMIT,
-  maxItemLength = TODO_ITEM_LENGTH_LIMIT,
+  maxItemsCount,
+  maxTitleLength,
+  maxItemLength,
   editingMessage,
   onSend,
   onClear,
@@ -292,13 +287,14 @@ const ToDoListModal = ({
   });
 
   function renderHeader() {
-    const title = isAddTaskMode ? 'TitleAppendToDoList' : editingMessage ? 'TitleEditToDoList' : 'TitleNewToDoList';
+    const modalTitle = isAddTaskMode ? 'TitleAppendToDoList'
+      : editingMessage ? 'TitleEditToDoList' : 'TitleNewToDoList';
     return (
       <div className="modal-header-condensed">
         <Button round color="translucent" size="smaller" ariaLabel={lang('AriaToDoCancel')} onClick={onClear}>
           <Icon name="close" />
         </Button>
-        <div className="modal-title">{lang(title)}</div>
+        <div className="modal-title">{lang(modalTitle)}</div>
         <Button
           color="primary"
           size="smaller"
@@ -345,6 +341,8 @@ const ToDoListModal = ({
     });
   }
 
+  const moreTasksCount = maxItemsCount - items.length - (isAddTaskMode && editingTodo ? editingTodo.items.length : 0);
+
   return (
     <Modal isOpen={isOpen} onClose={onClear} header={renderHeader()} className="ToDoListModal">
       {!isAddTaskMode && (
@@ -374,8 +372,10 @@ const ToDoListModal = ({
       </div>
 
       <div className="items-count-hint">
-        {lang('HintTodoListTasksCount', {
-          count: maxItemsCount - items.length - (isAddTaskMode && editingTodo ? editingTodo.items.length : 0),
+        {lang('HintTodoListTasksCount2', {
+          count: moreTasksCount,
+        }, {
+          pluralValue: moreTasksCount,
         })}
       </div>
 
@@ -402,14 +402,14 @@ const ToDoListModal = ({
 };
 
 export default memo(withGlobal<OwnProps>(
-  (global, { modal }): StateProps => {
+  (global, { modal }): Complete<StateProps> => {
     const { appConfig } = global;
     const editingMessage = modal?.messageId ? selectChatMessage(global, modal.chatId, modal.messageId) : undefined;
     return {
       editingMessage,
-      maxItemsCount: appConfig?.todoItemsMax,
-      maxTitleLength: appConfig?.todoTitleLengthMax,
-      maxItemLength: appConfig?.todoItemLengthMax,
+      maxItemsCount: appConfig.todoItemsMax,
+      maxTitleLength: appConfig.todoTitleLengthMax,
+      maxItemLength: appConfig.todoItemLengthMax,
     };
   },
 )(ToDoListModal));

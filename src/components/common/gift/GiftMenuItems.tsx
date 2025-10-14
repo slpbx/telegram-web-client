@@ -6,6 +6,7 @@ import type {
 } from '../../../api/types';
 
 import { DEFAULT_STATUS_ICON_ID, TME_LINK_PREFIX } from '../../../config';
+import { STARS_CURRENCY_CODE } from '../../../config';
 import { copyTextToClipboard } from '../../../util/clipboard';
 import { formatDateAtTime } from '../../../util/dates/dateFormat';
 import { getServerTime } from '../../../util/serverTime';
@@ -69,7 +70,7 @@ const GiftMenuItems = ({
   const isGiftUnique = gift && gift.type === 'starGiftUnique';
   const canTakeOff = isGiftUnique && currenUniqueEmojiStatusSlug === gift.slug;
   const canWear = userCollectibleStatus && !canTakeOff;
-  const giftResalePrice = isGiftUnique ? gift.resellPriceInStars : undefined;
+  const giftResalePrice = isGiftUnique ? gift.resellPrice : undefined;
 
   const hasPinOptions = canManage && savedGift && !savedGift.isUnsaved && isGiftUnique;
 
@@ -124,7 +125,9 @@ const GiftMenuItems = ({
   const handleUnsell = useLastCallback(() => {
     if (!savedGift || savedGift.gift.type !== 'starGiftUnique' || !savedGift.inputGift) return;
     closeGiftInfoModal();
-    updateStarGiftPrice({ gift: savedGift.inputGift, price: 0 });
+    updateStarGiftPrice({ gift: savedGift.inputGift, price: {
+      currency: STARS_CURRENCY_CODE, amount: 0, nanos: 0,
+    } });
     showNotification({
       icon: 'unlist-outline',
       message: {

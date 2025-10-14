@@ -18,7 +18,6 @@ import type {
   ApiChatFullInfo,
   ApiChatMember,
   ApiDraft,
-  ApiPeerSettings,
   ApiTypingStatus,
 } from './chats';
 import type {
@@ -33,6 +32,7 @@ import type {
   ApiReactions,
   ApiStickerSet,
   ApiThreadInfo,
+  ApiWebPage,
   BoughtPaidMedia,
 } from './messages';
 import type {
@@ -42,11 +42,12 @@ import type {
   ApiPeerNotifySettings,
   ApiSessionData,
 } from './misc';
+import type { ApiEmojiStatusType, ApiPeerSettings } from './peers';
 import type { ApiPrivacyKey, LangPackStringValue, PrivacyVisibility } from './settings';
 import type { ApiTypeCurrencyAmount } from './stars';
 import type { ApiStealthMode, ApiStory, ApiStorySkipped } from './stories';
 import type {
-  ApiEmojiStatusType, ApiUser, ApiUserFullInfo, ApiUserStatus,
+  ApiUser, ApiUserFullInfo, ApiUserStatus,
 } from './users';
 
 export type ApiUpdateReady = {
@@ -215,6 +216,7 @@ export type ApiUpdateNewScheduledMessage = {
   message: ApiMessage;
   wasDrafted?: boolean;
   poll?: ApiPoll;
+  webPage?: ApiWebPage;
 };
 
 export type ApiUpdateNewMessage = {
@@ -225,6 +227,7 @@ export type ApiUpdateNewMessage = {
   shouldForceReply?: boolean;
   wasDrafted?: boolean;
   poll?: ApiPoll;
+  webPage?: ApiWebPage;
 };
 
 export type ApiUpdateMessage = {
@@ -233,6 +236,7 @@ export type ApiUpdateMessage = {
   id: number;
   message: Partial<ApiMessage>;
   poll?: ApiPoll;
+  webPage?: ApiWebPage;
   shouldForceReply?: boolean;
   isFromNew?: true;
 };
@@ -243,6 +247,7 @@ export type ApiUpdateScheduledMessage = {
   id: number;
   message: Partial<ApiMessage>;
   poll?: ApiPoll;
+  webPage?: ApiWebPage;
   isFromNew?: true;
 };
 
@@ -251,6 +256,7 @@ export type ApiUpdateQuickReplyMessage = {
   id: number;
   message: Partial<ApiMessage>;
   poll?: ApiPoll;
+  webPage?: ApiWebPage;
 };
 
 export type ApiUpdateDeleteQuickReplyMessages = {
@@ -287,6 +293,7 @@ export type ApiUpdateScheduledMessageSendSucceeded = {
   localId: number;
   message: ApiMessage;
   poll?: ApiPoll;
+  webPage?: ApiWebPage;
 };
 
 export type ApiUpdateMessageSendSucceeded = {
@@ -295,6 +302,7 @@ export type ApiUpdateMessageSendSucceeded = {
   localId: number;
   message: ApiMessage;
   poll?: ApiPoll;
+  webPage?: ApiWebPage;
 };
 
 export type ApiUpdateVideoProcessingPending = {
@@ -306,6 +314,13 @@ export type ApiUpdateVideoProcessingPending = {
 
 export type ApiUpdateMessageSendFailed = {
   '@type': 'updateMessageSendFailed';
+  chatId: string;
+  localId: number;
+  error: string;
+};
+
+export type ApiUpdateScheduledMessageSendFailed = {
+  '@type': 'updateScheduledMessageSendFailed';
   chatId: string;
   localId: number;
   error: string;
@@ -815,6 +830,7 @@ export type ApiUpdateEntities = {
   chats?: Record<string, ApiChat>;
   threadInfos?: ApiThreadInfo[];
   polls?: ApiPoll[];
+  webPages?: ApiWebPage[];
 };
 
 export type ApiUpdatePaidReactionPrivacy = {
@@ -840,6 +856,11 @@ export type ApiUpdateBotCommands = {
   commands?: ApiBotCommand[];
 };
 
+export type ApiUpdateWebPage = {
+  '@type': 'updateWebPage';
+  webPage: ApiWebPage;
+};
+
 export type ApiUpdate = (
   ApiUpdateReady | ApiUpdateSession | ApiUpdateWebAuthTokenFailed | ApiUpdateRequestUserUpdate |
   ApiUpdateAuthorizationState | ApiUpdateAuthorizationError | ApiUpdateConnectionState | ApiUpdateCurrentUser |
@@ -851,13 +872,13 @@ export type ApiUpdate = (
   ApiDeleteParticipantHistory | ApiUpdateMessageSendSucceeded | ApiUpdateMessageSendFailed |
   ApiUpdateServiceNotification | ApiDeleteContact | ApiUpdateUser | ApiUpdateUserStatus |
   ApiUpdateUserFullInfo | ApiUpdateVideoProcessingPending | ApiUpdatePeerSettings |
-  ApiUpdateAvatar | ApiUpdateMessageImage | ApiUpdateDraftMessage |
+  ApiUpdateAvatar | ApiUpdateMessageImage | ApiUpdateDraftMessage | ApiUpdateScheduledMessageSendFailed |
   ApiUpdateError | ApiUpdateResetContacts | ApiUpdateStartEmojiInteraction |
   ApiUpdateFavoriteStickers | ApiUpdateStickerSet | ApiUpdateStickerSets | ApiUpdateStickerSetsOrder |
   ApiUpdateRecentStickers | ApiUpdateSavedGifs | ApiUpdateNewScheduledMessage | ApiUpdateMoveStickerSetToTop |
   ApiUpdateScheduledMessageSendSucceeded | ApiUpdateScheduledMessage | ApiUpdateStarPaymentStateCompleted |
   ApiUpdateDeleteScheduledMessages | ApiUpdateResetMessages | ApiUpdateMessageTranslations |
-  ApiUpdateFailedMessageTranslations |
+  ApiUpdateFailedMessageTranslations | ApiUpdateWebPage |
   ApiUpdateTwoFaError | ApiUpdateTwoFaStateWaitCode | ApiUpdateWebViewResultSent |
   ApiUpdateDefaultNotifySettings | ApiUpdatePeerNotifySettings | ApiUpdatePeerBlocked | ApiUpdatePrivacy |
   ApiUpdateServerTimeOffset | ApiUpdateMessageReactions | ApiUpdateSavedReactionTags |

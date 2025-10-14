@@ -1,9 +1,9 @@
-import BigInt from 'big-integer';
 import { Api as GramJs } from '../../../lib/gramjs';
 
 import type { ApiEmojiStatusType, ApiPeer, ApiUser,
 } from '../../types';
 
+import { toJSNumber } from '../../../util/numbers';
 import { buildApiChatFromPreview } from '../apiBuilders/chats';
 import { buildApiPhoto } from '../apiBuilders/common';
 import { buildApiPeerId } from '../apiBuilders/peers';
@@ -67,6 +67,7 @@ export async function fetchFullUser({
 
   const fullInfo = buildApiUserFullInfo(result);
   const users = result.users.map(buildApiUser).filter(Boolean);
+  const userStatusesById = buildApiUserStatuses(result.users);
   const chats = result.chats.map((c) => buildApiChatFromPreview(c)).filter(Boolean);
 
   const user = users.find(({ id: userId }) => userId === id)!;
@@ -83,10 +84,11 @@ export async function fetchFullUser({
     fullInfo,
     users,
     chats,
+    userStatusesById,
   };
 }
 
-export async function fetchCommonChats(user: ApiUser, maxId?: string) {
+export async function fetchCommonChats({ user, maxId }: { user: ApiUser; maxId?: string }) {
   const result = await invokeRequest(new GramJs.messages.GetCommonChats({
     userId: buildInputUser(user.id, user.accessHash),
     maxId: maxId
@@ -110,12 +112,13 @@ export async function fetchPaidMessagesStarsAmount(user: ApiUser) {
     id: [buildInputUser(user.id, user.accessHash)],
   }));
 
-  if (!result) {
+  if (!result?.[0]) {
     return undefined;
   }
+  const requirement = result[0];
 
-  if (result[0] instanceof GramJs.RequirementToContactPaidMessages) {
-    return result[0].starsAmount?.toJSNumber();
+  if (requirement instanceof GramJs.RequirementToContactPaidMessages) {
+    return toJSNumber(requirement.starsAmount);
   }
 
   return undefined;
@@ -147,7 +150,7 @@ export async function fetchTopUsers() {
 }
 
 export async function fetchContactList() {
-  const result = await invokeRequest(new GramJs.contacts.GetContacts({ hash: BigInt('0') }));
+  const result = await invokeRequest(new GramJs.contacts.GetContacts({ hash: DEFAULT_PRIMITIVES.BIGINT }));
   if (!result || result instanceof GramJs.contacts.ContactsNotModified) {
     return undefined;
   }
@@ -222,7 +225,7 @@ export function updateContact({
     firstName,
     lastName,
     phone: phoneNumber,
-    ...(shouldSharePhoneNumber && { addPhonePrivacyException: shouldSharePhoneNumber }),
+    addPhonePrivacyException: shouldSharePhoneNumber || undefined,
   }), {
     shouldReturnTrue: true,
   });
@@ -271,7 +274,7 @@ export async function fetchPaidMessagesRevenue({ user }: {
     userId: buildInputUser(user.id, user.accessHash),
   }));
   if (!result) return undefined;
-  return result.starsAmount.toJSNumber();
+  return toJSNumber(result.starsAmount);
 }
 
 export async function fetchProfilePhotos({
@@ -292,7 +295,7 @@ export async function fetchProfilePhotos({
       userId: buildInputUser(id, accessHash),
       limit,
       offset,
-      maxId: BigInt('0'),
+      maxId: DEFAULT_PRIMITIVES.BIGINT,
     }));
 
     if (!result) {

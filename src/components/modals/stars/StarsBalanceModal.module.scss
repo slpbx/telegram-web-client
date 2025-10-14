@@ -71,9 +71,20 @@
   background-color: var(--color-background-secondary);
 }
 
+.hint {
+  padding-block: 0.5rem;
+  padding-inline: 1.5rem;
+}
+
 .topUpButton,
 .tonBalanceContainer {
   margin-bottom: 0.5rem;
+}
+
+.tonBalanceContainer {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .tonBalance {
@@ -87,12 +98,14 @@
 }
 
 .tonIconBalance {
+  margin-right: 0.25rem;
   color: var(--color-primary);
 }
 
 .tonInUsd {
   font-size: 1rem;
   color: var(--color-text-secondary);
+  text-align: center;
 }
 
 .tonIconLogo {
@@ -213,8 +226,10 @@
 .starButton {
   grid-column: 1/-1;
   gap: 0.5rem;
+  align-self: stretch;
+
   margin-top: 0.5rem;
-  font-weight: var(--font-weight-medium);
+  margin-inline: 0.5rem;
 }
 
 .paymentContent {

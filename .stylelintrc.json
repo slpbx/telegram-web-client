@@ -14,6 +14,7 @@
     "stylelint-high-performance-animation",
     "stylelint-group-selectors",
     "stylelint-selector-tag-no-without-class",
+    "stylelint-plugin-use-baseline",
     "@mytonwallet/stylelint-whole-pixel"
   ],
   "rules": {
@@ -41,10 +42,34 @@
     "selector-pseudo-class-no-unknown": [
       true,
       {
-        "ignorePseudoClasses": ["global"]
+        "ignorePseudoClasses": ["global", "local"]
       }
     ],
     "plugin/selector-tag-no-without-class": ["/^(?!body|html)([^_-]*)$/", { "severity": "warning" }],
+    "plugin/use-baseline": [true, {
+      "severity": "warning",
+      "ignoreSelectors": [
+        "nesting",
+        "dir",
+        "selection",
+        "view-transition",
+        "view-transition-group",
+        "view-transition-image-pair",
+        "view-transition-old",
+        "view-transition-new"
+      ],
+      "ignoreProperties": [
+        "text-wrap",
+        "outline",
+        "backdrop-filter",
+        "user-select",
+        "scrollbar-gutter",
+        "scrollbar-width",
+        "scrollbar-color",
+        "box-decoration-break",
+        "offset-anchor"
+      ]
+    }],
     "@stylistic/number-leading-zero": "always",
     "@stylistic/string-quotes": null,
     "@stylistic/color-hex-case": null,

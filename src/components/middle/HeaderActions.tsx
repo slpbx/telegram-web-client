@@ -35,6 +35,7 @@ import {
 } from '../../global/selectors';
 import { ARE_CALLS_SUPPORTED, IS_APP } from '../../util/browser/windowEnvironment';
 import { isUserId } from '../../util/entities/ids';
+import focusNoScroll from '../../util/focusNoScroll';
 
 import { useHotkeys } from '../../hooks/useHotkeys';
 import useLastCallback from '../../hooks/useLastCallback';
@@ -88,9 +89,6 @@ interface StateProps {
   doNotTranslate: string[];
   isAccountFrozen?: boolean;
 }
-
-// Chrome breaks layout when focusing input during transition
-const SEARCH_FOCUS_DELAY_MS = 320;
 
 const HeaderActions: FC<OwnProps & StateProps> = ({
   chatId,
@@ -207,16 +205,13 @@ const HeaderActions: FC<OwnProps & StateProps> = ({
 
     openMiddleSearch();
 
-    if (isMobile) {
-      // iOS requires synchronous focus on user event.
-      setFocusInSearchInput();
-    } else if (noAnimation) {
+    if (noAnimation) {
       // The second RAF is necessary because Teact must update the state and render the async component
       requestMeasure(() => {
         requestNextMutation(setFocusInSearchInput);
       });
     } else {
-      setTimeout(setFocusInSearchInput, SEARCH_FOCUS_DELAY_MS);
+      setFocusInSearchInput();
     }
   });
 
@@ -331,7 +326,7 @@ const HeaderActions: FC<OwnProps & StateProps> = ({
         <>
           {canExpandActions && !shouldSendJoinRequest && (canSubscribe || shouldJoinToSend) && (
             <Button
-              size="tiny"
+              size="smaller"
               ripple
               fluid
               onClick={handleSubscribeClick}
@@ -341,7 +336,7 @@ const HeaderActions: FC<OwnProps & StateProps> = ({
           )}
           {canExpandActions && shouldSendJoinRequest && (
             <Button
-              size="tiny"
+              size="smaller"
               ripple
               fluid
               onClick={handleSubscribeClick}
@@ -351,7 +346,7 @@ const HeaderActions: FC<OwnProps & StateProps> = ({
           )}
           {canExpandActions && canStartBot && (
             <Button
-              size="tiny"
+              size="smaller"
               ripple
               fluid
               onClick={handleStartBot}
@@ -371,7 +366,7 @@ const HeaderActions: FC<OwnProps & StateProps> = ({
           )}
           {canExpandActions && canUnblock && (
             <Button
-              size="tiny"
+              size="smaller"
               ripple
               fluid
               onClick={handleUnblock}
@@ -469,7 +464,7 @@ const HeaderActions: FC<OwnProps & StateProps> = ({
 export default memo(withGlobal<OwnProps>(
   (global, {
     chatId, threadId, messageListType, isMobile,
-  }): StateProps => {
+  }): Complete<StateProps> => {
     const chat = selectChat(global, chatId);
     const isChannel = Boolean(chat && isChatChannel(chat));
     const isSuperGroup = Boolean(chat && isChatSuperGroup(chat));
@@ -485,7 +480,7 @@ export default memo(withGlobal<OwnProps>(
         language,
         translationLanguage,
         doNotTranslate,
-      };
+      } as Complete<StateProps>;
     }
 
     const bot = selectBot(global, chatId);
@@ -566,5 +561,7 @@ export default memo(withGlobal<OwnProps>(
 
 function setFocusInSearchInput() {
   const searchInput = document.querySelector<HTMLInputElement>('#MiddleSearch input');
-  searchInput?.focus();
+  if (searchInput) {
+    focusNoScroll(searchInput);
+  }
 }

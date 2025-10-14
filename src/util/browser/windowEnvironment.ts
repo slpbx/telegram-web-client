@@ -1,4 +1,5 @@
 import { IS_TEST, PRODUCTION_HOSTNAME } from '../../config';
+import { IS_TAURI } from './globalEnvironment';
 
 export function getPlatform() {
   const { userAgent, platform } = window.navigator;
@@ -36,7 +37,6 @@ export const IS_YA_BROWSER = navigator.userAgent.includes('YaBrowser');
 export const IS_FIREFOX = navigator.userAgent.toLowerCase().includes('firefox')
   || navigator.userAgent.toLowerCase().includes('iceweasel')
   || navigator.userAgent.toLowerCase().includes('icecat');
-export const IS_ELECTRON = Boolean(window.electron);
 
 export const MouseButton = {
   Main: 0,
@@ -52,7 +52,7 @@ export const IS_PWA = (
   || document.referrer.includes('android-app://')
 );
 
-export const IS_APP = IS_PWA || IS_ELECTRON;
+export const IS_APP = IS_PWA || IS_TAURI;
 
 export const IS_TOUCH_ENV = window.matchMedia('(pointer: coarse)').matches;
 export const IS_VOICE_RECORDING_SUPPORTED = Boolean(
@@ -76,7 +76,6 @@ export const IS_CANVAS_FILTER_SUPPORTED = (
 );
 export const IS_REQUEST_FULLSCREEN_SUPPORTED = 'requestFullscreen' in document.createElement('div');
 export const ARE_CALLS_SUPPORTED = true;
-export const LAYERS_ANIMATION_NAME = IS_ANDROID ? 'slideFade' : IS_IOS ? 'slideLayers' : 'pushSlide';
 
 export const IS_WAVE_TRANSFORM_SUPPORTED = !IS_MOBILE
   && !IS_FIREFOX // https://bugzilla.mozilla.org/show_bug.cgi?id=1961378
@@ -110,7 +109,7 @@ export const IS_BACKDROP_BLUR_SUPPORTED = CSS.supports('backdrop-filter: blur()'
 export const IS_INSTALL_PROMPT_SUPPORTED = 'onbeforeinstallprompt' in window;
 export const IS_OPEN_IN_NEW_TAB_SUPPORTED = !(IS_PWA && IS_MOBILE);
 export const IS_TRANSLATION_SUPPORTED = !IS_TEST;
-export const IS_VIEW_TRANSITION_SUPPORTED = 'ViewTransition' in window;
+export const IS_VIEW_TRANSITION_SUPPORTED = CSS.supports('view-transition-class: test');
 
 export const MESSAGE_LIST_SENSITIVE_AREA = 750;
 

@@ -930,7 +930,7 @@ export default memo(withGlobal<OwnProps>((global, {
   peerId,
   storyId,
   isDeleteModalOpen,
-}): StateProps => {
+}): Complete<StateProps> => {
   const { appConfig } = global;
   const user = selectUser(global, peerId);
   const chat = selectChat(global, peerId);
@@ -981,8 +981,8 @@ export default memo(withGlobal<OwnProps>((global, {
     isMuted,
     isCurrentUserPremium: selectIsCurrentUserPremium(global),
     shouldForcePause,
-    storyChangelogUserId: appConfig!.storyChangelogUserId,
-    viewersExpirePeriod: appConfig!.storyExpirePeriod + appConfig!.storyViewersExpirePeriod,
+    storyChangelogUserId: appConfig.storyChangelogUserId,
+    viewersExpirePeriod: appConfig.storyViewersExpirePeriod,
     isChatExist: Boolean(chat),
     arePeerSettingsLoaded: Boolean(userFullInfo?.settings),
     stealthMode: global.stories.stealthMode,

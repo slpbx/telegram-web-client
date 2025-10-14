@@ -1,4 +1,3 @@
-import type { FC } from '../../../lib/teact/teact';
 import {
   memo, useMemo,
 } from '../../../lib/teact/teact';
@@ -12,14 +11,17 @@ import type {
   ApiUserFullInfo,
   ApiUsername,
 } from '../../../api/types';
-import type { BotAppPermissions } from '../../../types';
 import { MAIN_THREAD_ID } from '../../../api/types';
+import { type BotAppPermissions, ManagementScreens } from '../../../types';
 
-import { FRAGMENT_PHONE_CODE, FRAGMENT_PHONE_LENGTH } from '../../../config';
+import {
+  FRAGMENT_PHONE_CODE, FRAGMENT_PHONE_LENGTH, MUTE_INDEFINITE_TIMESTAMP, UNMUTE_TIMESTAMP,
+} from '../../../config';
 import {
   buildStaticMapHash,
   getChatLink,
   getHasAdminRight,
+  isChatAdmin,
   isChatChannel,
   isUserRightBanned,
 } from '../../../global/helpers';
@@ -36,6 +38,7 @@ import {
   selectUser,
   selectUserFullInfo,
 } from '../../../global/selectors';
+import buildClassName from '../../../util/buildClassName';
 import { copyTextToClipboard } from '../../../util/clipboard';
 import { formatPhoneNumberWithCode } from '../../../util/phoneNumber';
 import stopEvent from '../../../util/stopEvent';
@@ -65,8 +68,11 @@ import styles from './ChatExtra.module.scss';
 
 type OwnProps = {
   chatOrUserId: string;
+  isOwnProfile?: boolean;
   isSavedDialog?: boolean;
   isInSettings?: boolean;
+  className?: string;
+  style?: string;
 };
 
 type StateProps = {
@@ -86,6 +92,7 @@ type StateProps = {
   isBotCanManageEmojiStatus?: boolean;
   botAppPermissions?: BotAppPermissions;
   botVerification?: ApiBotVerification;
+  canViewSubscribers?: boolean;
 };
 
 const DEFAULT_MAP_CONFIG = {
@@ -96,12 +103,12 @@ const DEFAULT_MAP_CONFIG = {
 
 const BOT_VERIFICATION_ICON_SIZE = 16;
 
-const ChatExtra: FC<OwnProps & StateProps> = ({
+const ChatExtra = ({
   chatOrUserId,
   user,
   chat,
   userFullInfo,
-  isInSettings,
+  isOwnProfile,
   canInviteUsers,
   isMuted,
   phoneCodeList,
@@ -115,7 +122,11 @@ const ChatExtra: FC<OwnProps & StateProps> = ({
   isBotCanManageEmojiStatus,
   botAppPermissions,
   botVerification,
-}) => {
+  className,
+  style,
+  isInSettings,
+  canViewSubscribers,
+}: OwnProps & StateProps) => {
   const {
     showNotification,
     updateChatMutedState,
@@ -127,6 +138,7 @@ const ChatExtra: FC<OwnProps & StateProps> = ({
     requestMainWebView,
     toggleUserEmojiStatusPermission,
     toggleUserLocationPermission,
+    requestNextManagementScreen,
   } = getActions();
 
   const {
@@ -202,15 +214,16 @@ const ChatExtra: FC<OwnProps & StateProps> = ({
     openMapModal({ geoPoint: geo, zoom });
   });
 
-  const handleNotificationChange = useLastCallback(() => {
+  const handleToggleNotifications = useLastCallback(() => {
+    const mutedUntil = isMuted ? UNMUTE_TIMESTAMP : MUTE_INDEFINITE_TIMESTAMP;
     if (isTopicInfo) {
       updateTopicMutedState({
         chatId: chatId!,
         topicId: topicId!,
-        isMuted: !isMuted,
+        mutedUntil,
       });
     } else {
-      updateChatMutedState({ chatId: chatId!, isMuted: !isMuted });
+      updateChatMutedState({ chatId: chatId!, mutedUntil });
     }
   });
 
@@ -251,6 +264,10 @@ const ChatExtra: FC<OwnProps & StateProps> = ({
     copy(formatUsername(username.username, isChat), oldLang(isChat ? 'Link' : 'Username'));
   });
 
+  const handleOpenSubscribers = useLastCallback(() => {
+    requestNextManagementScreen({ screen: ManagementScreens.ChannelSubscribers });
+  });
+
   const handleOpenApp = useLastCallback(() => {
     const botId = user?.id;
     if (!botId) {
@@ -275,7 +292,7 @@ const ChatExtra: FC<OwnProps & StateProps> = ({
   }, { withNodes: true });
 
   const isRestricted = chatId ? selectIsChatRestricted(getGlobal(), chatId) : false;
-  if (isRestricted || (isSelf && !isInSettings)) {
+  if (isRestricted || (isSelf && !isOwnProfile && !isInSettings)) {
     return undefined;
   }
 
@@ -335,7 +352,7 @@ const ChatExtra: FC<OwnProps & StateProps> = ({
   }
 
   return (
-    <div className="ChatExtra">
+    <div className={buildClassName('ChatExtra', className)} style={style}>
       {personalChannel && (
         <div className={styles.personalChannel}>
           <h3 className={styles.personalChannelTitle}>{oldLang('ProfileChannel')}</h3>
@@ -405,7 +422,6 @@ const ChatExtra: FC<OwnProps & StateProps> = ({
         >
           <Button
             className={styles.openAppButton}
-            size="smaller"
             onClick={handleOpenApp}
           >
             {oldLang('ProfileBotOpenApp')}
@@ -415,12 +431,12 @@ const ChatExtra: FC<OwnProps & StateProps> = ({
           </div>
         </ListItem>
       )}
-      {!isInSettings && (
-        <ListItem icon="unmute" narrow ripple onClick={handleNotificationChange}>
-          <span>{oldLang('Notifications')}</span>
+      {!isOwnProfile && !isInSettings && (
+        <ListItem icon={isMuted ? 'mute' : 'unmute'} narrow ripple onClick={handleToggleNotifications}>
+          <span>{lang('Notifications')}</span>
           <Switcher
             id="group-notifications"
-            label={userId ? 'Toggle User Notifications' : 'Toggle Chat Notifications'}
+            label={lang(userId ? 'AriaToggleUserNotifications' : 'AriaToggleChatNotifications')}
             checked={!isMuted}
             inactive
           />
@@ -442,7 +458,7 @@ const ChatExtra: FC<OwnProps & StateProps> = ({
           <span className="subtitle">{oldLang('BusinessProfileLocation')}</span>
         </ListItem>
       )}
-      {hasSavedMessages && !isInSettings && (
+      {hasSavedMessages && !isOwnProfile && !isInSettings && (
         <ListItem icon="saved-messages" narrow ripple onClick={handleOpenSavedDialog}>
           <span>{oldLang('SavedMessagesTab')}</span>
         </ListItem>
@@ -467,6 +483,12 @@ const ChatExtra: FC<OwnProps & StateProps> = ({
           />
         </ListItem>
       )}
+      {canViewSubscribers && (
+        <ListItem icon="group" narrow multiline ripple onClick={handleOpenSubscribers}>
+          <div className="title">{lang('ProfileItemSubscribers')}</div>
+          <span className="subtitle">{lang.number(chat?.membersCount || 0)}</span>
+        </ListItem>
+      )}
       {botVerification && (
         <div className={styles.botVerificationSection}>
           <CustomEmoji
@@ -482,7 +504,7 @@ const ChatExtra: FC<OwnProps & StateProps> = ({
 };
 
 export default memo(withGlobal<OwnProps>(
-  (global, { chatOrUserId, isSavedDialog }): StateProps => {
+  (global, { chatOrUserId, isSavedDialog }): Complete<StateProps> => {
     const { countryList: { phoneCodes: phoneCodeList } } = global;
 
     const chat = chatOrUserId ? selectChat(global, chatOrUserId) : undefined;
@@ -501,6 +523,7 @@ export default memo(withGlobal<OwnProps>(
     const chatInviteLink = chatFullInfo?.inviteLink;
     const description = userFullInfo?.bio || chatFullInfo?.about;
 
+    const canViewSubscribers = chat && isChatChannel(chat) && isChatAdmin(chat);
     const canInviteUsers = chat && !user && (
       (!isChatChannel(chat) && !isUserRightBanned(chat, 'inviteUsers'))
       || getHasAdminRight(chat, 'inviteUsers')
@@ -533,6 +556,7 @@ export default memo(withGlobal<OwnProps>(
       hasMainMiniApp,
       isBotCanManageEmojiStatus: userFullInfo?.isBotCanManageEmojiStatus,
       botVerification,
+      canViewSubscribers,
     };
   },
 )(ChatExtra));

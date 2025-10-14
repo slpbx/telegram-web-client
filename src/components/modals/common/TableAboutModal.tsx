@@ -61,7 +61,7 @@ const TableAboutModal = ({
               icon={icon}
               iconClassName={styles.listItemIcon}
             >
-              <span className="title">{title}</span>
+              <span className={buildClassName('title', styles.title)}>{title}</span>
               <span className="subtitle">{subtitle}</span>
             </ListItem>
           );
@@ -70,7 +70,7 @@ const TableAboutModal = ({
       {withSeparator && <Separator className={styles.separator} />}
       {footer}
       {buttonText && (
-        <Button size="smaller" onClick={onButtonClick || onClose}>{buttonText}</Button>
+        <Button onClick={onButtonClick || onClose}>{buttonText}</Button>
       )}
     </Modal>
   );

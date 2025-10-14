@@ -25,23 +25,23 @@ export function addMessageToLocalDb(message: GramJs.TypeMessage | GramJs.TypeSpo
   }
 }
 
+export function addWebPageMediaToLocalDb(webPage: GramJs.TypeWebPage) {
+  if (webPage instanceof GramJs.WebPage) {
+    if (webPage.document) {
+      const document = addWebPageRepairInfo(webPage.document, webPage);
+      addDocumentToLocalDb(document);
+    }
+    if (webPage.photo) {
+      const photo = addWebPageRepairInfo(webPage.photo, webPage);
+      addPhotoToLocalDb(photo);
+    }
+  }
+}
+
 export function addMediaToLocalDb(media: GramJs.TypeMessageMedia, context?: MediaRepairContext) {
   if (media instanceof GramJs.MessageMediaDocument && media.document) {
     const document = addMessageRepairInfo(media.document, context);
     addDocumentToLocalDb(document);
-  }
-
-  if (media instanceof GramJs.MessageMediaWebPage
-    && media.webpage instanceof GramJs.WebPage
-  ) {
-    if (media.webpage.document) {
-      const document = addMessageRepairInfo(media.webpage.document, context);
-      addDocumentToLocalDb(document);
-    }
-    if (media.webpage.photo) {
-      const photo = addMessageRepairInfo(media.webpage.photo, context);
-      addPhotoToLocalDb(photo);
-    }
   }
 
   if (media instanceof GramJs.MessageMediaGame) {
@@ -142,6 +142,22 @@ export function addMessageRepairInfo<T extends GramJs.TypeDocument | GramJs.Type
     type: 'message',
     peerId: getApiChatIdFromMtpPeer(context.peerId),
     id: context.id,
+  };
+  return repairableMedia;
+}
+
+export function addWebPageRepairInfo<T extends GramJs.TypeDocument | GramJs.TypeWebDocument | GramJs.TypePhoto>(
+  media: T, webPage?: GramJs.TypeWebPage,
+): T & RepairInfo {
+  if (!(webPage instanceof GramJs.WebPage)) return media;
+  if (!(media instanceof GramJs.Document || media instanceof GramJs.Photo || media instanceof GramJs.WebDocument)) {
+    return media;
+  }
+
+  const repairableMedia = media as T & RepairInfo;
+  repairableMedia.localRepairInfo = {
+    type: 'webPage',
+    url: webPage.url,
   };
   return repairableMedia;
 }

@@ -9,7 +9,7 @@
   align-items: center;
 
   width: 100%;
-  height: 3.5rem;
+  height: var(--header-height);
   padding-top: 0.25rem;
   padding-right: max(0.8125rem, env(safe-area-inset-right));
   padding-bottom: 0.25rem;
@@ -116,7 +116,7 @@
 
     font-size: 1.125rem;
     font-weight: var(--font-weight-medium);
-    line-height: 1.375rem;
+    line-height: 1.5rem;
     text-overflow: ellipsis;
     white-space: pre;
 
@@ -276,11 +276,6 @@
     }
   }
 
-  .Button.smaller {
-    width: 2.5rem;
-    height: 2.5rem;
-  }
-
   .HeaderActions {
     display: flex;
     flex-shrink: 0;
@@ -330,13 +325,9 @@
     }
   }
 
-  body.is-electron.is-macos & {
-    -webkit-app-region: drag;
-  }
-
-  body.is-electron.is-macos #Main:not(.left-column-open):not(.is-fullscreen) & {
+  body.is-tauri.is-macos #Main:not(.left-column-open):not(.is-fullscreen) & {
     @media (max-width: 925px) {
-      padding-left: 5rem;
+      padding-left: var(--window-controls-width);
 
       .back-button {
         margin-left: -0.5rem;

@@ -378,12 +378,12 @@ const ManageChannel: FC<OwnProps & StateProps> = ({
 };
 
 export default memo(withGlobal<OwnProps>(
-  (global, { chatId }): StateProps => {
+  (global, { chatId }): Complete<StateProps> => {
     const chat = selectChat(global, chatId)!;
     const { management } = selectTabState(global);
     const { progress } = management;
     const { invites } = management.byChatId[chatId] || {};
-    const minLevelToToggleAutoTranslation = global.appConfig?.channelAutoTranslationLevelMin;
+    const minLevelToToggleAutoTranslation = global.appConfig.channelAutoTranslationLevelMin;
     const hasAutoTranslation = chat?.hasAutoTranslation;
     const chatBoostLevel = chat?.level;
     const canToggleAutoTranslation = chatBoostLevel && minLevelToToggleAutoTranslation

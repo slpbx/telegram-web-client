@@ -146,6 +146,7 @@ addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
             },
             tabId,
           });
+          actions.reloadPeerSavedGifts({ peerId: starGiftModalState.forPeerId });
           actions.requestConfetti({ withStars: true, tabId });
           actions.closeGiftModal({ tabId });
         }
@@ -170,15 +171,14 @@ addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
         }
       }
 
+      if (inputInvoice?.type === 'stargiftUpgrade' && global.currentUserId) {
+        actions.reloadPeerSavedGifts({ peerId: global.currentUserId });
+      }
+
       break;
     }
 
     case 'updateStarsBalance': {
-      const stars = global.stars;
-      if (!stars) {
-        return;
-      }
-
       global = updateStarsBalance(global, update.balance);
 
       setGlobal(global);

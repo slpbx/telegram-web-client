@@ -3,12 +3,12 @@ import type React from '../../../lib/teact/teact.ts';
 import { useState } from '../../../lib/teact/teact.ts';
 import { memo } from '../../../lib/teact/teact.ts';
 
-import type { ApiChat } from '../../../api/types/index.ts';
-import type { ManagementScreens } from '../../../types/index.ts';
-import { ChatCreationProgress } from '../../../types/index.ts';
+import type { ApiChat } from '../../../api/types/index';
+import type { ManagementScreens } from '../../../types/index';
+import { ChatCreationProgress } from '../../../types/index';
 
-import { getActions, withGlobal } from '../../../global/index.ts';
-import { selectChat, selectTabState } from '../../../global/selectors/index.ts';
+import { getActions, withGlobal } from '../../../global/index';
+import { selectChat, selectTabState } from '../../../global/selectors/index';
 
 import useHistoryBack from '../../../hooks/useHistoryBack.ts';
 import useLang from '../../../hooks/useLang.ts';
@@ -127,7 +127,7 @@ const NewDiscussionGroup: FC<OwnProps & StateProps> = ({
 };
 
 export default memo(withGlobal<OwnProps>(
-  (global, { chatId }): StateProps => {
+  (global, { chatId }): Complete<StateProps> => {
     const {
       progress: creationProgress,
       error: creationError,

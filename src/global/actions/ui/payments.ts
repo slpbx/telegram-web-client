@@ -1,6 +1,8 @@
+import type { ApiSavedGifts } from '../../../api/types';
 import type { ActionReturnType } from '../../types';
 
 import { DEFAULT_GIFT_PROFILE_FILTER_OPTIONS } from '../../../config';
+import { selectActiveGiftsCollectionId } from '../../../global/selectors';
 import { getCurrentTabId } from '../../../util/establishMultitabRole';
 import { addActionHandler, setGlobal } from '../../index';
 import {
@@ -79,12 +81,14 @@ addActionHandler('updateGiftProfileFilter', (global, actions, payload): ActionRe
 
   if (!updatedFilter.shouldIncludeUnlimited
     && !updatedFilter.shouldIncludeLimited
-    && !updatedFilter.shouldIncludeUnique) {
+    && !updatedFilter.shouldIncludeUnique
+    && !updatedFilter.shouldIncludeUpgradable) {
     updatedFilter = {
       ...prevFilter,
       shouldIncludeUnlimited: true,
       shouldIncludeLimited: true,
       shouldIncludeUnique: true,
+      shouldIncludeUpgradable: true,
       ...filter,
     };
   }
@@ -98,11 +102,15 @@ addActionHandler('updateGiftProfileFilter', (global, actions, payload): ActionRe
     };
   }
 
+  const activeCollectionId = selectActiveGiftsCollectionId(global, peerId, tabId);
+
   global = updateTabState(global, {
     savedGifts: {
       ...tabState.savedGifts,
-      giftsByPeerId: {
-        [peerId]: tabState.savedGifts.giftsByPeerId[peerId],
+      collectionsByPeerId: {
+        [peerId]: {
+          [activeCollectionId]: tabState.savedGifts.collectionsByPeerId[peerId]?.[activeCollectionId],
+        } as Record<number | 'all', ApiSavedGifts>,
       },
       filter: updatedFilter,
     },
@@ -118,11 +126,15 @@ addActionHandler('resetGiftProfileFilter', (global, actions, payload): ActionRet
   const { peerId, tabId = getCurrentTabId() } = payload || {};
   const tabState = selectTabState(global, tabId);
 
+  const activeCollectionId = selectActiveGiftsCollectionId(global, peerId, tabId);
+
   global = updateTabState(global, {
     savedGifts: {
       ...tabState.savedGifts,
-      giftsByPeerId: {
-        [peerId]: tabState.savedGifts.giftsByPeerId[peerId],
+      collectionsByPeerId: {
+        [peerId]: {
+          [activeCollectionId]: tabState.savedGifts.collectionsByPeerId[peerId]?.[activeCollectionId],
+        } as Record<number | 'all', ApiSavedGifts>,
       },
       filter: {
         ...DEFAULT_GIFT_PROFILE_FILTER_OPTIONS,
@@ -149,5 +161,32 @@ addActionHandler('closePaymentMessageConfirmDialogOpen', (global, actions, paylo
 
   return updateTabState(global, {
     isPaymentMessageConfirmDialogOpen: false,
+  }, tabId);
+});
+
+addActionHandler('openPriceConfirmModal', (global, actions, payload): ActionReturnType => {
+  const {
+    originalAmount,
+    newAmount,
+    currency,
+    directInfo,
+    tabId = getCurrentTabId(),
+  } = payload;
+
+  return updateTabState(global, {
+    priceConfirmModal: {
+      originalAmount,
+      newAmount,
+      currency,
+      directInfo,
+    },
+  }, tabId);
+});
+
+addActionHandler('closePriceConfirmModal', (global, actions, payload): ActionReturnType => {
+  const { tabId = getCurrentTabId() } = payload || {};
+
+  return updateTabState(global, {
+    priceConfirmModal: undefined,
   }, tabId);
 });

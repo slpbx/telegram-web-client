@@ -9,6 +9,7 @@ import type {
 import type { ObserveFn } from '../../../hooks/useIntersectionObserver';
 import type { ChatAnimationTypes } from './hooks';
 
+import { UNMUTE_TIMESTAMP } from '../../../config';
 import { groupStatefulContent } from '../../../global/helpers';
 import { getIsChatMuted } from '../../../global/helpers/notifications';
 import {
@@ -101,6 +102,8 @@ const Topic: FC<OwnProps & StateProps> = ({
     deleteTopic,
     focusLastMessage,
     setViewForumAsMessages,
+    updateTopicMutedState,
+    openQuickPreview,
   } = getActions();
 
   const lang = useOldLang();
@@ -129,6 +132,10 @@ const Topic: FC<OwnProps & StateProps> = ({
     openMuteModal();
   });
 
+  const handleUnmute = useLastCallback(() => {
+    updateTopicMutedState({ chatId, topicId: topic.id, mutedUntil: UNMUTE_TIMESTAMP });
+  });
+
   const { renderSubtitle, ref } = useChatListEntry({
     chat,
     chatId,
@@ -147,7 +154,13 @@ const Topic: FC<OwnProps & StateProps> = ({
     orderDiff,
   });
 
-  const handleOpenTopic = useLastCallback(() => {
+  const handleOpenTopic = useLastCallback((e: React.MouseEvent) => {
+    if (e.altKey) {
+      e.preventDefault();
+      openQuickPreview({ id: chatId, threadId: topic.id });
+      return;
+    }
+
     openThread({ chatId, threadId: topic.id, shouldReplaceHistory: true });
     setViewForumAsMessages({ chatId, isEnabled: false });
 
@@ -164,6 +177,7 @@ const Topic: FC<OwnProps & StateProps> = ({
     canDelete,
     handleDelete: handleOpenDeleteModal,
     handleMute,
+    handleUnmute,
   });
 
   return (

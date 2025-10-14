@@ -10,10 +10,9 @@ import type { ActionReturnType, GlobalState, SharedState } from './types';
 import { MAIN_THREAD_ID } from '../api/types';
 
 import {
-  ALL_FOLDER_ID,
+  ALL_FOLDER_ID, ANIMATION_LEVEL_DEFAULT,
   ARCHIVED_FOLDER_ID,
   DEBUG,
-  DEFAULT_LIMITS,
   GLOBAL_STATE_CACHE_ARCHIVED_CHAT_LIST_LIMIT,
   GLOBAL_STATE_CACHE_CHAT_LIST_LIMIT,
   GLOBAL_STATE_CACHE_CUSTOM_EMOJI_LIMIT,
@@ -34,12 +33,13 @@ import { encryptSession } from '../util/passcode';
 import { onBeforeUnload, throttle } from '../util/schedulers';
 import { hasStoredSession } from '../util/sessions';
 import { addActionHandler, getGlobal } from './index';
-import { INITIAL_GLOBAL_STATE } from './initialState';
+import { INITIAL_GLOBAL_STATE, INITIAL_PERFORMANCE_STATE_MED } from './initialState';
 import { clearGlobalForLockScreen, clearSharedStateForLockScreen } from './reducers';
 import {
   selectChatLastMessageId,
   selectChatMessages,
   selectCurrentMessageList,
+  selectFullWebPageFromMessage,
   selectTopics,
   selectViewportIds,
   selectVisibleUsers,
@@ -212,10 +212,6 @@ function unsafeMigrateCache(cached: GlobalState, initialState: GlobalState) {
     ...cached.chatFolders,
   };
 
-  if (cached.appConfig && !cached.appConfig.limits) {
-    cached.appConfig.limits = DEFAULT_LIMITS;
-  }
-
   if (!cached.chats.similarChannelsById) {
     cached.chats.similarChannelsById = initialState.chats.similarChannelsById;
   }
@@ -229,7 +225,7 @@ function unsafeMigrateCache(cached: GlobalState, initialState: GlobalState) {
   }
 
   // Clear old color storage to optimize cache size
-  if (untypedCached?.appConfig?.peerColors) {
+  if (untypedCached?.appConfig.peerColors) {
     untypedCached.appConfig.peerColors = undefined;
     untypedCached.appConfig.darkPeerColors = undefined;
   }
@@ -308,9 +304,6 @@ function unsafeMigrateCache(cached: GlobalState, initialState: GlobalState) {
     cached.cacheVersion = 2;
   }
 
-  if (cached.appConfig?.limits && !cached.appConfig.limits.moreAccounts) {
-    cached.appConfig.limits.moreAccounts = DEFAULT_LIMITS.moreAccounts;
-  }
   if (!cached.chats.notifyExceptionById) {
     cached.chats.notifyExceptionById = initialState.chats.notifyExceptionById;
   }
@@ -337,12 +330,31 @@ function unsafeMigrateCache(cached: GlobalState, initialState: GlobalState) {
       shouldAllowHttpTransport: untypedCached.settings.byKey.shouldAllowHttpTransport,
       shouldCollectDebugLogs: untypedCached.settings.byKey.shouldCollectDebugLogs,
       shouldDebugExportedSenders: untypedCached.settings.byKey.shouldDebugExportedSenders,
-      shouldWarnAboutSvg: untypedCached.settings.byKey.shouldWarnAboutSvg,
+      shouldWarnAboutFiles: untypedCached.settings.byKey.shouldWarnAboutFiles,
     };
   }
 
   if (!cached.settings.themes) {
     cached.settings.themes = initialState.settings.themes;
+  }
+
+  if (!cached.messages.webPageById) {
+    cached.messages.webPageById = initialState.messages.webPageById;
+  }
+
+  const cachedSharedSettings = cached.sharedState.settings;
+  if (!cachedSharedSettings.wasAnimationLevelSetManually) {
+    cachedSharedSettings.animationLevel = ANIMATION_LEVEL_DEFAULT;
+    cachedSharedSettings.performance = INITIAL_PERFORMANCE_STATE_MED;
+  }
+
+  if (!cached.appConfig) {
+    cached.appConfig = initialState.appConfig;
+  }
+
+  if (untypedCached.sharedState?.settings?.shouldWarnAboutSvg) {
+    cached.sharedState.settings.shouldWarnAboutFiles = true;
+    untypedCached.sharedState.settings.shouldWarnAboutSvg = undefined;
   }
 }
 
@@ -483,7 +495,10 @@ function reduceUsers<T extends GlobalState>(global: T): GlobalState['users'] {
 
   const chatStoriesUserIds = currentChatIds
     .flatMap((chatId) => Object.values(selectChatMessages(global, chatId) || {}))
-    .map((message) => message.content.storyData?.peerId || message.content.webPage?.story?.peerId)
+    .map((message) => {
+      const webPage = selectFullWebPageFromMessage(global, message);
+      return message.content.storyData?.peerId || webPage?.story?.peerId;
+    })
     .filter((id): id is string => Boolean(id) && isUserId(id));
 
   const attachBotIds = Object.keys(global.attachMenu?.bots || {});
@@ -530,8 +545,9 @@ function reduceChats<T extends GlobalState>(global: T): GlobalState['chats'] {
       const message = messages[id];
       if (!message) return undefined;
       const content = message.content;
+      const webPage = selectFullWebPageFromMessage(global, message);
       const replyPeer = message.replyInfo?.type === 'message' && message.replyInfo.replyToPeerId;
-      return content.storyData?.peerId || content.webPage?.story?.peerId || replyPeer;
+      return content.storyData?.peerId || webPage?.story?.peerId || replyPeer;
     });
   }));
 
@@ -610,6 +626,7 @@ function reduceMessages<T extends GlobalState>(global: T): GlobalState['messages
   }, {} as Record<string, Set<ThreadId>>);
 
   const pollIdsToSave: string[] = [];
+  const webPageIdsToSave: string[] = [];
 
   chatIdsToSave.forEach((chatId) => {
     const current = global.messages.byChatId[chatId];
@@ -658,6 +675,10 @@ function reduceMessages<T extends GlobalState>(global: T): GlobalState['messages
         pollIdsToSave.push(message.content.pollId);
       }
 
+      if (message.content.webPage) {
+        webPageIdsToSave.push(message.content.webPage.id);
+      }
+
       return acc;
     }, {} as Record<number, ApiMessage>);
 
@@ -670,6 +691,7 @@ function reduceMessages<T extends GlobalState>(global: T): GlobalState['messages
   return {
     byChatId,
     pollById: pickTruthy(global.messages.pollById, pollIdsToSave),
+    webPageById: pickTruthy(global.messages.webPageById, webPageIdsToSave),
     sponsoredByChatId: {},
     playbackByChatId: {},
   };

@@ -160,7 +160,7 @@ const SettingsPasscode: FC<OwnProps & StateProps> = ({
         <SettingsPasscodeForm
           shouldDisablePasswordManager
           error={error}
-          clearError={clearPasscodeError}
+          onClearError={clearPasscodeError}
           placeholder={lang('PasscodeController.Current.Placeholder')}
           onSubmit={handleChangePasswordCurrent}
           isActive={isActive || [
@@ -206,7 +206,7 @@ const SettingsPasscode: FC<OwnProps & StateProps> = ({
         <SettingsPasscodeForm
           shouldDisablePasswordManager
           error={error ? lang(error) : undefined}
-          clearError={clearPasscodeError}
+          onClearError={clearPasscodeError}
           placeholder={lang('PasscodeController.Current.Placeholder')}
           onSubmit={handleTurnOff}
           isActive={isActive}
@@ -220,5 +220,5 @@ const SettingsPasscode: FC<OwnProps & StateProps> = ({
 };
 
 export default memo(withGlobal<OwnProps>(
-  (global): StateProps => ({ ...global.passcode }),
+  (global): Complete<StateProps> => ({ ...global.passcode } as Complete<StateProps>),
 )(SettingsPasscode));

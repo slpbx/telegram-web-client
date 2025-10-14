@@ -1,4 +1,4 @@
-import type { ElementRef, FC, TeactNode } from '../../lib/teact/teact';
+import type { ElementRef, TeactNode } from '../../lib/teact/teact';
 import type React from '../../lib/teact/teact';
 import { useRef } from '../../lib/teact/teact';
 
@@ -79,7 +79,7 @@ interface OwnProps {
   nonInteractive?: boolean;
 }
 
-const ListItem: FC<OwnProps> = ({
+const ListItem = ({
   ref,
   buttonRef,
   icon,
@@ -116,7 +116,7 @@ const ListItem: FC<OwnProps> = ({
   onSecondaryIconClick,
   onDragEnter,
   nonInteractive,
-}) => {
+}: OwnProps) => {
   let containerRef = useRef<HTMLDivElement>();
   if (ref) {
     containerRef = ref;
@@ -140,12 +140,13 @@ const ListItem: FC<OwnProps> = ({
   const handleClickEvent = useLastCallback((e: React.MouseEvent<HTMLElement, MouseEvent>) => {
     const hasModifierKey = e.ctrlKey || e.metaKey || e.shiftKey;
     if (!hasModifierKey && e.button === MouseButton.Main) {
+      if (href && !onClick) return; // Allow default behavior for opening links
       e.preventDefault();
     }
   });
 
   const handleClick = useLastCallback((e: React.MouseEvent<HTMLElement, MouseEvent>) => {
-    if ((disabled && !allowDisabledClick) || !onClick) {
+    if ((disabled && !allowDisabledClick)) {
       return;
     }
 
@@ -156,8 +157,10 @@ const ListItem: FC<OwnProps> = ({
         return;
       }
 
-      e.preventDefault();
+      if (onClick) e.preventDefault();
     }
+
+    if (!onClick) return;
 
     onClick(e, clickArg);
 
@@ -232,13 +235,16 @@ const ListItem: FC<OwnProps> = ({
       <ButtonElementTag
         className={buildClassName('ListItem-button', isTouched && 'active', buttonClassName)}
         style={buttonStyle}
-        role={!isStatic ? 'button' : undefined}
+        role={!isStatic && !href ? 'button' : undefined}
         href={href}
-        ref={buttonRef as any /* TS requires specific types for refs */}
+        // @ts-expect-error TS requires specific types for refs
+        ref={buttonRef}
+        rel={href ? 'noopener noreferrer' : undefined}
         tabIndex={!isStatic ? 0 : undefined}
         onClick={(!inactive && IS_TOUCH_ENV) ? handleClick : handleClickEvent}
         onMouseDown={handleMouseDown}
         onContextMenu={onContextMenu || ((!inactive && contextActions) ? handleContextMenu : undefined)}
+        aria-disabled={disabled || undefined}
       >
         {!disabled && !inactive && ripple && (
           <RippleEffect />

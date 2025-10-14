@@ -54,6 +54,7 @@ type OwnProps = {
   isAccountFrozen?: boolean;
   isMainList?: boolean;
   foldersDispatch?: FolderEditDispatch;
+  withTags?: boolean;
 };
 
 const INTERSECTION_THROTTLE = 200;
@@ -72,6 +73,7 @@ const ChatList: FC<OwnProps> = ({
   isAccountFrozen,
   isMainList,
   foldersDispatch,
+  withTags,
 }) => {
   const {
     openChat,
@@ -213,7 +215,12 @@ const ChatList: FC<OwnProps> = ({
     toggleStoryRibbon({ isShown: false, isArchived });
   });
 
-  const renderedOverflowTrigger = useTopOverscroll(containerRef, handleShowStoryRibbon, handleHideStoryRibbon, isSaved);
+  useTopOverscroll({
+    containerRef,
+    onOverscroll: handleShowStoryRibbon,
+    onReset: handleHideStoryRibbon,
+    isDisabled: isSaved,
+  });
 
   function renderChats() {
     const viewportOffset = orderedIds!.indexOf(viewportIds![0]);
@@ -238,6 +245,7 @@ const ChatList: FC<OwnProps> = ({
           offsetTop={offsetTop}
           observeIntersection={observe}
           onDragEnter={handleDragEnter}
+          withTags={withTags}
         />
       );
     });
@@ -251,7 +259,6 @@ const ChatList: FC<OwnProps> = ({
       itemSelector=".ListItem:not(.chat-item-archive)"
       preloadBackwards={CHAT_LIST_SLICE}
       withAbsolutePositioning
-      beforeChildren={renderedOverflowTrigger}
       maxHeight={chatsHeight + archiveHeight + frozenNotificationHeight + unconfirmedSessionHeight}
       onLoadMore={getMore}
       onDragLeave={handleDragLeave}

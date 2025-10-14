@@ -23,6 +23,7 @@ import {
 import {
   selectChat,
   selectChatMessage,
+  selectCustomEmoji,
   selectIsChatWithSelf,
   selectIsInSelectMode,
   selectIsRightColumnShown,
@@ -33,12 +34,13 @@ import {
   selectThreadInfo,
   selectThreadParam,
 } from '../../global/selectors';
+import { IS_TAURI } from '../../util/browser/globalEnvironment';
+import { IS_MAC_OS } from '../../util/browser/windowEnvironment';
 import buildClassName from '../../util/buildClassName';
 import { isUserId } from '../../util/entities/ids';
 
 import useAppLayout from '../../hooks/useAppLayout';
 import useConnectionStatus from '../../hooks/useConnectionStatus';
-import useElectronDrag from '../../hooks/useElectronDrag';
 import useLastCallback from '../../hooks/useLastCallback';
 import useLongPress from '../../hooks/useLongPress';
 import useOldLang from '../../hooks/useOldLang';
@@ -129,11 +131,9 @@ const MiddleHeader: FC<OwnProps & StateProps> = ({
 
   const lang = useOldLang();
   const isBackButtonActive = useRef(true);
-  const { isTablet } = useAppLayout();
+  const { isDesktop, isTablet } = useAppLayout();
 
   const { width: windowWidth } = useWindowSize();
-
-  const { isDesktop } = useAppLayout();
 
   const isLeftColumnHideable = windowWidth <= MIN_SCREEN_WIDTH_FOR_STATIC_LEFT_COLUMN;
   const shouldShowCloseButton = isTablet && isLeftColumnShown;
@@ -147,7 +147,8 @@ const MiddleHeader: FC<OwnProps & StateProps> = ({
   const handleOpenChat = useLastCallback((event: React.MouseEvent | React.TouchEvent) => {
     if ((event.target as Element).closest('.title > .custom-emoji')) return;
 
-    openThreadWithInfo({ chatId, threadId });
+    // Force close My Profile if clicked on Saved Messages header
+    openThreadWithInfo({ chatId, threadId, isOwnProfile: false });
   });
 
   const {
@@ -333,10 +334,8 @@ const MiddleHeader: FC<OwnProps & StateProps> = ({
     );
   }
 
-  useElectronDrag(componentRef);
-
   return (
-    <div className="MiddleHeader" ref={componentRef}>
+    <div className="MiddleHeader" ref={componentRef} data-tauri-drag-region={IS_TAURI && IS_MAC_OS ? true : undefined}>
       <Transition
         name={shouldSkipHistoryAnimations ? 'none' : 'slideFade'}
         activeKey={currentTransitionKey}
@@ -376,7 +375,7 @@ const MiddleHeader: FC<OwnProps & StateProps> = ({
 export default memo(withGlobal<OwnProps>(
   (global, {
     chatId, threadId, messageListType, isMobile,
-  }): StateProps => {
+  }): Complete<StateProps> => {
     const {
       isLeftColumnShown, shouldSkipHistoryAnimations, audioPlayer, messageLists,
     } = selectTabState(global);
@@ -403,7 +402,7 @@ export default memo(withGlobal<OwnProps>(
     const typingStatus = selectThreadParam(global, chatId, threadId, 'typingStatus');
 
     const emojiStatus = peer?.emojiStatus;
-    const emojiStatusSticker = emojiStatus && global.customEmojis.byId[emojiStatus.documentId];
+    const emojiStatusSticker = emojiStatus && selectCustomEmoji(global, emojiStatus.documentId);
     const emojiStatusSlug = emojiStatus?.type === 'collectible' ? emojiStatus.slug : undefined;
 
     const isSavedDialog = getIsSavedDialog(chatId, threadId, global.currentUserId);

@@ -1,4 +1,3 @@
-import BigInt from 'big-integer';
 import { Api as GramJs } from '../../lib/gramjs';
 
 import { DEBUG } from '../../config';
@@ -18,8 +17,13 @@ export type MessageRepairInfo = {
   id: number;
 };
 
+export type WebPageRepairInfo = {
+  type: 'webPage';
+  url: string;
+};
+
 export type RepairInfo = {
-  localRepairInfo?: StoryRepairInfo | MessageRepairInfo;
+  localRepairInfo?: StoryRepairInfo | MessageRepairInfo | WebPageRepairInfo;
 };
 
 export interface LocalDb {

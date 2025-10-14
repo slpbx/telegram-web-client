@@ -35,7 +35,7 @@ import renderText from './helpers/renderText';
 import { useFastClick } from '../../hooks/useFastClick';
 import useLastCallback from '../../hooks/useLastCallback';
 import useMedia from '../../hooks/useMedia';
-import useMediaTransitionDeprecated from '../../hooks/useMediaTransitionDeprecated';
+import useMediaTransition from '../../hooks/useMediaTransition';
 import useOldLang from '../../hooks/useOldLang';
 
 import OptimizedVideo from '../ui/OptimizedVideo';
@@ -66,6 +66,7 @@ cn.icon = cn('icon');
 
 type OwnProps = {
   className?: string;
+  style?: string;
   size?: AvatarSize;
   peer?: ApiPeer | CustomPeer;
   photo?: ApiPhoto;
@@ -79,6 +80,7 @@ type OwnProps = {
   forPremiumPromo?: boolean;
   withStoryGap?: boolean;
   withStorySolid?: boolean;
+  storyColors?: string[];
   forceFriendStorySolid?: boolean;
   forceUnreadStorySolid?: boolean;
   storyViewerOrigin?: StoryViewerOrigin;
@@ -89,10 +91,12 @@ type OwnProps = {
   observeIntersection?: ObserveFn;
   onClick?: (e: ReactMouseEvent<HTMLDivElement, MouseEvent>, hasMedia: boolean) => void;
   onContextMenu?: (e: React.MouseEvent) => void;
+  onMouseMove?: (e: React.MouseEvent) => void;
 };
 
 const Avatar: FC<OwnProps> = ({
   className,
+  style,
   size = 'large',
   peer,
   photo,
@@ -106,6 +110,7 @@ const Avatar: FC<OwnProps> = ({
   forPremiumPromo,
   withStoryGap,
   withStorySolid,
+  storyColors,
   forceFriendStorySolid,
   forceUnreadStorySolid,
   storyViewerOrigin,
@@ -115,6 +120,7 @@ const Avatar: FC<OwnProps> = ({
   asMessageBubble,
   onClick,
   onContextMenu,
+  onMouseMove,
 }) => {
   const { openStoryViewer } = getActions();
 
@@ -128,6 +134,9 @@ const Avatar: FC<OwnProps> = ({
   const isReplies = realPeer && isChatWithRepliesBot(realPeer.id);
   const isAnonymousForwards = realPeer && isAnonymousForwardsChat(realPeer.id);
   const isForum = chat?.isForum;
+
+  const isStoryClickable = withStory && storyViewerMode !== 'disabled' && realPeer?.hasStories;
+
   let imageHash: string | undefined;
   let videoHash: string | undefined;
 
@@ -180,7 +189,7 @@ const Avatar: FC<OwnProps> = ({
   // `videoBlobUrl` can be taken from memory cache, so we need to check `shouldLoadVideo` again
   const shouldPlayVideo = Boolean(videoBlobUrl && shouldLoadVideo);
 
-  const transitionClassNames = useMediaTransitionDeprecated(hasBlobUrl);
+  const { ref: mediaRef } = useMediaTransition<HTMLImageElement>({ hasMediaData: hasBlobUrl });
 
   const handleVideoEnded = useLastCallback((e) => {
     const video = e.currentTarget;
@@ -212,8 +221,9 @@ const Avatar: FC<OwnProps> = ({
     content = (
       <>
         <img
+          ref={mediaRef}
           src={imgUrl}
-          className={buildClassName(cn.media, 'avatar-media', transitionClassNames, videoBlobUrl && 'poster')}
+          className={buildClassName(cn.media, 'avatar-media', videoBlobUrl && 'poster')}
           alt={author}
           decoding="async"
           draggable={false}
@@ -269,14 +279,14 @@ const Avatar: FC<OwnProps> = ({
     withStorySolid && realPeer?.hasStories && 'with-story-solid',
     withStorySolid && forceFriendStorySolid && 'close-friend',
     withStorySolid && (realPeer?.hasUnreadStories || forceUnreadStorySolid) && 'has-unread-story',
-    onClick && 'interactive',
+    (onClick || isStoryClickable) && 'interactive',
     (!isSavedMessages && !imgUrl) && 'no-photo',
   );
 
   const hasMedia = Boolean(isSavedMessages || imgUrl);
 
   const { handleClick, handleMouseDown } = useFastClick((e: ReactMouseEvent<HTMLDivElement, MouseEvent>) => {
-    if (withStory && storyViewerMode !== 'disabled' && realPeer?.hasStories) {
+    if (isStoryClickable) {
       e.stopPropagation();
 
       openStoryViewer({
@@ -300,16 +310,22 @@ const Avatar: FC<OwnProps> = ({
       data-peer-id={realPeer?.id}
       data-test-sender-id={IS_TEST ? realPeer?.id : undefined}
       aria-label={typeof content === 'string' ? author : undefined}
-      style={buildStyle(`--_size: ${pxSize}px;`, customColor && `--color-user: ${customColor}`)}
+      style={buildStyle(`--_size: ${pxSize}px;`, customColor && `--color-user: ${customColor}`, style)}
       onClick={handleClick}
       onContextMenu={onContextMenu}
       onMouseDown={handleMouseDown}
+      onMouseMove={onMouseMove}
     >
       <div className="inner">
         {typeof content === 'string' ? renderText(content, [isBig ? 'hq_emoji' : 'emoji']) : content}
       </div>
       {withStory && realPeer?.hasStories && (
-        <AvatarStoryCircle peerId={realPeer.id} size={pxSize} withExtraGap={withStoryGap} />
+        <AvatarStoryCircle
+          peerId={realPeer.id}
+          size={pxSize}
+          withExtraGap={withStoryGap}
+          colors={storyColors}
+        />
       )}
     </div>
   );

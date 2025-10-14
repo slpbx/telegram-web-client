@@ -1,21 +1,10 @@
-import type {
-  ElementRef } from '../../lib/teact/teact';
-import type React from '../../lib/teact/teact';
-import {
-  memo, useEffect, useMemo,
-  useState,
-} from '../../lib/teact/teact';
+import type React from '@teact';
+import type { ElementRef } from '@teact';
+import { memo, useEffect, useMemo, useState } from '@teact';
 import { getActions, withGlobal } from '../../global';
 
-import type {
-  ApiChat, ApiChatBannedRights, ApiInputMessageReplyInfo, ApiTopic,
-} from '../../api/types';
-import type {
-  ActiveEmojiInteraction,
-  MessageListType,
-  ThemeKey,
-  ThreadId,
-} from '../../types';
+import type { ApiChat, ApiChatBannedRights, ApiInputMessageReplyInfo, ApiTopic } from '../../api/types';
+import type { ActiveEmojiInteraction, AnimationLevel, MessageListType, ThemeKey, ThreadId } from '../../types';
 import { MAIN_THREAD_ID } from '../../api/types';
 
 import {
@@ -42,7 +31,7 @@ import {
 } from '../../global/helpers';
 import {
   selectBot,
-  selectCanAnimateInterface,
+  selectCanAnimateInterface, selectCanAnimateRightColumn,
   selectChat,
   selectChatFullInfo,
   selectCurrentMessageList,
@@ -65,13 +54,16 @@ import {
   selectTopics,
   selectUserFullInfo,
 } from '../../global/selectors';
+import { selectSharedSettings } from '../../global/selectors/sharedState';
+import { IS_TAURI } from '../../util/browser/globalEnvironment';
 import {
-  IS_ANDROID, IS_ELECTRON, IS_IOS, IS_SAFARI, IS_TRANSLATION_SUPPORTED, MASK_IMAGE_DISABLED,
+  IS_ANDROID, IS_IOS, IS_MAC_OS, IS_SAFARI, IS_TRANSLATION_SUPPORTED, MASK_IMAGE_DISABLED,
 } from '../../util/browser/windowEnvironment';
 import buildClassName from '../../util/buildClassName';
 import buildStyle from '../../util/buildStyle';
 import captureEscKeyListener from '../../util/captureEscKeyListener';
 import { isUserId } from '../../util/entities/ids';
+import { resolveTransitionName } from '../../util/resolveTransitionName';
 import calculateMiddleFooterTransforms from './helpers/calculateMiddleFooterTransforms';
 
 import useAppLayout from '../../hooks/useAppLayout';
@@ -110,7 +102,7 @@ import ReactorListModal from './ReactorListModal.async';
 import MiddleSearch from './search/MiddleSearch.async';
 
 import './MiddleColumn.scss';
-import styles from './MiddleColumn.module.scss';
+import backgroundStyles from '../../styles/_patternBackground.module.scss';
 
 interface OwnProps {
   leftColumnRef: ElementRef<HTMLDivElement>;
@@ -144,7 +136,9 @@ type StateProps = {
   isPrivacySettingsNoticeModalOpen: boolean;
   isReactorListModalOpen: boolean;
   isChatLanguageModalOpen?: boolean;
+  animationLevel: AnimationLevel;
   withInterfaceAnimations?: boolean;
+  withRightColumnAnimation?: boolean;
   shouldSkipHistoryAnimations?: boolean;
   currentTransitionKey: number;
   isChannel?: boolean;
@@ -208,7 +202,9 @@ function MiddleColumn({
   isPrivacySettingsNoticeModalOpen,
   isReactorListModalOpen,
   isChatLanguageModalOpen,
+  animationLevel,
   withInterfaceAnimations,
+  withRightColumnAnimation,
   shouldSkipHistoryAnimations,
   currentTransitionKey,
   isChannel,
@@ -349,7 +345,7 @@ function MiddleColumn({
     return () => {
       visualViewport.removeEventListener('resize', handleResize);
     };
-  });
+  }, []);
 
   useEffect(() => {
     if (isPrivate) {
@@ -443,13 +439,12 @@ function MiddleColumn({
   );
 
   const bgClassName = buildClassName(
-    styles.background,
-    styles.withTransition,
-    customBackground && styles.customBgImage,
-    backgroundColor && styles.customBgColor,
-    customBackground && isBackgroundBlurred && styles.blurred,
-    isRightColumnShown && styles.withRightColumn,
-    IS_ELECTRON && !(renderingChatId && renderingThreadId) && styles.draggable,
+    backgroundStyles.background,
+    withRightColumnAnimation && backgroundStyles.withTransition,
+    customBackground && backgroundStyles.customBgImage,
+    backgroundColor && backgroundStyles.customBgColor,
+    customBackground && isBackgroundBlurred && backgroundStyles.blurred,
+    isRightColumnShown && backgroundStyles.withRightColumn,
   );
 
   const messagingDisabledClassName = buildClassName(
@@ -513,7 +508,7 @@ function MiddleColumn({
         `--composer-hidden-scale: ${composerHiddenScale}`,
         `--toolbar-hidden-scale: ${toolbarHiddenScale}`,
         `--unpin-hidden-scale: ${unpinHiddenScale}`,
-        `--toolbar-unpin-hidden-scale: ${toolbarForUnpinHiddenScale},`,
+        `--toolbar-unpin-hidden-scale: ${toolbarForUnpinHiddenScale}`,
         `--composer-translate-x: ${composerTranslateX}px`,
         `--toolbar-translate-x: ${toolbarTranslateX}px`,
         `--pattern-color: ${patternColor}`,
@@ -532,6 +527,7 @@ function MiddleColumn({
       <div
         className={bgClassName}
         style={customBackgroundValue ? `--custom-background: ${customBackgroundValue}` : undefined}
+        data-tauri-drag-region={IS_TAURI && IS_MAC_OS && !(renderingChatId && renderingThreadId) ? true : undefined}
       />
       <div id="middle-column-portals" />
       {Boolean(renderingChatId && renderingThreadId) && (
@@ -557,7 +553,11 @@ function MiddleColumn({
               onFocusPinnedMessage={handleFocusPinnedMessage}
             />
             <Transition
-              name={shouldSkipHistoryAnimations ? 'none' : withInterfaceAnimations ? 'slide' : 'fade'}
+              name={resolveTransitionName(
+                'slide',
+                animationLevel,
+                shouldSkipHistoryAnimations || !withInterfaceAnimations,
+              )}
               activeKey={currentTransitionKey}
               shouldCleanup
               cleanupExceptionKey={cleanupExceptionKey}
@@ -578,9 +578,14 @@ function MiddleColumn({
                 paidMessagesStars={paidMessagesStars}
                 withBottomShift={withMessageListBottomShift}
                 withDefaultBg={Boolean(!customBackground && !backgroundColor)}
-                onIntersectPinnedMessage={renderingHandleIntersectPinnedMessage!}
+                onIntersectPinnedMessage={renderingHandleIntersectPinnedMessage}
               />
               <div className={footerClassName}>
+                <FloatingActionButtons
+                  withScrollDown={renderingIsScrollDownShown}
+                  canPost={renderingCanPost}
+                  withExtraShift={withExtraShift}
+                />
                 {renderingCanPost && (
                   <Composer
                     type="messageList"
@@ -710,12 +715,6 @@ function MiddleColumn({
                 {IS_TRANSLATION_SUPPORTED && <ChatLanguageModal isOpen={isChatLanguageModalOpen} />}
               </div>
             </Transition>
-
-            <FloatingActionButtons
-              withScrollDown={renderingIsScrollDownShown}
-              canPost={renderingCanPost}
-              withExtraShift={withExtraShift}
-            />
           </div>
           <MiddleSearch isActive={Boolean(hasActiveMiddleSearch)} />
         </>
@@ -743,7 +742,7 @@ function MiddleColumn({
 }
 
 export default memo(withGlobal<OwnProps>(
-  (global, { isMobile }): StateProps => {
+  (global, { isMobile }): Complete<StateProps> => {
     const theme = selectTheme(global);
     const {
       isBlurred: isBackgroundBlurred, background: customBackground, backgroundColor, patternColor,
@@ -771,14 +770,16 @@ export default memo(withGlobal<OwnProps>(
       isPrivacySettingsNoticeModalOpen: Boolean(privacySettingsNoticeModal),
       isReactorListModalOpen: Boolean(reactorModal),
       isChatLanguageModalOpen: Boolean(chatLanguageModal),
+      animationLevel: selectSharedSettings(global).animationLevel,
       withInterfaceAnimations: selectCanAnimateInterface(global),
+      withRightColumnAnimation: selectCanAnimateRightColumn(global),
       currentTransitionKey: Math.max(0, messageLists.length - 1),
       activeEmojiInteractions,
       leftColumnWidth,
     };
 
     if (!currentMessageList) {
-      return state;
+      return state as Complete<StateProps>;
     }
 
     const { chatId, threadId, type: messageListType } = currentMessageList;
@@ -881,7 +882,7 @@ export default memo(withGlobal<OwnProps>(
       isAccountFrozen,
       freezeAppealChat,
       shouldBlockSendInMonoforum,
-    };
+    } as Complete<StateProps>;
   },
 )(MiddleColumn));
 

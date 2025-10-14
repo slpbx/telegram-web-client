@@ -4,6 +4,7 @@ import { getActions, withGlobal } from '../../../global';
 
 import type {
   ApiChat,
+  ApiChatFolder,
   ApiDraft,
   ApiMessage,
   ApiMessageOutgoingStatus,
@@ -20,7 +21,7 @@ import type { ChatAnimationTypes } from './hooks';
 import { MAIN_THREAD_ID } from '../../../api/types';
 import { StoryViewerOrigin } from '../../../types';
 
-import { CHAT_HEIGHT_PX } from '../../../config';
+import { ALL_FOLDER_ID, CHAT_HEIGHT_PX, UNMUTE_TIMESTAMP } from '../../../config';
 import {
   groupStatefulContent,
   isUserOnline,
@@ -35,6 +36,7 @@ import {
   selectCurrentMessageList,
   selectDraft,
   selectIsCurrentUserFrozen,
+  selectIsCurrentUserPremium,
   selectIsForumPanelClosed,
   selectIsForumPanelOpen,
   selectMonoforumChannel,
@@ -54,6 +56,7 @@ import {
 import { IS_OPEN_IN_NEW_TAB_SUPPORTED } from '../../../util/browser/windowEnvironment';
 import buildClassName from '../../../util/buildClassName';
 import { isUserId } from '../../../util/entities/ids';
+import { getChatFolderIds } from '../../../util/folderManager';
 import { createLocationHash } from '../../../util/routing';
 
 import useSelectorSignal from '../../../hooks/data/useSelectorSignal';
@@ -77,6 +80,7 @@ import ChatFolderModal from '../ChatFolderModal.async';
 import MuteChatModal from '../MuteChatModal.async';
 import ChatBadge from './ChatBadge';
 import ChatCallStatus from './ChatCallStatus';
+import ChatTags from './ChatTags';
 
 import './Chat.scss';
 
@@ -93,6 +97,7 @@ type OwnProps = {
   className?: string;
   observeIntersection?: ObserveFn;
   onDragEnter?: (chatId: string) => void;
+  withTags?: boolean;
 };
 
 type StateProps = {
@@ -120,6 +125,10 @@ type StateProps = {
   currentUserId: string;
   isSynced?: boolean;
   isAccountFrozen?: boolean;
+  chatFolderIds?: number[];
+  orderedFolderIds?: number[];
+  chatFoldersById?: Record<number, ApiChatFolder>;
+  areTagsEnabled?: boolean;
   crmchatDisplayProperties?: DisplayedProperty[];
 };
 
@@ -160,6 +169,11 @@ const Chat: FC<OwnProps & StateProps> = ({
   isSynced,
   onDragEnter,
   isAccountFrozen,
+  chatFolderIds,
+  orderedFolderIds,
+  chatFoldersById,
+  areTagsEnabled,
+  withTags,
   crmchatDisplayProperties,
 }) => {
   const {
@@ -174,6 +188,8 @@ const Chat: FC<OwnProps & StateProps> = ({
     setShouldCloseRightColumn,
     reportMessages,
     openFrozenAccountModal,
+    updateChatMutedState,
+    openQuickPreview,
   } = getActions();
 
   const { isMobile } = useAppLayout();
@@ -187,6 +203,24 @@ const Chat: FC<OwnProps & StateProps> = ({
   const { isForum, isForumAsMessages, isMonoforum } = chat || {};
 
   useEnsureMessage(isSavedDialog ? currentUserId : chatId, lastMessageId, lastMessage);
+
+  const tagFolderIds = useMemo(() => {
+    const chatFolderIdsSet = new Set(chatFolderIds);
+
+    return orderedFolderIds?.filter((id) => {
+      if (!chatFolderIdsSet.has(id)) return undefined;
+
+      const isActive = id === folderId;
+      const isAll = id === ALL_FOLDER_ID;
+
+      const folder = chatFoldersById?.[id];
+      const hasColor = folder?.color !== undefined && folder.color !== -1;
+
+      return !isActive && !isAll && hasColor;
+    });
+  }, [orderedFolderIds, folderId, chatFoldersById, chatFolderIds]);
+
+  const shouldRenderTags = areTagsEnabled && withTags && Boolean(tagFolderIds?.length);
 
   const { renderSubtitle, ref } = useChatListEntry({
     chat,
@@ -204,11 +238,18 @@ const Chat: FC<OwnProps & StateProps> = ({
     isSavedDialog,
     isPreview,
     topics,
+    noForumTitle: shouldRenderTags,
   });
 
   const getIsForumPanelClosed = useSelectorSignal(selectIsForumPanelClosed);
 
-  const handleClick = useLastCallback(() => {
+  const handleClick = useLastCallback((e: React.MouseEvent) => {
+    if (e.altKey && !isSavedDialog && !isForum && !isPreview) {
+      e.preventDefault();
+      openQuickPreview({ id: chatId });
+      return;
+    }
+
     const noForumTopicPanel = isMobile && isForumAsMessages;
 
     if (isMobile) {
@@ -278,6 +319,15 @@ const Chat: FC<OwnProps & StateProps> = ({
     openMuteModal();
   });
 
+  const handleUnmute = useLastCallback(() => {
+    if (isAccountFrozen) {
+      openFrozenAccountModal();
+      return;
+    }
+
+    updateChatMutedState({ chatId, mutedUntil: UNMUTE_TIMESTAMP });
+  });
+
   const handleChatFolderChange = useLastCallback(() => {
     markRenderChatFolderModal();
     openChatFolderModal();
@@ -298,6 +348,7 @@ const Chat: FC<OwnProps & StateProps> = ({
     user,
     handleDelete,
     handleMute,
+    handleUnmute,
     handleChatFolderChange,
     handleReport,
     folderId,
@@ -345,6 +396,7 @@ const Chat: FC<OwnProps & StateProps> = ({
     isSelected && 'selected',
     isSelectedForum && 'selected-forum',
     isPreview && 'standalone',
+    areTagsEnabled && withTags && 'chat-item-with-tags',
     className,
   );
 
@@ -393,7 +445,7 @@ const Chat: FC<OwnProps & StateProps> = ({
           <ChatCallStatus isMobile={isMobile} isSelected={isSelected} isActive={withInterfaceAnimations} />
         )}
       </div>
-      <div className="info">
+      <div className={buildClassName('info', areTagsEnabled && withTags && 'has-tags')}>
         <div className="info-row">
           <FullNameTitle
             peer={isMonoforum ? monoforumChannel! : peer}
@@ -403,6 +455,7 @@ const Chat: FC<OwnProps & StateProps> = ({
             isSavedMessages={chatId === user?.id && user?.isSelf}
             isSavedDialog={isSavedDialog}
             observeIntersection={observeIntersection}
+            withStatusTextColor={isSelected}
           />
           {isMuted && !isSavedDialog && <Icon name="muted" />}
           <div className="separator" />
@@ -428,7 +481,13 @@ const Chat: FC<OwnProps & StateProps> = ({
             />
           )}
         </div>
-        {crmchatDisplayProperties?.length && (
+        {shouldRenderTags && (
+          <ChatTags
+            orderedFolderIds={tagFolderIds}
+            chatFoldersById={chatFoldersById}
+          />
+        )}
+        {Boolean(crmchatDisplayProperties?.length) && (
           <CrmchatDisplayedProperties properties={crmchatDisplayProperties} />
         )}
       </div>
@@ -464,14 +523,18 @@ const Chat: FC<OwnProps & StateProps> = ({
 export default memo(withGlobal<OwnProps>(
   (global, {
     chatId, isSavedDialog, isPreview, previewMessageId,
-  }): StateProps => {
+  }): Complete<StateProps> => {
     const chat = selectChat(global, chatId);
     const user = selectUser(global, chatId);
     if (!chat) {
       return {
         currentUserId: global.currentUserId!,
-      };
+      } as Complete<StateProps>;
     }
+
+    const chatFolderIds = getChatFolderIds(chatId);
+    const { areTagsEnabled } = global.chatFolders;
+    const isPremium = selectIsCurrentUserPremium(global);
 
     const lastMessageId = previewMessageId || selectChatLastMessageId(global, chatId, isSavedDialog ? 'saved' : 'all');
     const lastMessage = previewMessageId
@@ -518,9 +581,7 @@ export default memo(withGlobal<OwnProps>(
       isForumPanelOpen: selectIsForumPanelOpen(global),
       canScrollDown: isSelected && messageListType === 'thread',
       canChangeFolder: (global.chatFolders.orderedIds?.length || 0) > 1,
-      ...(isOutgoing && lastMessage && {
-        lastMessageOutgoingStatus: selectOutgoingStatus(global, lastMessage),
-      }),
+      lastMessageOutgoingStatus: isOutgoing && lastMessage ? selectOutgoingStatus(global, lastMessage) : undefined,
       user,
       userStatus,
       lastMessageTopic,
@@ -535,6 +596,10 @@ export default memo(withGlobal<OwnProps>(
       lastMessageStory,
       isAccountFrozen,
       monoforumChannel,
+      chatFolderIds,
+      orderedFolderIds: global.chatFolders.orderedIds,
+      chatFoldersById: global.chatFolders.byId,
+      areTagsEnabled: areTagsEnabled && isPremium,
       crmchatDisplayProperties,
     };
   },

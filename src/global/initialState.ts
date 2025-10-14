@@ -15,6 +15,7 @@ import {
   MACOS_DEFAULT_MESSAGE_TEXT_SIZE_PX,
 } from '../config';
 import { IS_IOS, IS_MAC_OS } from '../util/browser/windowEnvironment';
+import { DEFAULT_APP_CONFIG } from '../limits';
 
 export const INITIAL_PERFORMANCE_STATE_MAX: PerformanceType = {
   animatedEmoji: true,
@@ -34,7 +35,7 @@ export const INITIAL_PERFORMANCE_STATE_MAX: PerformanceType = {
   snapEffect: true,
 };
 
-export const INITIAL_PERFORMANCE_STATE_MID: PerformanceType = {
+export const INITIAL_PERFORMANCE_STATE_MED: PerformanceType = {
   animatedEmoji: true,
   autoplayGifs: true,
   autoplayVideos: true,
@@ -47,8 +48,8 @@ export const INITIAL_PERFORMANCE_STATE_MID: PerformanceType = {
   pageTransitions: true,
   reactionEffects: true,
   rightColumnAnimations: false,
-  stickerEffects: false,
-  storyRibbonAnimations: false,
+  stickerEffects: true,
+  storyRibbonAnimations: true,
   snapEffect: false,
 };
 
@@ -87,7 +88,7 @@ export const INITIAL_SHARED_STATE: SharedState = {
     isConnectionStatusMinimized: true,
     canDisplayChatInTitle: true,
     shouldAllowHttpTransport: true,
-    shouldWarnAboutSvg: true,
+    shouldWarnAboutFiles: true,
   },
   isInitial: true,
 };
@@ -99,8 +100,8 @@ export const INITIAL_GLOBAL_STATE: GlobalState = {
   passcode: {},
   twoFaSettings: {},
   isAppUpdateAvailable: false,
-  isElectronUpdateAvailable: false,
   shouldShowContextMenuHint: true,
+  appConfig: DEFAULT_APP_CONFIG,
 
   audioPlayer: {
     lastPlaybackRate: DEFAULT_PLAYBACK_RATE,
@@ -157,11 +158,13 @@ export const INITIAL_GLOBAL_STATE: GlobalState = {
     byChatId: {},
     sponsoredByChatId: {},
     pollById: {},
+    webPageById: {},
     playbackByChatId: {},
   },
 
   stories: {
     byPeerId: {},
+    albumsByPeerId: {},
     orderedPeerIds: {
       archived: [],
       active: [],
@@ -177,6 +180,7 @@ export const INITIAL_GLOBAL_STATE: GlobalState = {
 
   attachmentSettings: {
     shouldCompress: true,
+    defaultAttachmentCompression: 'compress',
     shouldSendGrouped: true,
     isInvertedMedia: undefined,
     webPageMediaSize: undefined,
@@ -195,6 +199,7 @@ export const INITIAL_GLOBAL_STATE: GlobalState = {
   chatFolders: {
     byId: {},
     invites: {},
+    areTagsEnabled: false,
   },
 
   fileUploads: {
@@ -334,7 +339,6 @@ export const INITIAL_TAB_STATE: TabState = {
   id: 0,
   isMasterTab: false,
   isLeftColumnShown: true,
-  isChatInfoShown: false,
   newChatMembersProgress: NewChatMembersProgress.Closed,
   uiReadyState: 0,
   shouldInit: true,
@@ -385,11 +389,16 @@ export const INITIAL_TAB_STATE: TabState = {
     byChatId: {},
   },
 
+  chatInfo: {
+    isOpen: false,
+  },
+
   savedGifts: {
     filter: {
       ...DEFAULT_GIFT_PROFILE_FILTER_OPTIONS,
     },
-    giftsByPeerId: {},
+    collectionsByPeerId: {},
+    activeCollectionByPeerId: {},
   },
 
   resaleGifts: {

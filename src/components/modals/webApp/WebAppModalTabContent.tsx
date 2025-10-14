@@ -82,12 +82,9 @@ type StateProps = {
   theme?: ThemeKey;
   isPaymentModalOpen?: boolean;
   paymentStatus?: TabState['payment']['status'];
-  isPremium?: boolean;
   modalState?: WebAppModalStateType;
   botAppPermissions?: BotAppPermissions;
 };
-
-const NBSP = '\u00A0';
 
 const MAIN_BUTTON_ANIMATION_TIME = 250;
 const ANIMATION_WAIT = 400;
@@ -568,9 +565,10 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
     }
 
     if (eventType === 'web_app_open_tg_link') {
+      changeWebAppModalState({ state: 'minimized' });
+
       const linkUrl = TME_LINK_PREFIX + eventData.path_full;
       openTelegramLink({ url: linkUrl, shouldIgnoreCache: eventData.force_request });
-      closeActiveWebApp();
     }
 
     if (eventType === 'web_app_setup_back_button') {
@@ -1055,7 +1053,7 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
         )}
         style={frameStyle}
         src={url}
-        title={`${bot?.firstName} Web App`}
+        title={lang('AriaMiniApp', { bot: bot?.firstName })}
         sandbox={SANDBOX_ATTRIBUTES}
         allow="camera; microphone; geolocation; clipboard-write;"
         allowFullScreen
@@ -1086,7 +1084,6 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
             disabled={!secondaryButtonCurrentIsActive && !secondaryButton?.isProgressVisible}
             nonInteractive={secondaryButton?.isProgressVisible}
             onClick={handleSecondaryButtonClick}
-            size="smaller"
           >
             {!secondaryButton?.isProgressVisible && secondaryButtonCurrentText}
             {secondaryButton?.isProgressVisible
@@ -1103,7 +1100,6 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
             disabled={!mainButtonCurrentIsActive && !mainButton?.isProgressVisible}
             nonInteractive={mainButton?.isProgressVisible}
             onClick={handleMainButtonClick}
-            size="smaller"
           >
             {!mainButton?.isProgressVisible && mainButtonCurrentText}
             {mainButton?.isProgressVisible && <Spinner className={styles.mainButtonSpinner} color="white" />}
@@ -1113,12 +1109,12 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
       {popupParameters && (
         <Modal
           isOpen={Boolean(popupParameters)}
-          title={popupParameters.title || NBSP}
-          onClose={handleAppPopupModalClose}
-          hasCloseButton
+          title={popupParameters.title}
           className={
             buildClassName(styles.webAppPopup, !popupParameters.title?.trim().length && styles.withoutTitle)
           }
+          hasAbsoluteCloseButton
+          onClose={handleAppPopupModalClose}
         >
           {popupParameters.message}
           <div className="dialog-buttons mt-2">
@@ -1128,8 +1124,6 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
                 className="confirm-dialog-button"
                 color={button.type === 'destructive' ? 'danger' : 'primary'}
                 isText
-                size="smaller"
-
                 onClick={() => handleAppPopupClose(button.id)}
               >
                 {button.text || oldLang(DEFAULT_BUTTON_TEXT[button.type])}
@@ -1142,10 +1136,14 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
       <ConfirmDialog
         isOpen={isRequestingPhone}
         onClose={handleRejectPhone}
-        title={oldLang('ShareYouPhoneNumberTitle')}
-        text={oldLang('AreYouSureShareMyContactInfoBot')}
+        title={lang('ShareYouPhoneNumberTitle')}
+        textParts={lang(
+          'AreYouSureShareMyContactInfoBot',
+          undefined,
+          { withNodes: true, withMarkdown: true, renderTextFilters: ['br', 'emoji'],
+          })}
         confirmHandler={handleAcceptPhone}
-        confirmLabel={oldLang('ContactShare')}
+        confirmLabel={lang('ContactShare')}
       />
       <ConfirmDialog
         isOpen={isRequestingWriteAccess}
@@ -1192,7 +1190,7 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
 };
 
 export default memo(withGlobal<OwnProps>(
-  (global, { modal }): StateProps => {
+  (global, { modal }): Complete<StateProps> => {
     const activeWebApp = modal?.activeWebAppKey ? selectWebApp(global, modal.activeWebAppKey) : undefined;
     const { botId: activeBotId } = activeWebApp || {};
     const modalState = modal?.modalState;

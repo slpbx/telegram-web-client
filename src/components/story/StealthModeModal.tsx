@@ -110,7 +110,6 @@ const StealthModeModal = ({ isOpen, stealthMode, isCurrentUserPremium }: StatePr
       </ListItem>
       <Button
         className={styles.button}
-        size="smaller"
         disabled={isOnCooldown}
         isShiny={!isCurrentUserPremium}
         withPremiumGradient={!isCurrentUserPremium}
@@ -125,7 +124,7 @@ const StealthModeModal = ({ isOpen, stealthMode, isCurrentUserPremium }: StatePr
   );
 };
 
-export default memo(withGlobal((global): StateProps => {
+export default memo(withGlobal((global): Complete<StateProps> => {
   const tabState = selectTabState(global);
 
   return {

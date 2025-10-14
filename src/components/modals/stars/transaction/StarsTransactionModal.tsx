@@ -1,5 +1,5 @@
 import type { FC } from '../../../../lib/teact/teact';
-import { memo, useMemo } from '../../../../lib/teact/teact';
+import { memo, useMemo, useRef } from '../../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../../global';
 
 import type {
@@ -14,6 +14,7 @@ import { getMessageLink } from '../../../../global/helpers';
 import {
   buildStarsTransactionCustomPeer,
   formatStarsTransactionAmount,
+  shouldUseCustomPeer,
 } from '../../../../global/helpers/payments';
 import {
   selectCanPlayAnimatedEmojis,
@@ -38,6 +39,7 @@ import AnimatedIconFromSticker from '../../../common/AnimatedIconFromSticker';
 import Avatar from '../../../common/Avatar';
 import Icon from '../../../common/icons/Icon';
 import StarIcon from '../../../common/icons/StarIcon';
+import InteractiveSparkles from '../../../common/InteractiveSparkles';
 import SafeLink from '../../../common/SafeLink';
 import TableInfoModal, { type TableData } from '../../common/TableInfoModal';
 import UniqueGiftHeader from '../../gift/UniqueGiftHeader';
@@ -45,7 +47,7 @@ import PaidMediaThumb from './PaidMediaThumb';
 
 import styles from './StarsTransactionModal.module.scss';
 
-import StarsBackground from '../../../../assets/stars-bg.png';
+const AVATAR_SPARKLES_CENTER_SHIFT = [0, -50] as const;
 
 export type OwnProps = {
   modal: TabState['starsTransactionModal'];
@@ -70,6 +72,7 @@ const StarsTransactionModal: FC<OwnProps & StateProps> = ({
   const lang = useLang();
   const oldLang = useOldLang();
   const { transaction } = modal || {};
+  const triggerSparklesRef = useRef<(() => void) | undefined>();
 
   const handleOpenMedia = useLastCallback(() => {
     const media = transaction?.extendedMedia;
@@ -79,6 +82,14 @@ const StarsTransactionModal: FC<OwnProps & StateProps> = ({
       origin: MediaViewerOrigin.StarsTransaction,
       standaloneMedia: media.flatMap((item) => Object.values(item)),
     });
+  });
+
+  const handleAvatarMouseMove = useLastCallback(() => {
+    triggerSparklesRef.current?.();
+  });
+
+  const handleRequestAnimation = useLastCallback((animate: NoneToVoidFunction) => {
+    triggerSparklesRef.current = animate;
   });
 
   const starModalData = useMemo(() => {
@@ -97,8 +108,8 @@ const StarsTransactionModal: FC<OwnProps & StateProps> = ({
 
     const giftAttributes = isUniqueGift ? getGiftAttributes(gift) : undefined;
 
-    const customPeer = (transaction.peer && transaction.peer.type !== 'peer'
-      && buildStarsTransactionCustomPeer(transaction.peer)) || undefined;
+    const customPeer = (transaction.peer && shouldUseCustomPeer(transaction)
+      && buildStarsTransactionCustomPeer(transaction)) || undefined;
 
     const peerId = transaction.peer?.type === 'peer' ? transaction.peer.id : undefined;
     const toName = transaction.peer && oldLang(getStarsPeerTitleKey(transaction.peer));
@@ -123,8 +134,8 @@ const StarsTransactionModal: FC<OwnProps & StateProps> = ({
       || (isGiftUpgrade && starGift?.type === 'starGiftUnique' ? starGift.title : undefined)
       || (media ? mediaText : undefined);
 
-    const shouldDisplayAvatar = !media && !sticker;
-    const avatarPeer = !photo ? (peer || customPeer) : undefined;
+    const shouldDisplayAvatar = !media && !sticker && !transaction.isPostsSearch;
+    const avatarPeer = !photo ? ((!shouldUseCustomPeer(transaction) && peer) || customPeer) : undefined;
 
     const uniqueGiftHeader = isUniqueGift && (
       <div className={buildClassName(styles.header, styles.uniqueGift)}>
@@ -138,6 +149,8 @@ const StarsTransactionModal: FC<OwnProps & StateProps> = ({
         />
       </div>
     );
+
+    const amountColorClass = isNegativeAmount(amount) ? styles.negative : styles.positive;
 
     const regularHeader = (
       <div className={styles.header}>
@@ -157,25 +170,32 @@ const StarsTransactionModal: FC<OwnProps & StateProps> = ({
           />
         )}
         {shouldDisplayAvatar && (
-          <Avatar peer={avatarPeer} webPhoto={photo} size="giant" />
+          <Avatar
+            className={styles.avatar}
+            peer={avatarPeer}
+            webPhoto={photo}
+            size="giant"
+            onMouseMove={handleAvatarMouseMove}
+          />
         )}
-        {!sticker && (
-          <img
+        {!sticker && !transaction.isPostsSearch && (
+          <InteractiveSparkles
             className={buildClassName(styles.starsBackground)}
-            src={StarsBackground}
-            alt=""
-            draggable={false}
+            color="gold"
+            onRequestAnimation={handleRequestAnimation}
+            centerShift={AVATAR_SPARKLES_CENTER_SHIFT}
           />
         )}
         {Boolean(title) && <h1 className={styles.title}>{title}</h1>}
         <p className={styles.description}>{description}</p>
         <p className={styles.amount}>
           <span
-            className={buildClassName(styles.amount, isNegativeAmount(amount) ? styles.negative : styles.positive)}
+            className={buildClassName(styles.amount, amountColorClass)}
           >
             {formatStarsTransactionAmount(lang, amount)}
           </span>
           {amount.currency === STARS_CURRENCY_CODE && <StarIcon type="gold" size="middle" />}
+          {amount.currency === 'TON' && <Icon name="toncoin" className={amountColorClass} />}
           {transaction.isRefund && (
             <p className={styles.refunded}>{lang('Refunded')}</p>
           )}
@@ -233,10 +253,12 @@ const StarsTransactionModal: FC<OwnProps & StateProps> = ({
       peerLabel = oldLang('Stars.Transaction.Via');
     }
 
-    tableData.push([
-      peerLabel,
-      peerId ? { chatId: peerId } : toName || '',
-    ]);
+    if (!transaction.isPostsSearch) {
+      tableData.push([
+        peerLabel,
+        peerId ? { chatId: peerId } : toName || '',
+      ]);
+    }
 
     if (transaction.starRefCommision && transaction.paidMessages) {
       tableData.push([
@@ -299,7 +321,8 @@ const StarsTransactionModal: FC<OwnProps & StateProps> = ({
       tableData,
       footer,
     };
-  }, [transaction, oldLang, lang, peer, canPlayAnimatedEmojis, topSticker, paidMessageCommission]);
+  }, [transaction, oldLang, lang, peer, canPlayAnimatedEmojis, topSticker,
+    paidMessageCommission, handleRequestAnimation]);
 
   const prevModalData = usePrevious(starModalData);
   const renderingModalData = prevModalData || starModalData;
@@ -319,15 +342,15 @@ const StarsTransactionModal: FC<OwnProps & StateProps> = ({
 };
 
 export default memo(withGlobal<OwnProps>(
-  (global, { modal }): StateProps => {
+  (global, { modal }): Complete<StateProps> => {
     const peerId = modal?.transaction?.peer?.type === 'peer' && modal.transaction.peer.id;
     const peer = peerId ? selectPeer(global, peerId) : undefined;
-    const paidMessageCommission = global.appConfig?.starsPaidMessageCommissionPermille;
+    const paidMessageCommission = global.appConfig.starsPaidMessageCommissionPermille;
 
     const currencyAmount = modal?.transaction.amount;
     const starsGiftSticker = modal?.transaction.isGift
-      && currencyAmount?.currency === STARS_CURRENCY_CODE ? selectGiftStickerForStars(global, currencyAmount?.amount)
-      : selectGiftStickerForTon(global, currencyAmount?.amount);
+      ? (currencyAmount?.currency === STARS_CURRENCY_CODE ? selectGiftStickerForStars(global, currencyAmount?.amount)
+        : selectGiftStickerForTon(global, currencyAmount?.amount)) : undefined;
 
     return {
       peer,

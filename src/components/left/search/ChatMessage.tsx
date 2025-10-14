@@ -3,15 +3,12 @@ import { memo } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
 import type {
-  ApiChat, ApiMessage, ApiMessageOutgoingStatus,
+  ApiChat, ApiMessage,
   ApiUser,
 } from '../../../api/types';
-import type { OldLangFn } from '../../../hooks/useOldLang';
 
 import {
   getMessageIsSpoiler,
-  getMessageMediaHash,
-  getMessageMediaThumbDataUri,
   getMessageRoundVideo,
   getMessageSticker,
   getMessageVideo,
@@ -20,9 +17,13 @@ import {
 import { selectChat, selectUser } from '../../../global/selectors';
 import buildClassName from '../../../util/buildClassName';
 import { formatPastTimeShort } from '../../../util/dates/dateFormat';
+import { type LangFn } from '../../../util/localization';
 import { renderMessageSummary } from '../../common/helpers/renderMessageText';
 
+import useMessageMediaHash from '../../../hooks/media/useMessageMediaHash';
+import useThumbnail from '../../../hooks/media/useThumbnail';
 import useAppLayout from '../../../hooks/useAppLayout';
+import useLang from '../../../hooks/useLang';
 import useLastCallback from '../../../hooks/useLastCallback';
 import useMedia from '../../../hooks/useMedia';
 import useOldLang from '../../../hooks/useOldLang';
@@ -45,7 +46,6 @@ type OwnProps = {
 type StateProps = {
   chat?: ApiChat;
   privateChatUser?: ApiUser;
-  lastMessageOutgoingStatus?: ApiMessageOutgoingStatus;
 };
 
 const ChatMessage: FC<OwnProps & StateProps> = ({
@@ -58,15 +58,18 @@ const ChatMessage: FC<OwnProps & StateProps> = ({
   const { focusMessage } = getActions();
 
   const { isMobile } = useAppLayout();
-  const mediaThumbnail = !getMessageSticker(message) ? getMessageMediaThumbDataUri(message) : undefined;
-  const mediaBlobUrl = useMedia(getMessageMediaHash(message, 'micro'));
+  const thumbDataUri = useThumbnail(message);
+  const mediaThumbnail = !getMessageSticker(message) ? thumbDataUri : undefined;
+  const mediaHash = useMessageMediaHash(message, 'micro');
+  const mediaBlobUrl = useMedia(mediaHash);
   const isRoundVideo = Boolean(getMessageRoundVideo(message));
 
   const handleClick = useLastCallback(() => {
     focusMessage({ chatId, messageId: message.id, shouldReplaceHistory: true });
   });
 
-  const lang = useOldLang();
+  const lang = useLang();
+  const oldLang = useOldLang();
 
   const buttonRef = useSelectWithEnter(handleClick);
 
@@ -96,7 +99,7 @@ const ChatMessage: FC<OwnProps & StateProps> = ({
           />
           <div className="message-date">
             <Link className="date">
-              {formatPastTimeShort(lang, message.date * 1000)}
+              {formatPastTimeShort(oldLang, message.date * 1000)}
             </Link>
           </div>
 
@@ -112,7 +115,7 @@ const ChatMessage: FC<OwnProps & StateProps> = ({
 };
 
 function renderSummary(
-  lang: OldLangFn, message: ApiMessage, blobUrl?: string, searchQuery?: string, isRoundVideo?: boolean,
+  lang: LangFn, message: ApiMessage, blobUrl?: string, searchQuery?: string, isRoundVideo?: boolean,
 ) {
   if (!blobUrl) {
     return renderMessageSummary(lang, message, undefined, searchQuery);
@@ -137,10 +140,10 @@ function renderSummary(
 }
 
 export default memo(withGlobal<OwnProps>(
-  (global, { chatId }): StateProps => {
+  (global, { chatId }): Complete<StateProps> => {
     const chat = selectChat(global, chatId);
     if (!chat) {
-      return {};
+      return {} as Complete<StateProps>;
     }
 
     const privateChatUserId = getPrivateChatUserId(chat);
@@ -148,7 +151,7 @@ export default memo(withGlobal<OwnProps>(
 
     return {
       chat,
-      ...(privateChatUserId && { privateChatUser }),
+      privateChatUser,
     };
   },
 )(ChatMessage));

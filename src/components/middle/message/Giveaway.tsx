@@ -339,7 +339,6 @@ const Giveaway = ({
       <Button
         className={styles.button}
         color="adaptive"
-        size="smaller"
         onClick={handleShowInfoClick}
       >
         {lang('BoostingHowItWork')}
@@ -358,7 +357,7 @@ const Giveaway = ({
 };
 
 export default memo(withGlobal<OwnProps>(
-  (global, { message }): StateProps => {
+  (global, { message }): Complete<StateProps> => {
     const { giveaway } = message.content;
     const chat = selectChat(global, message.chatId)!;
     const sender = (giveaway?.channelIds[0] ? selectChat(global, giveaway.channelIds[0]) : undefined)

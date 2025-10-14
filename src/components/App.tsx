@@ -8,8 +8,10 @@ import type { UiLoaderPage } from './common/UiLoader';
 
 import {
   DARK_THEME_BG_COLOR, INACTIVE_MARKER, LIGHT_THEME_BG_COLOR, PAGE_TITLE,
+  PAGE_TITLE_TAURI,
 } from '../config';
 import { selectTabState, selectTheme } from '../global/selectors';
+import { IS_TAURI } from '../util/browser/globalEnvironment';
 import { IS_INSTALL_PROMPT_SUPPORTED, PLATFORM_ENV } from '../util/browser/windowEnvironment';
 import buildClassName from '../util/buildClassName';
 import { setupBeforeInstallPrompt } from '../util/installPrompt';
@@ -19,9 +21,9 @@ import { getInitialLocationHash, parseInitialLocationHash } from '../util/routin
 import { checkSessionLocked, hasStoredSession } from '../util/sessions';
 import { updateSizes } from '../util/windowSize';
 
+import useTauriDrag from '../hooks/tauri/useTauriDrag';
 import useAppLayout from '../hooks/useAppLayout';
-import useFlag from '../hooks/useFlag';
-import usePreviousDeprecated from '../hooks/usePreviousDeprecated';
+import usePrevious from '../hooks/usePrevious';
 
 // import Test from './test/TestLocale';
 import Auth from './auth/Auth';
@@ -37,7 +39,7 @@ type StateProps = {
   authState: GlobalState['authState'];
   isScreenLocked?: boolean;
   hasPasscode?: boolean;
-  isInactiveAuth?: boolean;
+  inactiveReason?: 'auth' | 'otherClient';
   hasWebAuthTokenFailed?: boolean;
   isTestServer?: boolean;
   theme: ThemeKey;
@@ -51,18 +53,18 @@ enum AppScreens {
 }
 
 const TRANSITION_RENDER_COUNT = Object.keys(AppScreens).length / 2;
-const INACTIVE_PAGE_TITLE = `${PAGE_TITLE} ${INACTIVE_MARKER}`;
+const ACTIVE_PAGE_TITLE = IS_TAURI ? PAGE_TITLE_TAURI : PAGE_TITLE;
+const INACTIVE_PAGE_TITLE = `${ACTIVE_PAGE_TITLE} ${INACTIVE_MARKER}`;
 
 const App: FC<StateProps> = ({
   authState,
   isScreenLocked,
   hasPasscode,
-  isInactiveAuth,
+  inactiveReason,
   hasWebAuthTokenFailed,
   isTestServer,
   theme,
 }) => {
-  const [isInactive, markInactive, unmarkInactive] = useFlag(false);
   const { isMobile } = useAppLayout();
   const isMobileOs = PLATFORM_ENV === 'iOS' || PLATFORM_ENV === 'Android';
 
@@ -131,7 +133,7 @@ const App: FC<StateProps> = ({
   let activeKey: AppScreens;
   let page: UiLoaderPage | undefined;
 
-  if (isInactive) {
+  if (inactiveReason) {
     activeKey = AppScreens.inactive;
   } else if (isScreenLocked) {
     page = 'lock';
@@ -189,16 +191,14 @@ const App: FC<StateProps> = ({
   }, []);
 
   useEffect(() => {
-    if (isInactiveAuth) {
+    if (inactiveReason) {
       document.title = INACTIVE_PAGE_TITLE;
-      markInactive();
     } else {
-      document.title = PAGE_TITLE;
-      unmarkInactive();
+      document.title = ACTIVE_PAGE_TITLE;
     }
-  }, [isInactiveAuth, markInactive, unmarkInactive]);
+  }, [inactiveReason]);
 
-  const prevActiveKey = usePreviousDeprecated(activeKey);
+  const prevActiveKey = usePrevious(activeKey);
 
   function renderContent() {
     switch (activeKey) {
@@ -209,9 +209,11 @@ const App: FC<StateProps> = ({
       case AppScreens.lock:
         return <LockScreen isLocked={isScreenLocked} />;
       case AppScreens.inactive:
-        return <AppInactive />;
+        return <AppInactive inactiveReason={inactiveReason!} />;
     }
   }
+
+  useTauriDrag();
 
   useLayoutEffect(() => {
     document.body.classList.add(styles.bg);
@@ -260,12 +262,12 @@ const App: FC<StateProps> = ({
 };
 
 export default withGlobal(
-  (global): StateProps => {
+  (global): Complete<StateProps> => {
     return {
       authState: global.authState,
       isScreenLocked: global.passcode?.isScreenLocked,
       hasPasscode: global.passcode?.hasPasscode,
-      isInactiveAuth: selectTabState(global).isInactive,
+      inactiveReason: selectTabState(global).inactiveReason,
       hasWebAuthTokenFailed: global.hasWebAuthTokenFailed || global.hasWebAuthTokenPasswordRequired,
       theme: selectTheme(global),
       isTestServer: global.config?.isTestServer,

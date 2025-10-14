@@ -54,8 +54,10 @@ noscript {
 
   width: 100%;
   height: 100%;
+
   .nojs-video {
     pointer-events: none;
+
     &::-webkit-media-controls {
       display: none;
     }
@@ -90,8 +92,9 @@ body.is-ios {
   --border-radius-messages-small: 0.5rem;
 }
 
-body.is-electron {
+body.is-tauri {
   --custom-cursor: default;
+  --window-controls-width: 5rem;
 }
 
 body.cursor-grabbing {
@@ -223,6 +226,14 @@ body:not(.is-ios) {
   }
 }
 
+.no-overscroll {
+  overscroll-behavior: none;
+}
+
+.no-touch {
+  touch-action: none;
+}
+
 .emoji-small {
   overflow: hidden;
   display: inline-block;
@@ -262,6 +273,20 @@ body:not(.is-ios) {
 
   &.slow {
     transition-duration: 0.3s;
+  }
+}
+
+.interactive-gift {
+  canvas {
+    transition: 250ms transform;
+  }
+
+  @media (hover: hover) {
+    &:hover, &:focus-visible {
+      canvas {
+        transform: scale(1.1);
+      }
+    }
   }
 }
 
@@ -341,6 +366,31 @@ body:not(.is-ios) {
 
   width: 100%;
   height: 100%;
+}
+
+.with-notch {
+  &::before {
+    content: "";
+
+    position: absolute;
+    z-index: 1;
+    top: 0;
+    left: 0;
+
+    width: 100%;
+    height: 1px;
+
+    opacity: 0;
+    background-color: var(--color-borders);
+
+    transition: opacity 0.2s ease-in-out;
+  }
+
+  &.scrolled {
+    &::before {
+      opacity: 1;
+    }
+  }
 }
 
 @keyframes grow-icon {
@@ -442,13 +492,18 @@ body:not(.is-ios) {
   --color-chat-username: rgb(233, 238, 244);
 }
 
-/* stylelint-disable-next-line scss/at-rule-no-unknown */
 @view-transition {
-  /* stylelint-disable-next-line property-no-unknown */
   navigation: auto;
+  types: page;
 }
 
 :root {
+  view-transition-name: none;
+
+  @include mixins.with-vt-type('page');
+}
+
+@include mixins.on-active-vt('page') {
   &::view-transition-group(root) {
     animation-duration: 400ms;
   }

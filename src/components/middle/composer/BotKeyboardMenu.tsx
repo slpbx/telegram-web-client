@@ -3,6 +3,7 @@ import { memo, useMemo } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
 import type { ApiMessage } from '../../../api/types';
+import type { ThreadId } from '../../../types';
 
 import { selectChatMessage, selectCurrentMessageList } from '../../../global/selectors';
 import { IS_TOUCH_ENV } from '../../../util/browser/windowEnvironment';
@@ -19,6 +20,7 @@ import './BotKeyboardMenu.scss';
 export type OwnProps = {
   isOpen: boolean;
   messageId: number;
+  threadId?: ThreadId;
   onClose: NoneToVoidFunction;
 };
 
@@ -27,7 +29,7 @@ type StateProps = {
 };
 
 const BotKeyboardMenu: FC<OwnProps & StateProps> = ({
-  isOpen, message, onClose,
+  isOpen, threadId, message, onClose,
 }) => {
   const { clickBotInlineButton } = getActions();
 
@@ -70,7 +72,9 @@ const BotKeyboardMenu: FC<OwnProps & StateProps> = ({
                 ripple
                 disabled={button.type === 'unsupported'}
 
-                onClick={() => clickBotInlineButton({ chatId: message.chatId, messageId: message.id, button })}
+                onClick={() => clickBotInlineButton({
+                  chatId: message.chatId, messageId: message.id, threadId, button,
+                })}
               >
                 {buttonTexts?.[i][j]}
               </Button>
@@ -83,12 +87,12 @@ const BotKeyboardMenu: FC<OwnProps & StateProps> = ({
 };
 
 export default memo(withGlobal<OwnProps>(
-  (global, { messageId }): StateProps => {
+  (global, { messageId }): Complete<StateProps> => {
     const { chatId } = selectCurrentMessageList(global) || {};
-    if (!chatId) {
-      return {};
-    }
 
-    return { message: selectChatMessage(global, chatId, messageId) };
+    const message = chatId ? selectChatMessage(global, chatId, messageId) : undefined;
+    return {
+      message,
+    };
   },
 )(BotKeyboardMenu));

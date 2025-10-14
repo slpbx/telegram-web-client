@@ -1,20 +1,22 @@
-import type { FC } from '../../lib/teact/teact';
 import { memo } from '../../lib/teact/teact';
+import { withGlobal } from '../../global';
 
 import type { ApiMessage, ApiWebPage } from '../../api/types';
 import type { ObserveFn } from '../../hooks/useIntersectionObserver';
 import type { TextPart } from '../../types';
 
 import {
-  getFirstLinkInMessage, getMessageText,
-  getMessageWebPage,
+  getFirstLinkInMessage,
+  getMessageTextWithFallback,
 } from '../../global/helpers';
+import { selectWebPageFromMessage } from '../../global/selectors';
 import buildClassName from '../../util/buildClassName';
 import { formatPastTimeShort } from '../../util/dates/dateFormat';
 import trimText from '../../util/trimText';
 import { renderMessageSummary } from './helpers/renderMessageText';
 import renderText from './helpers/renderText';
 
+import useLang from '../../hooks/useLang';
 import useLastCallback from '../../hooks/useLastCallback';
 import useOldLang from '../../hooks/useOldLang';
 
@@ -26,6 +28,10 @@ import './WebLink.scss';
 
 const MAX_TEXT_LENGTH = 170; // symbols
 
+type ApiWebPageWithFormatted =
+  ApiWebPage
+  & { formattedDescription?: TextPart[] };
+
 type OwnProps = {
   message: ApiMessage;
   senderTitle?: string;
@@ -34,16 +40,17 @@ type OwnProps = {
   onMessageClick: (message: ApiMessage) => void;
 };
 
-type ApiWebPageWithFormatted =
-  ApiWebPage
-  & { formattedDescription?: TextPart[] };
+type StateProps = {
+  webPage?: ApiWebPage;
+};
 
-const WebLink: FC<OwnProps> = ({
-  message, senderTitle, isProtected, observeIntersection, onMessageClick,
-}) => {
-  const lang = useOldLang();
+const WebLink = ({
+  message, webPage, senderTitle, isProtected, observeIntersection, onMessageClick,
+}: OwnProps & StateProps) => {
+  const lang = useLang();
+  const oldLang = useOldLang();
 
-  let linkData: ApiWebPageWithFormatted | undefined = getMessageWebPage(message);
+  let linkData: ApiWebPageWithFormatted | undefined = webPage;
 
   if (!linkData) {
     const link = getFirstLinkInMessage(message);
@@ -53,7 +60,7 @@ const WebLink: FC<OwnProps> = ({
       linkData = {
         siteName: domain.replace(/^www./, ''),
         url: url.includes('://') ? url : url.includes('@') ? `mailto:${url}` : `http://${url}`,
-        formattedDescription: getMessageText(message)?.text !== url
+        formattedDescription: getMessageTextWithFallback(lang, message)?.text !== url
           ? renderMessageSummary(lang, message, undefined, undefined, MAX_TEXT_LENGTH)
           : undefined,
       } as ApiWebPageWithFormatted;
@@ -64,7 +71,7 @@ const WebLink: FC<OwnProps> = ({
     onMessageClick(message);
   });
 
-  if (!linkData) {
+  if (linkData?.webpageType !== 'full') {
     return undefined;
   }
 
@@ -121,7 +128,7 @@ const WebLink: FC<OwnProps> = ({
             onClick={handleMessageClick}
             isRtl={lang.isRtl}
           >
-            {formatPastTimeShort(lang, message.date * 1000)}
+            {formatPastTimeShort(oldLang, message.date * 1000)}
           </Link>
         </div>
       )}
@@ -129,4 +136,14 @@ const WebLink: FC<OwnProps> = ({
   );
 };
 
-export default memo(WebLink);
+export default memo(withGlobal<OwnProps>(
+  (global, {
+    message,
+  }): Complete<StateProps> => {
+    const webPage = selectWebPageFromMessage(global, message);
+
+    return {
+      webPage,
+    };
+  },
+)(WebLink));

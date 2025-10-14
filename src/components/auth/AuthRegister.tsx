@@ -77,7 +77,7 @@ const AuthRegister: FC<StateProps> = ({
             autoComplete="family-name"
           />
           {isButtonShown && (
-            <Button size="smaller" type="submit" ripple isLoading={authIsLoading}>{lang('Next')}</Button>
+            <Button type="submit" ripple isLoading={authIsLoading}>{lang('Next')}</Button>
           )}
         </form>
       </div>
@@ -86,5 +86,7 @@ const AuthRegister: FC<StateProps> = ({
 };
 
 export default memo(withGlobal(
-  (global): StateProps => pick(global, ['authIsLoading', 'authErrorKey']),
+  (global): Complete<StateProps> => (
+    pick(global, ['authIsLoading', 'authErrorKey']) as Complete<StateProps>
+  ),
 )(AuthRegister));

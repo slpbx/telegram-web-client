@@ -15,6 +15,7 @@ import type {
   ApiStickerSetInfo,
   ApiThreadInfo,
   ApiTypeStory,
+  ApiWebPage,
 } from '../../../api/types';
 import type {
   ActiveDownloads,
@@ -25,15 +26,11 @@ import type {
 } from '../../../types';
 import { MAIN_THREAD_ID } from '../../../api/types';
 
-import {
-  TODO_ITEMS_LIMIT,
-} from '../../../config';
 import { PREVIEW_AVATAR_COUNT, SERVICE_NOTIFICATIONS_USER_ID } from '../../../config';
 import {
   areReactionsEmpty,
   getCanPostInChat,
   getIsDownloading,
-  getMessageDownloadableMedia,
   getMessageVideo,
   getUserFullName,
   hasMessageTtl,
@@ -74,7 +71,9 @@ import {
   selectTopic,
   selectUser,
   selectUserStatus,
+  selectWebPageFromMessage,
 } from '../../../global/selectors';
+import { selectMessageDownloadableMedia } from '../../../global/selectors/media';
 import buildClassName from '../../../util/buildClassName';
 import { copyTextToClipboard } from '../../../util/clipboard';
 import { isUserId } from '../../../util/entities/ids';
@@ -110,6 +109,7 @@ export type OwnProps = {
 type StateProps = {
   threadId?: ThreadId;
   poll?: ApiPoll;
+  webPage?: ApiWebPage;
   story?: ApiTypeStory;
   chat?: ApiChat;
   availableReactions?: ApiAvailableReaction[];
@@ -180,6 +180,7 @@ const ContextMenuContainer: FC<OwnProps & StateProps> = ({
   customEmojiSets,
   album,
   poll,
+  webPage,
   story,
   anchor,
   targetHref,
@@ -345,15 +346,16 @@ const ContextMenuContainer: FC<OwnProps & StateProps> = ({
   }, [message.reactions?.recentReactions, message.seenByDates]);
 
   const isDownloading = useMemo(() => {
+    const global = getGlobal();
     if (album) {
       return album.messages.some((msg) => {
-        const downloadableMedia = getMessageDownloadableMedia(msg);
+        const downloadableMedia = selectMessageDownloadableMedia(global, msg);
         if (!downloadableMedia) return false;
         return getIsDownloading(activeDownloads, downloadableMedia);
       });
     }
 
-    const downloadableMedia = getMessageDownloadableMedia(message);
+    const downloadableMedia = selectMessageDownloadableMedia(global, message);
     if (!downloadableMedia) return false;
     return getIsDownloading(activeDownloads, downloadableMedia);
   }, [activeDownloads, album, message]);
@@ -578,8 +580,9 @@ const ContextMenuContainer: FC<OwnProps & StateProps> = ({
   });
 
   const handleDownloadClick = useLastCallback(() => {
+    const global = getGlobal();
     (album?.messages || [message]).forEach((msg) => {
-      const downloadableMedia = getMessageDownloadableMedia(msg);
+      const downloadableMedia = selectMessageDownloadableMedia(global, msg);
       if (!downloadableMedia) return;
 
       if (isDownloading) {
@@ -728,6 +731,7 @@ const ContextMenuContainer: FC<OwnProps & StateProps> = ({
         isInSavedMessages={isInSavedMessages}
         noReplies={noReplies}
         poll={poll}
+        webPage={webPage}
         story={story}
         onOpenThread={handleOpenThread}
         onReply={handleReply}
@@ -782,7 +786,7 @@ const ContextMenuContainer: FC<OwnProps & StateProps> = ({
 };
 
 export default memo(withGlobal<OwnProps>(
-  (global, { message, messageListType, detectedLanguage }): StateProps => {
+  (global, { message, messageListType, detectedLanguage }): Complete<StateProps> => {
     const { threadId } = selectCurrentMessageList(global) || {};
 
     const { defaultTags, topReactions, availableReactions } = global.reactions;
@@ -796,7 +800,7 @@ export default memo(withGlobal<OwnProps>(
 
     const {
       seenByExpiresAt, seenByMaxChatMembers, maxUniqueReactions, readDateExpiresAt,
-    } = global.appConfig || {};
+    } = global.appConfig;
 
     const reactionsLimit = chatFullInfo?.reactionsLimit || maxUniqueReactions;
 
@@ -887,13 +891,14 @@ export default memo(withGlobal<OwnProps>(
     const isInSavedMessages = selectIsChatWithSelf(global, message.chatId);
 
     const poll = selectPollFromMessage(global, message);
+    const webPage = selectWebPageFromMessage(global, message);
     const storyData = message.content.storyData;
     const story = storyData ? selectPeerStory(global, storyData.peerId, storyData.id) : undefined;
 
     const canGift = selectCanGift(global, message.chatId);
 
     const savedDialogId = selectSavedDialogIdFromMessage(global, message);
-    const todoItemsMax = global.appConfig?.todoItemsMax || TODO_ITEMS_LIMIT;
+    const todoItemsMax = global.appConfig.todoItemsMax;
     const canAppendTodoList = message.content.todo?.todo.othersCanAppend
       && message.content.todo?.todo.items?.length < todoItemsMax;
 
@@ -954,6 +959,7 @@ export default memo(withGlobal<OwnProps>(
       userFullName,
       canGift,
       savedDialogId,
+      webPage,
     };
   },
 )(ContextMenuContainer));

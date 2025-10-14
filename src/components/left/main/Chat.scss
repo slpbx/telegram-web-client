@@ -249,10 +249,20 @@
     }
 
     .last-message {
+      overflow: hidden;
+      display: flex;
+      &-summary {
+        overflow: hidden;
+        flex: unset;
+
+        max-width: none;
+
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
       .draft {
-        &::after {
-          content: ": ";
-        }
+        margin-inline-end: 0.5ch;
       }
 
       .colon, .chat-prefix-icon {
@@ -260,9 +270,8 @@
       }
 
       .chat-prefix-icon {
-        transform: translateY(1px);
         display: inline-block;
-        font-size: 0.875rem;
+        align-self: center;
         color: var(--color-list-icon);
       }
 
@@ -271,6 +280,8 @@
       }
 
       .media-preview--image {
+        flex-shrink: 0;
+
         width: 1.25rem;
         height: 1.25rem;
         margin-inline-start: 0.125rem;
@@ -300,7 +311,6 @@
 
       .icon-play {
         position: relative;
-        bottom: 0.0625rem;
 
         display: inline-block;
 
@@ -321,6 +331,21 @@
       margin-inline: 0;
       line-height: initial;
       vertical-align: text-top;
+    }
+
+    &.has-tags {
+      line-height: 1.375rem;
+
+      .ChatBadge {
+        min-width: 1.375rem;
+        height: 1.375rem;
+        line-height: 1.5rem;
+
+        .is-ios &,
+        .is-macos & {
+          line-height: 1.375rem;
+        }
+      }
     }
   }
 
@@ -442,6 +467,11 @@
       .monoforum-badge {
         color: var(--color-chat-active);
         background-color: #fff;
+      }
+
+      .ChatTags {
+        color: var(--color-chat-active);
+        background-color: #ffffffab;
       }
     }
   }

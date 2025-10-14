@@ -152,7 +152,6 @@ const InviteViaLinkModal: FC<OwnProps & StateProps> = ({
           <Button
             withPremiumGradient
             isShiny
-            size="smaller"
             onClick={handleOpenPremiumModal}
           >
             {lang('InvitePremiumBlockedSubscribe')}
@@ -185,7 +184,6 @@ const InviteViaLinkModal: FC<OwnProps & StateProps> = ({
           {canSendInviteLink && (
             <Button
               className={styles.sendInvites}
-              size="smaller"
               onClick={handleSendInviteLink}
               disabled={!selectedMemberIds.length}
             >
@@ -199,7 +197,7 @@ const InviteViaLinkModal: FC<OwnProps & StateProps> = ({
 };
 
 export default memo(withGlobal<OwnProps>(
-  (global, { modal }): StateProps => {
+  (global, { modal }): Complete<StateProps> => {
     const chat = modal?.chatId ? selectChat(global, modal.chatId) : undefined;
 
     return {

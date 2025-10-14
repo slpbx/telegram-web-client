@@ -8,7 +8,6 @@ import { type ActiveDownloads, FocusDirection } from '../../../types';
 
 import {
   ANIMATION_END_DELAY,
-  RELEASE_DATETIME,
   SCROLL_MAX_DURATION,
   SERVICE_NOTIFICATIONS_USER_ID,
 } from '../../../config';
@@ -17,8 +16,7 @@ import { IS_TOUCH_ENV } from '../../../util/browser/windowEnvironment';
 import { copyHtmlToClipboard } from '../../../util/clipboard';
 import { getCurrentTabId } from '../../../util/establishMultitabRole';
 import { compact, findLast } from '../../../util/iteratees';
-import * as langProvider from '../../../util/oldLangProvider';
-import { oldTranslate } from '../../../util/oldLangProvider';
+import { getTranslationFn } from '../../../util/localization';
 import parseHtmlAsFormattedText from '../../../util/parseHtmlAsFormattedText';
 import { getServerTime } from '../../../util/serverTime';
 import versionNotification from '../../../versionNotification.txt';
@@ -27,7 +25,6 @@ import {
   getMediaFilename,
   getMediaFormat,
   getMediaHash,
-  getMessageDownloadableMedia,
   getMessageStatefulContent,
   isChatChannel,
 } from '../../helpers';
@@ -72,6 +69,7 @@ import {
   selectThreadInfo,
   selectViewportIds,
 } from '../../selectors';
+import { selectMessageDownloadableMedia } from '../../selectors/media';
 import { getPeerStarsForMessage } from '../api/messages';
 
 import { getIsMobile } from '../../../hooks/useAppLayout';
@@ -79,7 +77,7 @@ import { getIsMobile } from '../../../hooks/useAppLayout';
 const FOCUS_DURATION = 1500;
 const FOCUS_NO_HIGHLIGHT_DURATION = SCROLL_MAX_DURATION + ANIMATION_END_DELAY;
 const POLL_RESULT_OPEN_DELAY_MS = 450;
-const VERSION_NOTIFICATION_DURATION = 1000 * 60 * 60 * 24 * 3; // 3 days
+const VERSION_NOTIFICATION_DURATION = 1000 * 60 * 60 * 24 * 7; // 7 days
 const SERVICE_NOTIFICATIONS_MAX_AMOUNT = 1e3;
 
 let blurTimeout: number | undefined;
@@ -414,7 +412,7 @@ addActionHandler('focusMessage', (global, actions, payload): ActionReturnType =>
 
   const chat = selectChat(global, chatId);
   if (!chat) {
-    actions.showNotification({ message: oldTranslate('Conversation.ErrorInaccessibleMessage'), tabId });
+    actions.showNotification({ message: { key: 'ErrorFocusInaccessibleMessage' }, tabId });
     return undefined;
   }
 
@@ -679,7 +677,7 @@ addActionHandler('downloadSelectedMessages', (global, actions, payload): ActionR
   const messages = messageIds.map((id) => chatMessages[id])
     .filter((message) => selectAllowedMessageActionsSlow(global, message, threadId).canDownload);
   messages.forEach((message) => {
-    const media = getMessageDownloadableMedia(message);
+    const media = selectMessageDownloadableMedia(global, message);
     if (!media) return;
     actions.downloadMedia({ media, originMessage: message, tabId });
   });
@@ -719,8 +717,9 @@ addActionHandler('toggleMessageSelection', (global, actions, payload): ActionRet
   if (global.shouldShowContextMenuHint) {
     actions.disableContextMenuHint();
     actions.showNotification({
-      // eslint-disable-next-line @stylistic/max-len
-      message: `To **edit** or **reply**, close this menu. Then ${IS_TOUCH_ENV ? 'long tap' : 'right click'} on a message.`,
+      message: {
+        key: IS_TOUCH_ENV ? 'ContextMenuHintTouch' : 'ContextMenuHintMouse',
+      },
       tabId,
     });
   }
@@ -780,7 +779,7 @@ addActionHandler('openTodoListModal', (global, actions, payload): ActionReturnTy
 addTabStateResetterAction('closeTodoListModal', 'todoListModal');
 
 addActionHandler('checkVersionNotification', (global, actions): ActionReturnType => {
-  if (RELEASE_DATETIME && Date.now() > Number(RELEASE_DATETIME) + VERSION_NOTIFICATION_DURATION) {
+  if (CHANGELOG_DATETIME && Date.now() > CHANGELOG_DATETIME + VERSION_NOTIFICATION_DURATION) {
     return;
   }
 
@@ -1050,7 +1049,7 @@ addActionHandler('closeSuggestedPostApprovalModal', (global, actions, payload): 
 
 function copyTextForMessages(global: GlobalState, chatId: string, messageIds: number[]) {
   const { type: messageListType, threadId } = selectCurrentMessageList(global) || {};
-  const lang = langProvider.oldTranslate;
+  const lang = getTranslationFn();
 
   const chat = selectChat(global, chatId);
 
@@ -1180,4 +1179,20 @@ addActionHandler('updateSharePreparedMessageModalSendArgs', async (global, actio
     },
   }, tabId);
   setGlobal(global);
+});
+
+addActionHandler('openQuickPreview', (global, actions, payload): ActionReturnType => {
+  const { id: chatId, threadId, tabId = getCurrentTabId() } = payload;
+
+  return updateTabState(global, {
+    quickPreview: { chatId, threadId },
+  }, tabId);
+});
+
+addActionHandler('closeQuickPreview', (global, actions, payload): ActionReturnType => {
+  const { tabId = getCurrentTabId() } = payload || {};
+
+  return updateTabState(global, {
+    quickPreview: undefined,
+  }, tabId);
 });

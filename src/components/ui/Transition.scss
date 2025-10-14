@@ -29,8 +29,7 @@
   &-slideOptimizedBackwards,
   &-slideOptimizedRtl,
   &-slideOptimizedRtlBackwards {
-    contain: strict;
-
+    transform: translate3d(0, 0, 0);
     #root & > .Transition_slide {
       position: absolute;
       top: 0;
@@ -241,12 +240,12 @@
   &-fadeBackwards {
     > .Transition_slide-from {
       opacity: 1;
-      animation: fade-out-opacity 0.15s ease;
+      animation: fade-out-opacity 0.2s ease;
     }
 
     > .Transition_slide-to {
       opacity: 0;
-      animation: fade-in-opacity 0.15s ease;
+      animation: fade-in-opacity 0.2s ease;
     }
   }
 

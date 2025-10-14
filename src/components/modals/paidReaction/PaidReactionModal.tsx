@@ -351,7 +351,6 @@ const PaidReactionModal = ({
         label={oldLang('StarsReactionShowMeInTopSenders')}
       />
       <Button
-        size="smaller"
         onClick={handleSend}
       >
         {lang('SendPaidReaction', { amount: starsAmount }, {
@@ -373,11 +372,11 @@ const PaidReactionModal = ({
 };
 
 export default memo(withGlobal<OwnProps>(
-  (global, { modal }): StateProps => {
+  (global, { modal }): Complete<StateProps> => {
     const chat = modal && selectChat(global, modal.chatId);
     const message = modal && selectChatMessage(global, modal.chatId, modal.messageId);
     const starBalance = global.stars?.balance;
-    const maxAmount = global.appConfig?.paidReactionMaxAmount || MAX_REACTION_AMOUNT;
+    const maxAmount = global.appConfig.paidReactionMaxAmount || MAX_REACTION_AMOUNT;
     const defaultPrivacy = global.settings.paidReactionPrivacy;
     const sendPaidReactionsAsPeerIds = chat?.sendPaidReactionsAsPeerIds;
     const currentUserId = global.currentUserId!;

@@ -1,3 +1,5 @@
+@use "../../styles/mixins";
+
 .RightHeader {
   pointer-events: auto;
 
@@ -6,6 +8,10 @@
 
   height: var(--header-height);
   padding: 0.5rem 0.8125rem;
+
+  background: var(--color-background);
+
+  @include mixins.with-vt-type('rightColumn');
 
   .close-button {
     flex-shrink: 0;
@@ -59,21 +65,19 @@
     margin-left: auto;
   }
 
-  body.is-electron.is-macos & {
-    -webkit-app-region: drag;
-
-    .SearchInput {
-      -webkit-app-region: no-drag;
-    }
-  }
-
-  body.is-electron.is-macos #Main:not(.is-fullscreen) & {
+  body.is-tauri.is-macos #Main:not(.is-fullscreen) & {
     @media (max-width: 600px) {
-      padding-left: 5rem;
+      padding-left: var(--window-controls-width);
     }
   }
 
   @media (max-width: 600px) {
     padding: 0.5rem;
+  }
+}
+
+@include mixins.on-active-vt('rightColumn') {
+  &::view-transition-group(.rightHeader) {
+    z-index: 10;
   }
 }

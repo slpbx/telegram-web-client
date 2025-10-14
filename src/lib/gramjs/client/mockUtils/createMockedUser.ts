@@ -1,18 +1,16 @@
-import BigInt from 'big-integer';
-
 import type { MockTypes } from './MockTypes';
 
 import Api from '../../tl/api';
 
 export default function createMockedUser(id: string, mockData: MockTypes): Api.User {
-  const user = mockData.users.find((user) => user.id === id);
+  const user = mockData.users.find((u) => u.id === id);
 
   if (!user) throw Error('No such user ' + id);
 
   const {
     firstName = 'John',
     lastName = 'Doe',
-    accessHash = BigInt(1),
+    accessHash = 1n,
     ...rest
   } = user;
 

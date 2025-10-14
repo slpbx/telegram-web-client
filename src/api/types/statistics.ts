@@ -1,18 +1,20 @@
 import type { ApiChat } from './chats';
 import type { ApiTypePrepaidGiveaway } from './payments';
+import type { ApiTypeCurrencyAmount } from './stars';
 
 export interface ApiChannelStatistics {
-  growthGraph?: StatisticsGraph | string;
-  followersGraph?: StatisticsGraph | string;
-  muteGraph?: StatisticsGraph | string;
-  topHoursGraph?: StatisticsGraph | string;
-  reactionsByEmotionGraph?: StatisticsGraph | string;
-  storyInteractionsGraph?: StatisticsGraph | string;
-  storyReactionsByEmotionGraph?: StatisticsGraph | string;
-  interactionsGraph: StatisticsGraph | string;
-  viewsBySourceGraph: StatisticsGraph | string;
-  newFollowersBySourceGraph: StatisticsGraph | string;
-  languagesGraph: StatisticsGraph | string;
+  type: 'channel';
+  growthGraph?: TypeStatisticsGraph;
+  followersGraph?: TypeStatisticsGraph;
+  muteGraph?: TypeStatisticsGraph;
+  topHoursGraph?: TypeStatisticsGraph;
+  reactionsByEmotionGraph?: TypeStatisticsGraph;
+  storyInteractionsGraph?: TypeStatisticsGraph;
+  storyReactionsByEmotionGraph?: TypeStatisticsGraph;
+  interactionsGraph: TypeStatisticsGraph;
+  viewsBySourceGraph: TypeStatisticsGraph;
+  newFollowersBySourceGraph: TypeStatisticsGraph;
+  languagesGraph: TypeStatisticsGraph;
   followers: StatisticsOverviewItem;
   viewsPerPost: StatisticsOverviewItem;
   sharesPerPost: StatisticsOverviewItem;
@@ -25,19 +27,20 @@ export interface ApiChannelStatistics {
 }
 
 export interface ApiChannelMonetizationStatistics {
-  topHoursGraph?: StatisticsGraph | string;
-  revenueGraph?: StatisticsGraph | string;
+  topHoursGraph?: TypeStatisticsGraph;
+  revenueGraph?: TypeStatisticsGraph;
   balances?: ChannelMonetizationBalances;
   usdRate?: number;
 }
 
 export interface ApiGroupStatistics {
-  growthGraph?: StatisticsGraph | string;
-  membersGraph?: StatisticsGraph | string;
-  topHoursGraph?: StatisticsGraph | string;
-  languagesGraph: StatisticsGraph | string;
-  messagesGraph: StatisticsGraph | string;
-  actionsGraph: StatisticsGraph | string;
+  type: 'group';
+  growthGraph?: TypeStatisticsGraph;
+  membersGraph?: TypeStatisticsGraph;
+  topHoursGraph?: TypeStatisticsGraph;
+  languagesGraph: TypeStatisticsGraph;
+  messagesGraph: TypeStatisticsGraph;
+  actionsGraph: TypeStatisticsGraph;
   period: StatisticsOverviewPeriod;
   members: StatisticsOverviewItem;
   viewers: StatisticsOverviewItem;
@@ -46,8 +49,8 @@ export interface ApiGroupStatistics {
 }
 
 export interface ApiPostStatistics {
-  viewsGraph?: StatisticsGraph | string;
-  reactionsGraph?: StatisticsGraph | string;
+  viewsGraph?: TypeStatisticsGraph;
+  reactionsGraph?: TypeStatisticsGraph;
   forwardsCount?: number;
   viewsCount?: number;
   reactionsCount?: number;
@@ -80,6 +83,7 @@ export interface ApiStoryPublicForward {
 }
 
 export interface StatisticsGraph {
+  graphType: 'graph';
   type: string;
   zoomToken?: string;
   labelFormatter: string;
@@ -104,6 +108,18 @@ export interface StatisticsGraph {
   };
 }
 
+export interface StatisticsGraphError {
+  graphType: 'error';
+  error: string;
+}
+
+export interface StatisticsGraphAsync {
+  graphType: 'async';
+  token: string;
+}
+
+export type TypeStatisticsGraph = StatisticsGraph | StatisticsGraphError | StatisticsGraphAsync;
+
 export interface StatisticsOverviewItem {
   current?: number;
   change?: number;
@@ -122,6 +138,7 @@ export interface StatisticsOverviewPeriod {
 }
 
 export interface StatisticsMessageInteractionCounter {
+  type: 'message';
   msgId: number;
   forwardsCount: number;
   viewsCount: number;
@@ -129,6 +146,7 @@ export interface StatisticsMessageInteractionCounter {
 }
 
 export interface StatisticsStoryInteractionCounter {
+  type: 'story';
   storyId: number;
   viewsCount: number;
   forwardsCount: number;
@@ -136,8 +154,8 @@ export interface StatisticsStoryInteractionCounter {
 }
 
 export interface ChannelMonetizationBalances {
-  currentBalance: number;
-  availableBalance: number;
-  overallRevenue: number;
+  currentBalance: ApiTypeCurrencyAmount;
+  availableBalance: ApiTypeCurrencyAmount;
+  overallRevenue: ApiTypeCurrencyAmount;
   isWithdrawalEnabled?: boolean;
 }

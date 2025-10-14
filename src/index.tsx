@@ -14,6 +14,8 @@ import { enableStrict, requestMutation } from './lib/fasterdom/fasterdom';
 import { selectTabState } from './global/selectors';
 import { selectSharedSettings } from './global/selectors/sharedState';
 import { betterView } from './util/betterView';
+import { IS_TAURI } from './util/browser/globalEnvironment';
+import listenOtherClients from './util/browser/listenOtherClients';
 import { requestGlobal, subscribeToMultitabBroadcastChannel } from './util/browser/multitab';
 import { establishMultitabRole, subscribeToMasterChange } from './util/establishMultitabRole';
 import { initGlobal } from './util/init';
@@ -21,6 +23,8 @@ import { initLocalization } from './util/localization';
 import { MULTITAB_STORAGE_KEY } from './util/multiaccount';
 import { checkAndAssignPermanentWebVersion } from './util/permanentWebVersion';
 import { onBeforeUnload } from './util/schedulers';
+import initTauriApi from './util/tauri/initTauriApi';
+import setupTauriListeners from './util/tauri/setupTauriListeners';
 import updateWebmanifest from './util/updateWebmanifest';
 
 import App from './components/App';
@@ -30,6 +34,11 @@ import './styles/index.scss';
 
 if (STRICTERDOM_ENABLED) {
   enableStrict();
+}
+
+if (IS_TAURI) {
+  initTauriApi();
+  setupTauriListeners();
 }
 
 init();
@@ -43,8 +52,7 @@ async function init() {
   if (!(window as any).isCompatTestPassed) return;
 
   checkAndAssignPermanentWebVersion();
-
-  await window.electron?.restoreLocalStorage();
+  listenOtherClients();
 
   subscribeToMultitabBroadcastChannel();
   await requestGlobal(APP_VERSION);

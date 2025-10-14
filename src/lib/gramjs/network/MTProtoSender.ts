@@ -1,5 +1,3 @@
-import type BigInt from 'big-integer';
-
 import type { TLMessage } from '../tl/core';
 
 import { sendToOrigin } from '../../../api/gramjs/worker/worker';
@@ -19,7 +17,7 @@ import {
   BadMessageError, InvalidBufferError, SecurityError, TypeNotFoundError,
 } from '../errors/Common';
 import PendingState from '../extensions/PendingState';
-import { sleep } from '../Helpers';
+import { jsonStringifyWithBigInt, sleep } from '../Helpers';
 import MessageContainer from '../tl/core/MessageContainer';
 import { doAuthentication } from './Authenticator';
 import MtProtoPlainSender from './MTProtoPlainSender';
@@ -153,7 +151,7 @@ export default class MTProtoSender {
 
   _getShouldDebugExportedSenders?: () => boolean;
 
-  private readonly _handlers: Record<number, (message: TLMessage) => void>;
+  private readonly _handlers: Record<number, (message: TLMessage) => void | Promise<void>>;
 
   private readonly _onConnectionBreak?: CallableFunction;
 
@@ -826,7 +824,7 @@ export default class MTProtoSender {
       handler = this._handleUpdate.bind(this);
     }
 
-    handler(message);
+    await handler(message);
   }
 
   /**
@@ -836,16 +834,16 @@ export default class MTProtoSender {
    * @returns {*[]}
    * @private
    */
-  _popStates(msgId: BigInt.BigInteger) {
+  _popStates(msgId: bigint) {
     const state = this._pendingState.getAndDelete(msgId);
     if (state) {
       return [state];
     }
 
-    const toPop: BigInt.BigInteger[] = [];
+    const toPop: bigint[] = [];
 
     for (const pendingState of this._pendingState.values()) {
-      if (pendingState.containerId?.equals(msgId)) {
+      if (pendingState.containerId === msgId) {
         toPop.push(pendingState.msgId!);
       }
     }
@@ -1018,7 +1016,7 @@ export default class MTProtoSender {
   _handleBadNotification(message: TLMessage) {
     const badMsg = message.obj;
     const states = this._popStates(badMsg.badMsgId);
-    this._log.debug(`Handling bad msg ${JSON.stringify(badMsg)}`);
+    this._log.debug(`Handling bad msg ${jsonStringifyWithBigInt(badMsg)}`);
     if ([16, 17].includes(badMsg.errorCode)) {
       // Sent msg_id too low or too high (respectively).
       // Use the current msg_id to determine the right time offset.

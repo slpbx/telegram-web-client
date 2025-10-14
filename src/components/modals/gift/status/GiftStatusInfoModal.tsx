@@ -67,13 +67,11 @@ const GiftStatusInfoModal = ({
     if (!emojiStatus || !isOpen) return undefined;
 
     const backdropColors = [emojiStatus.centerColor, emojiStatus.edgeColor];
-    const patternColor = emojiStatus.patternColor;
 
     return (
       <RadialPatternBackground
         className={styles.radialPattern}
         backgroundColors={backdropColors}
-        patternColor={patternColor}
         patternIcon={patternIcon.customEmoji}
       />
     );
@@ -102,7 +100,6 @@ const GiftStatusInfoModal = ({
             withEmojiStatus
             noFake
             noVerified
-            statusSparklesColor={subtitleColor}
           />
           <p className={styles.status} style={buildStyle(subtitleColor && `color: ${subtitleColor}`)}>
             {lang('Online')}
@@ -138,7 +135,6 @@ const GiftStatusInfoModal = ({
     return (
       <div className={styles.footer}>
         <Button
-          size="smaller"
           onClick={onWearClick}
         >
           {lang('UniqueStatusWearButton')}
@@ -161,7 +157,7 @@ const GiftStatusInfoModal = ({
 };
 
 export default memo(withGlobal<OwnProps>(
-  (global): StateProps => {
+  (global): Complete<StateProps> => {
     const currentUser = selectUser(global, global.currentUserId!)!;
     const isCurrentUserPremium = selectIsCurrentUserPremium(global);
 

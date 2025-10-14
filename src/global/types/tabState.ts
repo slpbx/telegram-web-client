@@ -10,6 +10,7 @@ import type {
   ApiCheckedGiftCode,
   ApiCollectibleInfo,
   ApiContact,
+  ApiEmojiStatusCollectible,
   ApiError,
   ApiFormattedText,
   ApiGeoPoint,
@@ -36,10 +37,12 @@ import type {
   ApiReceiptRegular,
   ApiSavedGifts,
   ApiSavedStarGift,
+  ApiSearchPostsFlood,
   ApiSponsoredPeer,
   ApiStarGift,
   ApiStarGiftAttribute,
   ApiStarGiftAttributeCounter,
+  ApiStarGiftUnique,
   ApiStarGiveawayOption,
   ApiStarsSubscription,
   ApiStarsTransaction,
@@ -48,11 +51,10 @@ import type {
   ApiTypeCurrencyAmount,
   ApiTypePrepaidGiveaway,
   ApiTypeStoryView,
+  ApiUniqueStarGiftValueInfo,
   ApiUser,
   ApiVideo,
-  ApiWebPage,
 } from '../../api/types';
-import type { ApiEmojiStatusCollectible } from '../../api/types/users';
 import type { FoldersActions } from '../../hooks/reducers/useFoldersReducer';
 import type { ReducerAction } from '../../hooks/useReducer';
 import type {
@@ -92,17 +94,17 @@ import type {
 import type { WebApp, WebAppModalStateType } from '../../types/webapp';
 import type { SearchResultKey } from '../../util/keys/searchResultKey';
 import type { RegularLangFnParameters } from '../../util/localization';
+import type { ProfileCollectionKey } from '../selectors/payments';
 import type { CallbackAction } from './actions';
 
 export type TabState = {
   id: number;
   isBlurred?: boolean;
   isMasterTab: boolean;
-  isInactive?: boolean;
+  inactiveReason?: 'auth' | 'otherClient';
   shouldPreventComposerAnimation?: boolean;
   inviteHash?: string;
   canInstall?: boolean;
-  isChatInfoShown: boolean;
   isStatisticsShown?: boolean;
   isLeftColumnShown: boolean;
   newChatMembersProgress?: NewChatMembersProgress;
@@ -123,8 +125,12 @@ export type TabState = {
   };
 
   shouldCloseRightColumn?: boolean;
-  nextProfileTab?: ProfileTabType;
-  forceScrollProfileTab?: boolean;
+  chatInfo: {
+    isOpen: boolean;
+    profileTab?: ProfileTabType;
+    forceScrollProfileTab?: boolean;
+    isOwnProfile?: boolean;
+  };
   nextFoldersAction?: ReducerAction<FoldersActions>;
   shareFolderScreen?: {
     folderId: number;
@@ -218,7 +224,8 @@ export type TabState = {
   };
 
   savedGifts: {
-    giftsByPeerId: Record<string, ApiSavedGifts>;
+    collectionsByPeerId: Record<string, Record<ProfileCollectionKey, ApiSavedGifts>>;
+    activeCollectionByPeerId: Record<string, number | undefined>;
     filter: GiftProfileFilterOptions;
   };
 
@@ -249,10 +256,12 @@ export type TabState = {
     chatId?: string;
     foundTopicIds?: number[];
     sponsoredPeer?: ApiSponsoredPeer;
+    searchFlood?: ApiSearchPostsFlood;
     fetchingStatus?: {
       chats?: boolean;
       messages?: boolean;
       botApps?: boolean;
+      publicPosts?: boolean;
     };
     isClosing?: boolean;
     localResults?: {
@@ -340,6 +349,8 @@ export type TabState = {
     };
   };
 
+  selectedStoryAlbumId?: number;
+
   mediaViewer: {
     chatId?: string;
     threadId?: ThreadId;
@@ -369,7 +380,7 @@ export type TabState = {
     isMuted: boolean;
   };
 
-  webPagePreview?: ApiWebPage;
+  webPagePreviewId?: string;
 
   loadingThread?: {
     loadingChatId: string;
@@ -442,6 +453,16 @@ export type TabState = {
     subscriptionInfo?: ApiChatInviteInfo;
     inputInvoice?: ApiInputInvoice;
     status?: ApiPaymentStatus;
+  };
+
+  priceConfirmModal?: {
+    originalAmount?: number;
+    newAmount?: number;
+    currency: 'TON' | 'XTR';
+    directInfo?: {
+      formId: string;
+      inputInvoice: ApiInputInvoice;
+    };
   };
 
   chatCreation?: {
@@ -630,6 +651,7 @@ export type TabState = {
     isGift?: boolean;
     monthsAmount?: number;
     isSuccess?: boolean;
+    gift?: ApiStarGift;
   };
 
   giveawayModal?: {
@@ -676,6 +698,7 @@ export type TabState = {
   giftModal?: {
     forPeerId: string;
     gifts?: ApiPremiumGiftCodeOption[];
+    selectedResaleGift?: ApiStarGift;
   };
   chatRefundModal?: {
     userId: string;
@@ -807,6 +830,16 @@ export type TabState = {
     gift: ApiSavedStarGift | ApiStarGift;
   };
 
+  giftInfoValueModal?: {
+    valueInfo: ApiUniqueStarGiftValueInfo;
+    gift: ApiStarGiftUnique;
+  };
+
+  lockedGiftModal?: {
+    untilDate?: number;
+    reason?: ApiFormattedText;
+  };
+
   giftResalePriceComposerModal?: {
     peerId?: string;
     gift: ApiSavedStarGift | ApiStarGift;
@@ -814,6 +847,11 @@ export type TabState = {
 
   giftTransferModal?: {
     gift: ApiSavedStarGift;
+  };
+
+  giftTransferConfirmModal?: {
+    gift: ApiSavedStarGift;
+    recipientId: string;
   };
 
   giftUpgradeModal?: {
@@ -839,13 +877,24 @@ export type TabState = {
     duration?: number;
   };
 
+  profileRatingModal?: {
+    userId: string;
+    level: number;
+  };
+
   monetizationVerificationModal?: {
     chatId: string;
     isLoading?: boolean;
     errorKey?: RegularLangFnParameters;
   };
 
+  quickPreview?: {
+    chatId: string;
+    threadId?: ThreadId;
+  };
+
   isWaitingForStarGiftUpgrade?: true;
   isWaitingForStarGiftTransfer?: true;
   insertingPeerIdMention?: string;
+  shouldSaveAttachmentsCompression?: boolean;
 };

@@ -1,13 +1,9 @@
-import type { FC } from '../../../lib/teact/teact';
 import type React from '../../../lib/teact/teact';
-import {
-  memo, useEffect, useMemo, useRef, useState,
-} from '../../../lib/teact/teact';
+import type { FC } from '../../../lib/teact/teact';
+import { memo, useEffect, useMemo, useRef, useState } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
-import type {
-  ApiAttachment, ApiChatMember, ApiMessage, ApiSticker,
-} from '../../../api/types';
+import type { ApiAttachment, ApiChatMember, ApiMessage, ApiSticker } from '../../../api/types';
 import type { GlobalState } from '../../../global/types';
 import type { MessageListType, ThreadId } from '../../../types';
 import type { Signal } from '../../../util/signals';
@@ -21,7 +17,7 @@ import {
 } from '../../../config';
 import { requestMutation } from '../../../lib/fasterdom/fasterdom';
 import { getAttachmentMediaType } from '../../../global/helpers';
-import { selectChatFullInfo, selectIsChatWithSelf } from '../../../global/selectors';
+import { selectChatFullInfo, selectIsChatWithSelf, selectTabState } from '../../../global/selectors';
 import { selectCurrentLimit } from '../../../global/selectors/limits';
 import { selectSharedSettings } from '../../../global/selectors/sharedState';
 import buildClassName from '../../../util/buildClassName';
@@ -100,13 +96,13 @@ type StateProps = {
   currentUserId?: string;
   groupChatMembers?: ApiChatMember[];
   recentEmojis: string[];
-  editingMessage?: ApiMessage;
   baseEmojiKeywords?: Record<string, string[]>;
   emojiKeywords?: Record<string, string[]>;
   shouldSuggestCustomEmoji?: boolean;
   customEmojiForEmoji?: ApiSticker[];
   captionLimit: number;
   attachmentSettings: GlobalState['attachmentSettings'];
+  shouldSaveAttachmentsCompression?: boolean;
 };
 
 const ATTACHMENT_MODAL_INPUT_ID = 'caption-input-text';
@@ -134,6 +130,7 @@ const AttachmentModal: FC<OwnProps & StateProps> = ({
   shouldSuggestCustomEmoji,
   customEmojiForEmoji,
   attachmentSettings,
+  shouldSaveAttachmentsCompression,
   shouldForceCompression,
   shouldForceAsFile,
   isForCurrentMessageList,
@@ -306,7 +303,9 @@ const AttachmentModal: FC<OwnProps & StateProps> = ({
         : isSilent ? onSendSilent : onSend;
       send(isSendingCompressed, shouldSendGrouped, isInvertedMedia);
       updateAttachmentSettings({
-        shouldCompress: isSendingCompressed,
+        ...(shouldSaveAttachmentsCompression && {
+          defaultAttachmentCompression: attachmentSettings.shouldCompress ? 'compress' : 'original',
+        }),
         shouldSendGrouped,
         isInvertedMedia,
         shouldSendInHighQuality,
@@ -478,8 +477,8 @@ const AttachmentModal: FC<OwnProps & StateProps> = ({
     const everyPhoto = renderingAttachments.every((a) => SUPPORTED_PHOTO_CONTENT_TYPES.has(a.mimeType));
     const everyVideo = renderingAttachments.every((a) => SUPPORTED_VIDEO_CONTENT_TYPES.has(a.mimeType));
     const everyAudio = renderingAttachments.every((a) => SUPPORTED_AUDIO_CONTENT_TYPES.has(a.mimeType));
-    const hasAnyPhoto = renderingAttachments.some((a) => SUPPORTED_PHOTO_CONTENT_TYPES.has(a.mimeType));
-    return [everyPhoto, everyVideo, everyAudio, hasAnyPhoto];
+    const anyPhoto = renderingAttachments.some((a) => SUPPORTED_PHOTO_CONTENT_TYPES.has(a.mimeType));
+    return [everyPhoto, everyVideo, everyAudio, anyPhoto];
   }, [renderingAttachments, isQuickGallery]);
 
   const hasAnySpoilerable = useMemo(() => {
@@ -541,7 +540,7 @@ const AttachmentModal: FC<OwnProps & StateProps> = ({
         {notEditingFile && !isInAlbum
           && (
             <DropdownMenu
-              className="attachmeneditingMessaget-modal-more-menu with-menu-transitions"
+              className="with-menu-transitions"
               trigger={MoreMenuButton}
               positionX="right"
             >
@@ -554,12 +553,12 @@ const AttachmentModal: FC<OwnProps & StateProps> = ({
                     canInvertMedia && (!isInvertedMedia ? (
 
                       <MenuItem icon="move-caption-up" onClick={() => setIsInvertedMedia(true)}>
-                        {oldLang('PreviewSender.MoveTextUp')}
+                        {lang('ContextMoveTextUp')}
                       </MenuItem>
                     ) : (
 
                       <MenuItem icon="move-caption-down" onClick={() => setIsInvertedMedia(undefined)}>
-                        {oldLang(('PreviewSender.MoveTextDown'))}
+                        {lang('ContextMoveTextDown')}
                       </MenuItem>
                     ))
                   }
@@ -620,17 +619,18 @@ const AttachmentModal: FC<OwnProps & StateProps> = ({
   }
 
   const isBottomDividerShown = !areAttachmentsScrolledToBottom || !isCaptionNotScrolled;
-  const buttonSendCaption = paidMessagesStars ? formatStarsAsIcon(lang,
+  const buttonSendCaption = paidMessagesStars ? formatStarsAsIcon(
+    lang,
     attachmentsLength * paidMessagesStars,
     {
       className: styles.sendButtonStar,
       asFont: true,
-    }) : oldLang('Send');
+    },
+  ) : oldLang('Send');
 
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClear}
       header={renderHeader()}
       className={buildClassName(
         styles.root,
@@ -640,8 +640,10 @@ const AttachmentModal: FC<OwnProps & StateProps> = ({
         isSymbolMenuOpen && styles.symbolMenuOpen,
         forceDarkTheme && 'component-theme-dark',
       )}
+      hasAbsoluteCloseButton={Boolean(renderingAttachments)}
       noBackdropClose
       isLowStackPriority
+      onClose={onClear}
     >
       <div
         className={styles.dropTarget}
@@ -748,6 +750,7 @@ const AttachmentModal: FC<OwnProps & StateProps> = ({
               <Button
                 ref={mainButtonRef}
                 className={styles.send}
+                size="smaller"
                 onClick={handleSendClick}
                 onContextMenu={canShowCustomSendMenu ? handleContextMenu : undefined}
               >
@@ -776,7 +779,7 @@ const AttachmentModal: FC<OwnProps & StateProps> = ({
 };
 
 export default memo(withGlobal<OwnProps>(
-  (global, { chatId }): StateProps => {
+  (global, { chatId }): Complete<StateProps> => {
     const {
       currentUserId,
       recentEmojis,
@@ -784,6 +787,7 @@ export default memo(withGlobal<OwnProps>(
       attachmentSettings,
     } = global;
 
+    const { shouldSaveAttachmentsCompression } = selectTabState(global);
     const chatFullInfo = selectChatFullInfo(global, chatId);
     const isChatWithSelf = selectIsChatWithSelf(global, chatId);
     const { shouldSuggestCustomEmoji } = global.settings.byKey;
@@ -802,6 +806,7 @@ export default memo(withGlobal<OwnProps>(
       customEmojiForEmoji: customEmojis.forEmoji.stickers,
       captionLimit: selectCurrentLimit(global, 'captionLength'),
       attachmentSettings,
+      shouldSaveAttachmentsCompression,
     };
   },
 )(AttachmentModal));

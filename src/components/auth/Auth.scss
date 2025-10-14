@@ -20,7 +20,7 @@
     margin-bottom: 1.75rem;
     margin-left: auto;
 
-    body.is-electron & {
+    body.is-tauri & {
       width: 6rem;
       height: 6rem;
       margin-bottom: 1.75rem;
@@ -60,7 +60,7 @@
     }
   }
 
-  body.is-electron #auth-phone-number-form & {
+  body.is-tauri #auth-phone-number-form & {
     padding-top: 3rem;
 
     .form {
@@ -84,27 +84,11 @@
 #auth-qr-form {
   overflow-y: auto;
   height: 100%;
-
-  body.is-electron.is-macos & {
-    -webkit-app-region: drag;
-
-    .input-group {
-      -webkit-app-region: no-drag;
-    }
-  }
 }
 
 #auth-phone-number-form {
   .form {
     min-height: 26.25rem;
-  }
-
-  .Button {
-    margin-top: 2.75rem;
-  }
-
-  .Button + .Button {
-    margin-top: 1rem;
   }
 }
 
@@ -137,6 +121,18 @@
   &:focus {
     opacity: 1;
   }
+}
+
+.auth-button {
+  margin-top: 2.5rem;
+}
+
+.auth-button + .auth-button {
+  margin-top: 0.5rem;
+}
+
+.auth-button.text + .auth-button.text {
+  margin-top: 0;
 }
 
 #auth-qr-form {
@@ -216,7 +212,7 @@
 
         min-width: 1.375rem;
         height: 1.375rem;
-        margin: 0 0.75rem 0 0;
+        margin: 0.0625rem 0.75rem 0 0;
         padding: 0;
         border-radius: 50%;
 
@@ -243,6 +239,10 @@
   position: absolute;
   top: 1rem;
   left: 1rem;
+
+  body.is-tauri & {
+    left: var(--window-controls-width);
+  }
 }
 
 @keyframes qr-show {

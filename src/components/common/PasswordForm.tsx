@@ -7,13 +7,14 @@ import {
 
 import { MIN_PASSWORD_LENGTH } from '../../config';
 import { requestMutation } from '../../lib/fasterdom/fasterdom';
+import { IS_TAURI } from '../../util/browser/globalEnvironment';
 import { IS_TOUCH_ENV } from '../../util/browser/windowEnvironment';
 import buildClassName from '../../util/buildClassName';
 import stopEvent from '../../util/stopEvent';
 
 import useTimeout from '../../hooks/schedulers/useTimeout';
 import useAppLayout from '../../hooks/useAppLayout';
-import useOldLang from '../../hooks/useOldLang';
+import useLang from '../../hooks/useLang';
 
 import Button from '../ui/Button';
 import Icon from './icons/Icon';
@@ -29,8 +30,8 @@ type OwnProps = {
   shouldShowSubmit?: boolean;
   shouldResetValue?: boolean;
   isPasswordVisible?: boolean;
-  clearError: NoneToVoidFunction;
   noRipple?: boolean;
+  onClearError: NoneToVoidFunction;
   onChangePasswordVisibility: (state: boolean) => void;
   onInputChange?: (password: string) => void;
   onSubmit?: (password: string) => void;
@@ -41,20 +42,21 @@ const PasswordForm: FC<OwnProps> = ({
   isPasswordVisible,
   error,
   hint,
-  placeholder = 'Password',
-  submitLabel = 'Next',
+  placeholder,
+  submitLabel,
   description,
   shouldShowSubmit,
   shouldResetValue,
   shouldDisablePasswordManager = false,
   noRipple = false,
-  clearError,
+  onClearError,
   onChangePasswordVisibility,
   onInputChange,
   onSubmit,
 }) => {
   const inputRef = useRef<HTMLInputElement>();
-  const lang = useOldLang();
+
+  const lang = useLang();
 
   const { isMobile } = useAppLayout();
   const [password, setPassword] = useState('');
@@ -84,7 +86,7 @@ const PasswordForm: FC<OwnProps> = ({
 
   function onPasswordChange(e: ChangeEvent<HTMLInputElement>) {
     if (error) {
-      clearError();
+      onClearError();
     }
 
     const { target } = e;
@@ -137,26 +139,27 @@ const PasswordForm: FC<OwnProps> = ({
           id="sign-in-password"
           value={password || ''}
           autoComplete={shouldDisablePasswordManager ? 'one-time-code' : 'current-password'}
+          spellCheck={IS_TAURI ? false : undefined}
           onChange={onPasswordChange}
           maxLength={256}
           dir="auto"
         />
-        <label>{error || hint || placeholder}</label>
+        <label>{error || hint || placeholder || lang('PasswordFormPlaceholder')}</label>
         <div
           className="div-button toggle-password"
           onClick={togglePasswordVisibility}
           role="button"
           tabIndex={0}
-          title="Toggle password visibility"
-          aria-label="Toggle password visibility"
+          title={lang('AriaPasswordToggle')}
+          aria-label={lang('AriaPasswordToggle')}
         >
           <Icon name={isPasswordVisible ? 'eye' : 'eye-crossed'} />
         </div>
       </div>
       {description && <p className="description">{description}</p>}
       {onSubmit && (canSubmit || shouldShowSubmit) && (
-        <Button size="smaller" type="submit" ripple={!noRipple} isLoading={isLoading} disabled={!canSubmit}>
-          {submitLabel}
+        <Button type="submit" ripple={!noRipple} isLoading={isLoading} disabled={!canSubmit}>
+          {submitLabel || lang('PasswordFormSubmit')}
         </Button>
       )}
     </form>

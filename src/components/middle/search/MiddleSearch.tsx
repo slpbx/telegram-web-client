@@ -35,6 +35,7 @@ import buildClassName from '../../../util/buildClassName';
 import captureEscKeyListener from '../../../util/captureEscKeyListener';
 import { getDayStartAt } from '../../../util/dates/dateFormat';
 import focusEditableElement from '../../../util/focusEditableElement';
+import focusNoScroll from '../../../util/focusNoScroll';
 import { getSearchResultKey, parseSearchResultKey, type SearchResultKey } from '../../../util/keys/searchResultKey';
 import { MEMO_EMPTY_ARRAY } from '../../../util/memo';
 import { debounce, fastRaf } from '../../../util/schedulers';
@@ -66,7 +67,6 @@ export type OwnProps = {
 };
 
 type StateProps = {
-  isActive?: boolean;
   chat?: ApiChat;
   monoforumChat?: ApiChat;
   threadId?: ThreadId;
@@ -96,7 +96,7 @@ const RESULT_ITEM_CLASS_NAME = 'MiddleSearchResult';
 
 const runDebouncedForSearch = debounce((cb) => cb(), 200, false);
 
-const MiddleSearch: FC<StateProps> = ({
+const MiddleSearch: FC<OwnProps & StateProps> = ({
   isActive,
   chat,
   monoforumChat,
@@ -175,7 +175,7 @@ const MiddleSearch: FC<StateProps> = ({
 
   const focusInput = useLastCallback(() => {
     requestMeasure(() => {
-      inputRef.current?.focus();
+      focusNoScroll(inputRef.current);
     });
   });
 
@@ -773,16 +773,16 @@ const MiddleSearch: FC<StateProps> = ({
 };
 
 export default memo(withGlobal<OwnProps>(
-  (global): StateProps => {
+  (global): Complete<StateProps> => {
     const currentMessageList = selectCurrentMessageList(global);
     if (!currentMessageList) {
-      return {};
+      return {} as Complete<StateProps>;
     }
     const { chatId, threadId } = currentMessageList;
 
     const chat = selectChat(global, chatId);
     if (!chat) {
-      return {};
+      return {} as Complete<StateProps>;
     }
 
     const {

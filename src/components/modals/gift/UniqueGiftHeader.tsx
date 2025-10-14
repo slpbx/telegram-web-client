@@ -1,25 +1,30 @@
-import type { TeactNode } from '../../../lib/teact/teact';
-import { memo, useMemo } from '../../../lib/teact/teact';
+import type { TeactNode } from '@teact';
+import { memo, useMemo } from '@teact';
 import { getActions } from '../../../global';
 
 import type {
   ApiPeer,
+  ApiSavedStarGift,
   ApiStarGiftAttributeBackdrop, ApiStarGiftAttributeModel, ApiStarGiftAttributePattern,
   ApiTypeCurrencyAmount } from '../../../api/types';
 
 import {
   formatStarsTransactionAmount,
 } from '../../../global/helpers/payments';
+import { IS_TOUCH_ENV } from '../../../util/browser/windowEnvironment.ts';
 import buildClassName from '../../../util/buildClassName';
 import buildStyle from '../../../util/buildStyle';
 
 import { useTransitionActiveKey } from '../../../hooks/animations/useTransitionActiveKey';
+import useFlag from '../../../hooks/useFlag';
 import useLang from '../../../hooks/useLang';
 
 import AnimatedIconFromSticker from '../../common/AnimatedIconFromSticker';
+import Icon from '../../common/icons/Icon';
 import StarIcon from '../../common/icons/StarIcon';
 import RadialPatternBackground from '../../common/profile/RadialPatternBackground';
 import Transition from '../../ui/Transition';
+import UniqueGiftManageButtons from './UniqueGiftManageButtons';
 
 import styles from './UniqueGiftHeader.module.scss';
 
@@ -32,6 +37,8 @@ type OwnProps = {
   subtitlePeer?: ApiPeer;
   className?: string;
   resellPrice?: ApiTypeCurrencyAmount;
+  showManageButtons?: boolean;
+  savedGift?: ApiSavedStarGift;
 };
 
 const STICKER_SIZE = 120;
@@ -45,34 +52,39 @@ const UniqueGiftHeader = ({
   subtitlePeer,
   className,
   resellPrice,
+  showManageButtons,
+  savedGift,
 }: OwnProps) => {
   const {
     openChat,
   } = getActions();
 
   const lang = useLang();
+  const [isGiftHover, markGiftHover, unmarkGiftHover] = useFlag(false);
   const activeKey = useTransitionActiveKey([modelAttribute, backdropAttribute, patternAttribute]);
   const subtitleColor = backdropAttribute?.textColor;
 
   const radialPatternBackdrop = useMemo(() => {
     const backdropColors = [backdropAttribute.centerColor, backdropAttribute.edgeColor];
-    const patternColor = backdropAttribute.patternColor;
 
     return (
       <RadialPatternBackground
         className={styles.radialPattern}
         backgroundColors={backdropColors}
-        patternColor={patternColor}
         patternIcon={patternAttribute.sticker}
       />
     );
   }, [backdropAttribute, patternAttribute]);
 
   return (
-    <div className={buildClassName(styles.root, className)}>
+    <div className={buildClassName(styles.root,
+      isGiftHover && 'interactive-gift',
+      showManageButtons && styles.withManageButtons,
+      className)}
+    >
       <Transition
         className={styles.transition}
-        slideClassName={styles.transitionSlide}
+        slideClassName={buildClassName(styles.transitionSlide)}
         activeKey={activeKey}
         direction={1}
         name="zoomBounceSemiFade"
@@ -82,6 +94,9 @@ const UniqueGiftHeader = ({
           className={styles.sticker}
           sticker={modelAttribute.sticker}
           size={STICKER_SIZE}
+          noLoop={!isGiftHover}
+          onMouseEnter={!IS_TOUCH_ENV ? markGiftHover : undefined}
+          onMouseLeave={!IS_TOUCH_ENV ? unmarkGiftHover : undefined}
         />
       </Transition>
       {title && <h1 className={styles.title}>{title}</h1>}
@@ -98,12 +113,18 @@ const UniqueGiftHeader = ({
           {subtitle}
         </div>
       )}
+      {savedGift && showManageButtons && (
+        <UniqueGiftManageButtons
+          savedGift={savedGift}
+        />
+      )}
       {resellPrice && (
         <p className={styles.amount}>
           <span>
             {formatStarsTransactionAmount(lang, resellPrice)}
           </span>
-          <StarIcon type="gold" size="middle" />
+          {resellPrice.currency === 'XTR' && <StarIcon type="gold" size="middle" />}
+          {resellPrice.currency === 'TON' && <Icon name="toncoin" />}
         </p>
       )}
     </div>

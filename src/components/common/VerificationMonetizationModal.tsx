@@ -73,7 +73,7 @@ const VerificationMonetizationModal = ({
             placeholder={lang('CheckPasswordPlaceholder')}
             error={renderingModal?.errorKey && lang.withRegular(renderingModal.errorKey)}
             description={lang('CheckPasswordDescription')}
-            clearError={handleClearError}
+            onClearError={handleClearError}
             isLoading={renderingModal?.isLoading}
             hint={passwordHint}
             isPasswordVisible={shouldShowPassword}
@@ -88,7 +88,7 @@ const VerificationMonetizationModal = ({
 };
 
 export default memo(withGlobal(
-  (global): StateProps => {
+  (global): Complete<StateProps> => {
     const {
       twoFaSettings: {
         hint: passwordHint,

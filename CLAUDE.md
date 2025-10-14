@@ -26,36 +26,47 @@ You are an expert in TypeScript, JavaScript, HTML, SCSS and Teact with deep expe
   - Use [buildClassName.ts](mdc:src/util/buildClassName.ts) to merge multiple class names.
   - **Always extract styles to files** - avoid inline styles unless absolutely necessary.
   - **If file already imports styles**, check where they come from and add new styles there - don't create new style files.
-  - Use rem units for all measurements.
+  - Prefer rem units for all measurements. Exceptions are possible, but usually rare.
 
 - **Code Style:**
   - Early returns.
   - Prefix boolean variables with primary or modal auxiliaries (e.q. `isOpen`, `willUpdate`, `shouldRender`).
   - Functions should start with a verb (e.q. `openModal`, `closeDialog`, `handleClick`).
-  - Prefer checking required parameter before calling a function, avoid making it optinal and checking at the beginning of the function.
+  - Prefer checking required parameter before calling a function, avoid making it optional and checking at the beginning of the function.
   - Only leave comments for complex logic.
+  - Do not use `null`. There's linter rule to enforce it.
   - **IMPORTANT: Avoid conditional spread operators** - TypeScript doesn't check if spread fields match the target type.
     ```typescript
     // ❌ BAD - No type checking
     { ...condition && { field: value } }
-    
+
     // ✅ GOOD - Full type checking
     { field: condition ? value : undefined }
     ```
-  - **IMPORTANT: Use string templates for inline styles** - Always use template literals for style prop:
+  - **IMPORTANT: Use string templates for inline styles** - Always use template literals for style prop. Teact does not support object:
     ```typescript
     // ✅ CORRECT
     style={`transform: translateX(${value}%)`}
-    
+
     // ❌ WRONG
     style={{ transform: `translateX(${value}%)` }}
     style={{ '--custom-prop': value } as React.CSSProperties}
+    ```
+  - **IMPORTANT: Font weights in CSS** - Always use existing CSS variables for font-weight. Never use numeric values or custom values.
+    ```scss
+    // ✅ CORRECT
+    font-weight: var(--font-weight-medium);
+    font-weight: var(--font-weight-bold);
+
+    // ❌ WRONG
+    font-weight: 600;
+    font-weight: bold;
     ```
 
 - **Localization & Text Rules:**
   - **ALWAYS** use `lang()` for all text content - never hardcode strings.
   - `lang()` can accept parameters: `lang('Key', { param: value })`.
-  - Add new translations to end of `src/assets/localization/fallback.strings`.
+  - Add new translations to `src/assets/localization/fallback.strings`.
 
 - **After your solution:**
   1. Critique it—identify any shortcomings.
@@ -148,8 +159,8 @@ addActionHandler('loadUser', async (global, actions, { userId }) => {
 ### 1. Basics & Imports
 
 * All components use JSX and render with Teact.
-* **Always** import React from teact library, for JSX compatibility reasons. Only import from `'react'` when you need React **types** that are not provided in Teact.
-* Built-in hooks live in `src/lib/teact/teact`. Import them from there.
+* Only import from `'react'` when you need React **types** that are not provided in Teact.
+* Built-in hooks live in Teact library. Import them from there.
 
 ### 2. Props & Types
 
@@ -192,8 +203,10 @@ const NewComp = (props: OwnProps & StateProps) => { … }
 ### Example
 
 ```ts
-import React, { useFlag } from '../../lib/teact/teact';
+import { memo, useState, useRef } from '../../lib/teact/teact';
+import { withGlobal, getActions } from '../../global';
 
+import useFlag from '../../hooks/useFlag';
 import useLang from '../../hooks/useLang';
 import useLastCallback from '../../hooks/useLastCallback';
 
@@ -215,20 +228,20 @@ const MAX_ITEMS = 10
 const Component = ({ id, className, stateValue, onClick }: OwnProps & StateProps) => {
   const { someAction } = getActions(); // Should always be first, if actions are used
 
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLDivElement>();
 
   const [color, setColor] = useState('#FF00FF');
   const [isOpen, open, close] = useFlag();
 
-  const lang = useLang();
+  const lang = useLang(); // Somewhere near the top, after state definition
 
   const handleClick = useLastCallback(() => {
     if (!ref.current) return;
     const el = ref.current;
-    setColor(el.value);
+    setColor(el.dataset.value);
     close();
     onClick?.();
-    someAction(el.value);
+    someAction(el.dataset.value);
   });
 
   return (
@@ -239,13 +252,12 @@ const Component = ({ id, className, stateValue, onClick }: OwnProps & StateProps
   );
 }
 
-export default memo(withGlobal<OwnProps>((global, { id }): StateProps => {
-
+export default memo(withGlobal<OwnProps>((global, { id }): Complete<StateProps> => {
     const stateValue = selectValue(global, id);
     return {
       stateValue,
     };
-  })(Component);
+  })(Component)
 )
 ```
 
@@ -300,6 +312,7 @@ Global State is our single, app-wide store, similar to Redux or Zustand. All its
 * Wrap `withGlobal` in `memo` so the component re-renders only on real data changes.
 * **Don't** return new arrays or objects inside `withGlobal`; that defeats memoization.
 * If you need to filter or map a list, **pass IDs as props** and do the heavy work in a `useMemo` hook.
+* Force `Complete<StateProps>` return type for `withGlobal` parameter, as it ensures that all defined properties are passed.
 
 ### 3. Example Component
 

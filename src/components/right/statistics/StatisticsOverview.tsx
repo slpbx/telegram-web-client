@@ -9,6 +9,7 @@ import type {
 
 import buildClassName from '../../../util/buildClassName';
 import { formatFullDate } from '../../../util/dates/dateFormat';
+import { convertTonFromNanos } from '../../../util/formatCurrency';
 import { formatInteger, formatIntegerCompact } from '../../../util/textFormat';
 
 import useLang from '../../../hooks/useLang';
@@ -99,6 +100,8 @@ const BOOST_OVERVIEW: OverviewCell[][] = [
 ];
 
 type StatisticsType = 'channel' | 'group' | 'message' | 'boost' | 'story' | 'monetization';
+
+const DEFAULT_VALUE = 0;
 
 export type OwnProps = {
   type: StatisticsType;
@@ -204,21 +207,33 @@ const StatisticsOverview: FC<OwnProps> = ({
         {isToncoin ? (
           <tr>
             <td className={styles.tableCell}>
-              {renderBalanceCell(balances?.availableBalance || 0, usdRate || 0, 'lng_channel_earn_available')}
-              {renderBalanceCell(balances?.currentBalance || 0, usdRate || 0, 'lng_channel_earn_reward')}
-              {renderBalanceCell(balances?.overallRevenue || 0, usdRate || 0, 'lng_channel_earn_total')}
+              {renderBalanceCell(
+                balances?.availableBalance ? convertTonFromNanos(balances.availableBalance.amount) : 0,
+                usdRate || 0,
+                'lng_channel_earn_available',
+              )}
+              {renderBalanceCell(
+                balances?.currentBalance ? convertTonFromNanos(balances.currentBalance.amount) : 0,
+                usdRate || 0,
+                'lng_channel_earn_reward',
+              )}
+              {renderBalanceCell(
+                balances?.overallRevenue ? convertTonFromNanos(balances.overallRevenue.amount) : 0,
+                usdRate || 0,
+                'lng_channel_earn_total',
+              )}
             </td>
           </tr>
         ) : schema.map((row) => (
           <tr>
             {row.map((cell: OverviewCell) => {
-              const field = (statistics as any)[cell.name];
+              const field = (statistics as any)?.[cell.name];
 
               if (cell.isPlain) {
                 return (
                   <td className={styles.tableCell}>
                     <b className={styles.tableValue}>
-                      {`${cell.isApproximate ? '≈' : ''}${formatInteger(field)}`}
+                      {`${cell.isApproximate ? '≈ ' : ''}${formatInteger(field ?? DEFAULT_VALUE)}`}
                     </b>
                     <h3 className={styles.tableHeading}>{oldLang(cell.title)}</h3>
                   </td>
@@ -226,15 +241,18 @@ const StatisticsOverview: FC<OwnProps> = ({
               }
 
               if (cell.isPercentage) {
+                const part = field?.part ?? DEFAULT_VALUE;
+                const percentage = field?.percentage ?? DEFAULT_VALUE;
+
                 return (
                   <td className={styles.tableCell}>
                     {cell.withAbsoluteValue && (
                       <span className={styles.tableValue}>
-                        {`${cell.isApproximate ? '≈' : ''}${formatInteger(field.part)}`}
+                        {`${cell.isApproximate ? '≈ ' : ''}${formatInteger(part)}`}
                       </span>
                     )}
                     <span className={cell.withAbsoluteValue ? styles.tableSecondaryValue : styles.tableValue}>
-                      {field.percentage}
+                      {percentage}
                       %
                     </span>
                     <h3 className={styles.tableHeading}>{oldLang(cell.title)}</h3>
@@ -245,7 +263,7 @@ const StatisticsOverview: FC<OwnProps> = ({
               return (
                 <td className={styles.tableCell}>
                   <b className={styles.tableValue}>
-                    {formatIntegerCompact(lang, field.current)}
+                    {formatIntegerCompact(lang, field?.current ?? DEFAULT_VALUE)}
                   </b>
                   {' '}
                   {renderOverviewItemValue(field)}

@@ -397,7 +397,7 @@ function GiftComposer({
 }
 
 export default memo(withGlobal<OwnProps>(
-  (global, { peerId }): StateProps => {
+  (global, { peerId }): Complete<StateProps> => {
     const theme = selectTheme(global);
     const {
       stars,
@@ -428,7 +428,7 @@ export default memo(withGlobal<OwnProps>(
       patternColor,
       customBackground,
       backgroundColor,
-      captionLimit: global.appConfig?.starGiftMaxMessageLength,
+      captionLimit: global.appConfig.starGiftMaxMessageLength,
       currentUserId: global.currentUserId,
       isPaymentFormLoading: tabState.isPaymentFormLoading,
       paidMessagesStars,

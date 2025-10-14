@@ -1,18 +1,20 @@
-import type { FC } from '../../../lib/teact/teact';
+import type { FC } from '@teact';
 import {
   memo, useEffect, useLayoutEffect, useRef, useState,
-} from '../../../lib/teact/teact';
+} from '@teact';
 import { withGlobal } from '../../../global';
 
 import type { ApiSticker, ApiVideo } from '../../../api/types';
 import type { GlobalActions } from '../../../global';
-import type { ThreadId } from '../../../types';
+import type { AnimationLevel, ThreadId } from '../../../types';
 import type { MenuPositionOptions } from '../../ui/Menu';
 
 import { requestMutation } from '../../../lib/fasterdom/fasterdom';
 import { selectIsContextMenuTranslucent, selectTabState } from '../../../global/selectors';
+import { selectSharedSettings } from '../../../global/selectors/sharedState';
 import { IS_TOUCH_ENV } from '../../../util/browser/windowEnvironment';
 import buildClassName from '../../../util/buildClassName';
+import { resolveTransitionName } from '../../../util/resolveTransitionName';
 
 import useAppLayout from '../../../hooks/useAppLayout';
 import useLastCallback from '../../../hooks/useLastCallback';
@@ -34,7 +36,6 @@ import SymbolMenuFooter, { SYMBOL_MENU_TAB_TITLES, SymbolMenuTabs } from './Symb
 import './SymbolMenu.scss';
 
 const ANIMATION_DURATION = 350;
-const STICKERS_TAB_INDEX = 2;
 
 export type OwnProps = {
   chatId: string;
@@ -69,6 +70,7 @@ export type OwnProps = {
 type StateProps = {
   isLeftColumnShown: boolean;
   isBackgroundTranslucent?: boolean;
+  animationLevel: AnimationLevel;
 };
 
 let isActivated = false;
@@ -80,12 +82,10 @@ const SymbolMenu: FC<OwnProps & StateProps> = ({
   canSendStickers,
   canSendGifs,
   isMessageComposer,
-  isLeftColumnShown,
   idPrefix,
   isAttachmentModal,
   canSendPlainText,
   className,
-  isBackgroundTranslucent,
   onLoad,
   onClose,
   onEmojiSelect,
@@ -96,6 +96,9 @@ const SymbolMenu: FC<OwnProps & StateProps> = ({
   onSearchOpen,
   addRecentEmoji,
   addRecentCustomEmoji,
+  isLeftColumnShown,
+  isBackgroundTranslucent,
+  animationLevel,
   ...menuPositionOptions
 }) => {
   const [activeTab, setActiveTab] = useState<SymbolMenuTabs>(SymbolMenuTabs.Emoji);
@@ -119,7 +122,7 @@ const SymbolMenu: FC<OwnProps & StateProps> = ({
   // If we can't send plain text, we should always show the stickers tab
   useEffect(() => {
     if (canSendPlainText) return;
-    setActiveTab(STICKERS_TAB_INDEX);
+    setActiveTab(SymbolMenuTabs.Stickers);
   }, [canSendPlainText]);
 
   useLayoutEffect(() => {
@@ -174,7 +177,7 @@ const SymbolMenu: FC<OwnProps & StateProps> = ({
       });
     });
 
-    setRecentEmojis([]);
+    setRecentCustomEmojis([]);
   }, [isOpen, addRecentCustomEmoji]);
 
   const handleCustomEmojiSelect = useLastCallback((emoji: ApiSticker) => {
@@ -253,7 +256,7 @@ const SymbolMenu: FC<OwnProps & StateProps> = ({
       <div className="SymbolMenu-main" onClick={stopPropagation}>
         {isActivated && (
           <Transition
-            name="slide"
+            name={resolveTransitionName('slide', animationLevel)}
             activeKey={activeTab}
             renderCount={Object.values(SYMBOL_MENU_TAB_TITLES).length}
           >
@@ -327,7 +330,6 @@ const SymbolMenu: FC<OwnProps & StateProps> = ({
       onMouseLeave={!IS_TOUCH_ENV ? handleMouseLeave : undefined}
       noCloseOnBackdrop={!IS_TOUCH_ENV}
       noCompact
-
       {...(isAttachmentModal ? menuPositionOptions : {
         positionX: 'left',
         positionY: 'bottom',
@@ -339,10 +341,11 @@ const SymbolMenu: FC<OwnProps & StateProps> = ({
 };
 
 export default memo(withGlobal<OwnProps>(
-  (global): StateProps => {
+  (global): Complete<StateProps> => {
     return {
       isLeftColumnShown: selectTabState(global).isLeftColumnShown,
       isBackgroundTranslucent: selectIsContextMenuTranslucent(global),
+      animationLevel: selectSharedSettings(global).animationLevel,
     };
   },
 )(SymbolMenu));

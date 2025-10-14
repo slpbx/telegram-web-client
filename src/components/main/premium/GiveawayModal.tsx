@@ -13,7 +13,6 @@ import type {
   ApiPrepaidStarsGiveaway,
   ApiStarGiveawayOption,
   ApiTypePrepaidGiveaway,
-  ApiUser,
 } from '../../../api/types';
 
 import {
@@ -38,7 +37,7 @@ import useLastCallback from '../../../hooks/useLastCallback';
 import useOldLang from '../../../hooks/useOldLang';
 
 import CalendarModal from '../../common/CalendarModal';
-import CountryPickerModal from '../../common/CountryPickerModal';
+import CountryPickerModal from '../../common/CountryPickerModal.async';
 import GroupChatInfo from '../../common/GroupChatInfo';
 import Icon from '../../common/icons/Icon';
 import StarTopupOptionList from '../../modals/stars/StarTopupOptionList';
@@ -72,8 +71,6 @@ export type OwnProps = {
 type StateProps = {
   chatId?: string;
   gifts?: ApiPremiumGiftCodeOption[];
-  isOpen?: boolean;
-  fromUser?: ApiUser;
   selectedMemberList?: string[] | undefined;
   selectedChannelList?: string[] | undefined;
   giveawayBoostPerPremiumLimit?: number;
@@ -906,7 +903,7 @@ const GiveawayModal: FC<OwnProps & StateProps> = ({
   );
 };
 
-export default memo(withGlobal<OwnProps>((global): StateProps => {
+export default memo(withGlobal<OwnProps>((global): Complete<StateProps> => {
   const {
     giveawayModal,
   } = selectTabState(global);
@@ -919,10 +916,10 @@ export default memo(withGlobal<OwnProps>((global): StateProps => {
     gifts: giveawayModal?.gifts,
     selectedMemberList: giveawayModal?.selectedMemberIds,
     selectedChannelList: giveawayModal?.selectedChannelIds,
-    giveawayBoostPerPremiumLimit: global.appConfig?.giveawayBoostsPerPremium,
-    isStarsGiftEnabled: global.appConfig?.isStarsGiftEnabled,
-    userSelectionLimit: global.appConfig?.giveawayAddPeersMax,
-    countrySelectionLimit: global.appConfig?.giveawayCountriesMax,
+    giveawayBoostPerPremiumLimit: global.appConfig.giveawayBoostsPerPremium,
+    isStarsGiftEnabled: global.appConfig.isStarsGiftEnabled,
+    userSelectionLimit: global.appConfig.giveawayAddPeersMax,
+    countrySelectionLimit: global.appConfig.giveawayCountriesMax,
     countryList: global.countryList.general,
     prepaidGiveaway: giveawayModal?.prepaidGiveaway,
     isChannel,

@@ -132,7 +132,7 @@ const LockScreen: FC<OwnProps & StateProps> = ({
           error={validationError}
           placeholder={lang('Passcode.EnterPasscodePlaceholder')}
           submitLabel={lang('Next')}
-          clearError={handleClearError}
+          onClearError={handleClearError}
           isPasswordVisible={shouldShowPasscode}
           noRipple
           onChangePasswordVisibility={setShouldShowPasscode}
@@ -155,7 +155,7 @@ const LockScreen: FC<OwnProps & StateProps> = ({
 };
 
 export default memo(withGlobal<OwnProps>(
-  (global): StateProps => {
+  (global): Complete<StateProps> => {
     return {
       passcodeSettings: global.passcode,
     };

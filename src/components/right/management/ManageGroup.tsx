@@ -446,6 +446,7 @@ const ManageGroup: FC<OwnProps & StateProps> = ({
           {!isPublicGroup && !hasLinkedChannel && Boolean(chatFullInfo) && (
             <div className="ListItem narrow" ref={isPreHistoryHiddenCheckboxRef}>
               <Checkbox
+                className="align-checkbox-with-list-buttons"
                 checked={!chatFullInfo.isPreHistoryHidden}
                 label={lang('ChatHistory')}
                 onChange={handleTogglePreHistory}
@@ -493,7 +494,7 @@ const ManageGroup: FC<OwnProps & StateProps> = ({
 };
 
 export default memo(withGlobal<OwnProps>(
-  (global, { chatId }): StateProps => {
+  (global, { chatId }): Complete<StateProps> => {
     const chat = selectChat(global, chatId)!;
     const chatFullInfo = selectChatFullInfo(global, chatId);
     const { management, limitReachedModal } = selectTabState(global);

@@ -1,9 +1,12 @@
-import { memo, useRef } from '../../../lib/teact/teact';
+import { memo, useRef } from '@teact';
 
 import type { ApiStarGiftUnique } from '../../../api/types';
 
+import { IS_TOUCH_ENV } from '../../../util/browser/windowEnvironment.ts';
+import buildClassName from '../../../util/buildClassName.ts';
 import { getGiftAttributes } from '../../common/helpers/gifts';
 
+import useFlag from '../../../hooks/useFlag.ts';
 import { type ObserveFn } from '../../../hooks/useIntersectionObserver';
 
 import RadialPatternBackground from '../../common/profile/RadialPatternBackground';
@@ -31,19 +34,25 @@ const WebPageUniqueGift = ({
     backdrop, model, pattern,
   } = getGiftAttributes(gift)!;
 
+  const [isHover, markHover, unmarkHover] = useFlag();
+
   const backgroundColors = [backdrop!.centerColor, backdrop!.edgeColor];
 
   return (
     <div
-      className={styles.root}
+      className={buildClassName('interactive-gift', styles.root)}
       onClick={onClick}
+      onMouseEnter={!IS_TOUCH_ENV ? markHover : undefined}
+      onMouseLeave={!IS_TOUCH_ENV ? unmarkHover : undefined}
     >
       <div className={styles.backgroundWrapper}>
         <RadialPatternBackground
           className={styles.background}
           backgroundColors={backgroundColors}
-          patternColor={backdrop!.patternColor}
           patternIcon={pattern!.sticker}
+          centerEmptiness={0.15}
+          ringsCount={2}
+          ovalFactor={1.2}
         />
       </div>
       <div ref={stickerRef} className={styles.stickerWrapper}>
@@ -51,6 +60,7 @@ const WebPageUniqueGift = ({
           containerRef={stickerRef}
           sticker={model!.sticker}
           size={STAR_GIFT_STICKER_SIZE}
+          shouldLoop={isHover}
           observeIntersectionForPlaying={observeIntersectionForPlaying}
           observeIntersectionForLoading={observeIntersectionForLoading}
         />

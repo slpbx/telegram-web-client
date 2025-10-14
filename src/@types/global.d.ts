@@ -4,6 +4,7 @@ declare module '*.module.scss';
 
 declare const APP_VERSION: string;
 declare const APP_REVISION: string;
+declare const CHANGELOG_DATETIME: number | undefined;
 
 declare namespace React {
   interface HTMLAttributes {
@@ -46,6 +47,12 @@ type AnyFunction = (...args: any[]) => any;
 type AnyToVoidFunction = (...args: any[]) => void;
 type BooleanToVoidFunction = (value: boolean) => void;
 type NoneToVoidFunction = () => void;
+
+type StringAutocomplete<T> = T | (string & {});
+
+type Complete<T> = {
+  [P in keyof Required<T>]: Pick<T, P> extends Required<Pick<T, P>> ? T[P] : (T[P] | undefined);
+};
 
 type EmojiCategory = {
   id: string;
@@ -168,6 +175,7 @@ interface BooleanConstructor {
 
 interface Array<T> {
   filter<S extends T>(predicate: BooleanConstructor, thisArg?: unknown): Exclude<S, Falsy>[];
+  at(index: number): T; // Make it behave like arr[arr.length - 1]
 }
 interface ReadonlyArray<T> {
   filter<S extends T>(predicate: BooleanConstructor, thisArg?: unknown): Exclude<S, Falsy>[];

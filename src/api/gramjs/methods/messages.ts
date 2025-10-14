@@ -1,6 +1,6 @@
-import BigInt from 'big-integer';
 import { Api as GramJs } from '../../../lib/gramjs';
 import { RPCError } from '../../../lib/gramjs/errors';
+import { generateRandomBigInt } from '../../../lib/gramjs/Helpers';
 
 import type {
   ForwardMessagesParams,
@@ -24,10 +24,12 @@ import type {
   ApiPeer,
   ApiPoll,
   ApiReaction,
+  ApiSearchPostsFlood,
   ApiSendMessageAction,
   ApiTodoItem,
   ApiUser,
   ApiUserStatus,
+  ApiWebPage,
   MediaContent,
 } from '../../types';
 import {
@@ -36,13 +38,11 @@ import {
 } from '../../types';
 
 import {
-  API_GENERAL_ID_LIMIT,
   DEBUG,
   GIF_MIME_TYPE,
   MAX_INT_32,
   MENTION_UNREAD_SLICE,
   MESSAGE_ID_REQUIRED_ERROR,
-  PINNED_MESSAGES_LIMIT,
   REACTION_UNREAD_SLICE,
   SUPPORTED_PHOTO_CONTENT_TYPES,
   SUPPORTED_VIDEO_CONTENT_TYPES,
@@ -52,6 +52,7 @@ import { compact, split } from '../../../util/iteratees';
 import { getMessageKey } from '../../../util/keys/messageKey';
 import { getServerTime } from '../../../util/serverTime';
 import { interpolateArray } from '../../../util/waveform';
+import { API_GENERAL_ID_LIMIT, PINNED_MESSAGES_LIMIT } from '../../../limits';
 import {
   buildApiChatFromPreview,
   buildApiSendAsPeerId,
@@ -59,13 +60,15 @@ import {
 } from '../apiBuilders/chats';
 import { buildApiFormattedText } from '../apiBuilders/common';
 import {
-  buildMessageMediaContent, buildMessageTextContent, buildPollFromMedia, buildWebPage,
+  buildMessageMediaContent, buildMessageTextContent, buildPollFromMedia,
+  buildWebPageFromMedia,
 } from '../apiBuilders/messageContent';
 import {
   buildApiFactCheck,
   buildApiMessage,
   buildApiQuickReply,
   buildApiReportResult,
+  buildApiSearchPostsFlood,
   buildApiSponsoredMessage,
   buildApiThreadInfo,
   buildLocalForwardedMessage,
@@ -95,7 +98,6 @@ import {
   buildPeer,
   buildSendMessageAction,
   DEFAULT_PRIMITIVES,
-  generateRandomBigInt,
   getEntityTypeById,
 } from '../gramjsBuilders';
 import {
@@ -128,6 +130,7 @@ type SearchResults = {
   nextOffsetRate?: number;
   nextOffsetPeerId?: string;
   nextOffsetId?: number;
+  searchFlood?: ApiSearchPostsFlood;
 };
 
 export async function fetchMessages({
@@ -263,6 +266,30 @@ export async function fetchMessage({ chat, messageId }: { chat: ApiChat; message
   }
 
   return { message };
+}
+
+export async function fetchMessagesById({ chat, messageIds }: { chat: ApiChat; messageIds: number[] }) {
+  const isChannel = getEntityTypeById(chat.id) === 'channel';
+
+  const result = await invokeRequest(
+    isChannel
+      ? new GramJs.channels.GetMessages({
+        channel: buildInputChannel(chat.id, chat.accessHash),
+        id: messageIds.map((id) => new GramJs.InputMessageID({ id })),
+      })
+      : new GramJs.messages.GetMessages({
+        id: messageIds.map((id) => new GramJs.InputMessageID({ id })),
+      }),
+    {
+      shouldThrow: true,
+    },
+  );
+
+  if (!result || result instanceof GramJs.messages.MessagesNotModified) {
+    return undefined;
+  }
+
+  return result.messages.map(buildApiMessage).filter(Boolean);
 }
 
 let mediaQueue = Promise.resolve();
@@ -491,10 +518,10 @@ export function sendApiMessage(
       }
 
       sendApiUpdate({
-        '@type': 'updateMessageSendFailed',
+        '@type': localMessage.isScheduled ? 'updateScheduledMessageSendFailed' : 'updateMessageSendFailed',
         chatId: chat.id,
         localId: localMessage.id,
-        error: error.message,
+        error: error.errorMessage,
       });
       clearTimeout(timeout);
     }
@@ -1467,6 +1494,9 @@ export async function searchMessagesInChat({
     case 'profilePhoto':
       filter = new GramJs.InputMessagesFilterChatPhotos();
       break;
+    case 'gif':
+      filter = new GramJs.InputMessagesFilterGif();
+      break;
     case 'text':
     default: {
       filter = new GramJs.InputMessagesFilterEmpty();
@@ -1537,6 +1567,16 @@ export async function searchMessagesGlobal({
   minDate?: number;
   maxDate?: number;
 }): Promise<SearchResults | undefined> {
+  if (type === 'publicPosts') {
+    return searchPublicPosts({
+      query,
+      offsetRate,
+      offsetPeer,
+      offsetId,
+      limit,
+    });
+  }
+
   let filter;
   switch (type) {
     case 'media':
@@ -1613,22 +1653,32 @@ export async function searchMessagesGlobal({
   };
 }
 
-export async function searchHashtagPosts({
-  hashtag, offsetRate, offsetPeer, offsetId, limit,
+export async function searchPublicPosts({
+  hashtag, query, offsetRate, offsetPeer, offsetId, limit,
 }: {
-  hashtag: string;
+  hashtag?: string;
+  query?: string;
   offsetRate?: number;
   offsetPeer?: ApiPeer;
   offsetId?: number;
   limit?: number;
 }): Promise<SearchResults | undefined> {
   const peer = (offsetPeer && buildInputPeer(offsetPeer.id, offsetPeer.accessHash)) || new GramJs.InputPeerEmpty();
+
+  const resultFlood = await checkSearchPostsFlood(query);
+
+  if (!resultFlood) {
+    return undefined;
+  }
+
   const result = await invokeRequest(new GramJs.channels.SearchPosts({
     hashtag,
+    query,
     offsetRate: offsetRate ?? DEFAULT_PRIMITIVES.INT,
     offsetId: offsetId ?? DEFAULT_PRIMITIVES.INT,
     offsetPeer: peer,
     limit: limit ?? DEFAULT_PRIMITIVES.INT,
+    allowPaidStars: BigInt(resultFlood.starsAmount),
   }));
 
   if (!result || result instanceof GramJs.messages.MessagesNotModified) {
@@ -1650,6 +1700,10 @@ export async function searchHashtagPosts({
   const nextOffsetRate = 'nextRate' in result && result.nextRate ? result.nextRate : undefined;
   const nextOffsetId = lastMessage?.id;
 
+  const searchFlood = result instanceof GramJs.messages.MessagesSlice && result.searchFlood
+    ? buildApiSearchPostsFlood(result.searchFlood, query)
+    : undefined;
+
   return {
     messages,
     userStatusesById,
@@ -1657,7 +1711,18 @@ export async function searchHashtagPosts({
     nextOffsetRate,
     nextOffsetPeerId,
     nextOffsetId,
+    searchFlood,
   };
+}
+
+export async function checkSearchPostsFlood(query?: string) {
+  const result = await invokeRequest(new GramJs.channels.CheckSearchPostsFlood({ query }));
+
+  if (!result) {
+    return undefined;
+  }
+
+  return buildApiSearchPostsFlood(result, query);
 }
 
 export async function fetchWebPagePreview({
@@ -1671,7 +1736,9 @@ export async function fetchWebPagePreview({
     entities: textWithEntities.entities,
   }));
 
-  return preview && buildWebPage(preview.media);
+  if (!preview) return undefined;
+
+  return buildWebPageFromMedia(preview.media);
 }
 
 export async function sendPollVote({
@@ -1823,7 +1890,7 @@ export async function forwardApiMessages(params: ForwardMessagesParams) {
 
   const priceInStars = messagePriceInStars ? messagePriceInStars * messageIds.length : undefined;
 
-  const randomIds = messageIds.map(generateRandomBigInt);
+  const randomIds = messageIds.map(() => generateRandomBigInt());
   try {
     const update = await invokeRequest(new GramJs.messages.ForwardMessages({
       fromPeer: buildInputPeer(fromChat.id, fromChat.accessHash),
@@ -1850,10 +1917,10 @@ export async function forwardApiMessages(params: ForwardMessagesParams) {
   } catch (error: any) {
     Object.values(localMessages).forEach((localMessage) => {
       sendApiUpdate({
-        '@type': 'updateMessageSendFailed',
+        '@type': localMessage.isScheduled ? 'updateScheduledMessageSendFailed' : 'updateMessageSendFailed',
         chatId: toChat.id,
         localId: localMessage.id,
-        error: error.message,
+        error: error.errorMessage,
       });
     });
   }
@@ -2325,6 +2392,7 @@ function handleLocalMessageUpdate(
 
   let newContent: MediaContent | undefined;
   let poll: ApiPoll | undefined;
+  let webPage: ApiWebPage | undefined;
   if (messageUpdate instanceof GramJs.UpdateShortSentMessage) {
     if (localMessage.content.text && messageUpdate.entities) {
       newContent = {
@@ -2339,6 +2407,7 @@ function handleLocalMessageUpdate(
         }),
       };
       poll = buildPollFromMedia(messageUpdate.media);
+      webPage = buildWebPageFromMedia(messageUpdate.media);
     }
 
     const mtpMessage = buildMessageFromUpdate(messageUpdate.id, localMessage.chatId, messageUpdate);
@@ -2379,6 +2448,7 @@ function handleLocalMessageUpdate(
       localId: localMessage.id,
       message: updatedMessage,
       poll,
+      webPage,
     });
   }
 
@@ -2430,7 +2500,7 @@ export async function sendQuickReply({
   if (!messages || messages instanceof GramJs.messages.MessagesNotModified) return;
 
   const ids = messages.messages.map((m) => m.id);
-  const randomIds = ids.map(generateRandomBigInt);
+  const randomIds = ids.map(() => generateRandomBigInt());
 
   const result = await invokeRequest(new GramJs.messages.SendQuickReplyMessages({
     peer: buildInputPeer(chat.id, chat.accessHash),
