@@ -90,6 +90,7 @@ export function clearStoredSession(slot?: number) {
   }
 
   localStorage.removeItem(`${SESSION_ACCOUNT_PREFIX}${slot || 1}`);
+  */
 }
 
 function clearStoredLegacySession() {

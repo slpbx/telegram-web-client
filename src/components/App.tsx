@@ -237,7 +237,11 @@ const App: FC<StateProps> = ({
   if (window.parent.location === window.location) {
     return (
       <div className={styles.crmchat}>
-        Go to <a href="https://crmchat.ai">CRMchat.ai</a> to use CRM
+        Go to
+        {' '}
+        <a href="https://crmchat.ai">CRMchat.ai</a>
+        {' '}
+        to use CRM
       </div>
     );
   }
