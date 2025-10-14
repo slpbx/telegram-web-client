@@ -779,6 +779,9 @@ addActionHandler('openTodoListModal', (global, actions, payload): ActionReturnTy
 addTabStateResetterAction('closeTodoListModal', 'todoListModal');
 
 addActionHandler('checkVersionNotification', (global, actions): ActionReturnType => {
+  /** [crmchat] Disable version notification */
+  return;
+  /*
   if (CHANGELOG_DATETIME && Date.now() > CHANGELOG_DATETIME + VERSION_NOTIFICATION_DURATION) {
     return;
   }
@@ -803,6 +806,7 @@ addActionHandler('checkVersionNotification', (global, actions): ActionReturnType
     message: message as ApiMessage,
     version: currentVersion,
   });
+  */
 });
 
 addActionHandler('createServiceNotification', (global, actions, payload): ActionReturnType => {
