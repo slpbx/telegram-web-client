@@ -350,7 +350,7 @@ const ProfileInfo = ({
     const activeDashIndex = currentPhotoIndex >= MAX_PHOTO_DASH_COUNT ? MAX_PHOTO_DASH_COUNT - 1 : currentPhotoIndex;
 
     return (
-      <div className={styles.photoDashes}>
+      <div className={styles.photoDashes} style={createVtnStyle('photoDashes', true)}>
         {enumerator.map((_, i) => (
           <span className={buildClassName(styles.photoDash, i === activeDashIndex && styles.photoDash_current)} />
         ))}
@@ -482,8 +482,8 @@ const ProfileInfo = ({
         isPlain && styles.plain,
       )}
       style={buildStyle(
-        profileColorSet && `--rating-outline-color: ${isExpanded ? 'transparent' : profileColorSet?.bgColors[1]}`,
-        profileColorSet && !isExpanded && `--rating-text-color: ${profileColorSet?.bgColors[1]}`,
+        profileColorSet && `--rating-outline-color: ${isExpanded ? 'transparent' : profileColorSet?.bgColors[0]}`,
+        profileColorSet && !isExpanded && `--rating-text-color: ${profileColorSet?.bgColors[0]}`,
         createVtnStyle('profileInfo', true),
       )}
       dir={lang.isRtl ? 'rtl' : undefined}

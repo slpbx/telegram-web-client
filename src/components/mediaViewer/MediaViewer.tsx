@@ -18,6 +18,7 @@ import { type MediaViewerMedia, MediaViewerOrigin, type ThreadId } from '../../t
 import { ANIMATION_END_DELAY } from '../../config';
 import { requestMutation } from '../../lib/fasterdom/fasterdom';
 import {
+  getMediaSearchType,
   getMessageContentIds,
   getMessagePaidMedia, isChatAdmin,
 } from '../../global/helpers';
@@ -53,7 +54,7 @@ import useFlag from '../../hooks/useFlag';
 import useForceUpdate from '../../hooks/useForceUpdate';
 import useLastCallback from '../../hooks/useLastCallback';
 import useOldLang from '../../hooks/useOldLang';
-import { exitPictureInPictureIfNeeded, usePictureInPictureSignal } from '../../hooks/usePictureInPicture';
+import { exitPictureInPictureIfNeeded, PICTURE_IN_PICTURE_SIGNAL } from '../../hooks/usePictureInPicture';
 import usePreviousDeprecated from '../../hooks/usePreviousDeprecated';
 import { dispatchPriorityPlaybackEvent } from '../../hooks/usePriorityPlaybackCheck';
 import { useMediaProps } from './hooks/useMediaProps';
@@ -174,14 +175,14 @@ const MediaViewer = ({
   const messageMediaIds = useMemo(() => {
     return withDynamicLoading
       ? collectedMessageIds
-      : getMessageContentIds(chatMessages || {}, collectedMessageIds || [], contentType);
+      : getMessageContentIds(chatMessages || {}, collectedMessageIds || [], contentType || 'media');
   }, [chatMessages, collectedMessageIds, contentType, withDynamicLoading]);
 
   if (isOpen && (!prevSenderId || prevSenderId !== senderId || animationKey.current === undefined)) {
     animationKey.current = isSingle ? 0 : (messageId || mediaIndex);
   }
 
-  const [getIsPictureInPicture] = usePictureInPictureSignal();
+  const [getIsPictureInPicture] = PICTURE_IN_PICTURE_SIGNAL;
 
   useEffect(() => {
     if (!isOpen || getIsPictureInPicture()) {
@@ -353,7 +354,7 @@ const MediaViewer = ({
     }
 
     const index = messageMediaIds?.indexOf(fromMessage.id);
-    if (index === undefined) return undefined;
+    if (index === undefined || index === -1) return undefined;
     const nextIndex = index + direction;
     const nextMessageId = messageMediaIds![nextIndex];
     const nextMessage = chatMessages?.[nextMessageId];
@@ -595,7 +596,8 @@ export default memo(withGlobal(
       } else if (origin === MediaViewerOrigin.SharedMedia) {
         const currentSearch = selectCurrentSharedMediaSearch(global);
         const resultsByType = currentSearch?.resultsByType;
-        const { foundIds } = (viewableMedia?.isGif ? resultsByType?.gif : resultsByType?.media) || {};
+        const contentType = viewableMedia && getMediaSearchType(viewableMedia?.media);
+        const { foundIds } = (contentType && resultsByType?.[contentType]) || {};
         collectedMessageIds = foundIds;
       } else if (isOriginInline || isOriginAlbum) {
         const outlyingList = selectOutlyingListByMessageId(global, chatId, threadId, messageId);

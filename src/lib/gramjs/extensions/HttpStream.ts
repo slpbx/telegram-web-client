@@ -12,7 +12,7 @@ export default class HttpStream {
 
   private isClosed: boolean;
 
-  private stream: Buffer[] = [];
+  private stream: Buffer<ArrayBuffer>[] = [];
 
   private canRead: Promise<void> = Promise.resolve();
 
@@ -82,7 +82,7 @@ export default class HttpStream {
     this.isClosed = false;
   }
 
-  write(data: Buffer) {
+  write(data: Buffer<ArrayBuffer>) {
     if (this.isClosed || !this.url) {
       this.handleDisconnect();
       throw closeError;

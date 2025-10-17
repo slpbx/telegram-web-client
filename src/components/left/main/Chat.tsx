@@ -95,9 +95,11 @@ type OwnProps = {
   isPreview?: boolean;
   previewMessageId?: number;
   className?: string;
+  withTags?: boolean;
   observeIntersection?: ObserveFn;
   onDragEnter?: (chatId: string) => void;
-  withTags?: boolean;
+  onDragLeave?: NoneToVoidFunction;
+  onReorderAnimationEnd?: NoneToVoidFunction;
 };
 
 type StateProps = {
@@ -168,12 +170,14 @@ const Chat: FC<OwnProps & StateProps> = ({
   className,
   isSynced,
   onDragEnter,
+  onDragLeave,
   isAccountFrozen,
   chatFolderIds,
   orderedFolderIds,
   chatFoldersById,
   areTagsEnabled,
   withTags,
+  onReorderAnimationEnd,
   crmchatDisplayProperties,
 }) => {
   const {
@@ -237,6 +241,7 @@ const Chat: FC<OwnProps & StateProps> = ({
     orderDiff,
     isSavedDialog,
     isPreview,
+    onReorderAnimationEnd,
     topics,
     noForumTitle: shouldRenderTags,
   });
@@ -409,9 +414,10 @@ const Chat: FC<OwnProps & StateProps> = ({
       buttonStyle={`height: ${CHAT_HEIGHT_PX}px; padding-top: 4px; padding-bottom: 4px;`}
       ripple={!isForum && !isMobile}
       contextActions={contextActions}
+      withPortalForMenu
       onClick={handleClick}
       onDragEnter={handleDragEnter}
-      withPortalForMenu
+      onDragLeave={onDragLeave}
     >
       <div className={buildClassName('status', 'status-clickable')}>
         <Avatar

@@ -70,13 +70,14 @@ interface OwnProps {
   withPortalForMenu?: boolean;
   menuBubbleClassName?: string;
   href?: string;
-  onMouseDown?: (e: React.MouseEvent<HTMLDivElement>) => void;
+  nonInteractive?: boolean;
   onClick?: (e: React.MouseEvent<HTMLElement>, arg?: any) => void;
-  onContextMenu?: (e: React.MouseEvent<HTMLElement>) => void;
   clickArg?: any;
+  onMouseDown?: (e: React.MouseEvent<HTMLDivElement>) => void;
+  onContextMenu?: (e: React.MouseEvent<HTMLElement>) => void;
   onSecondaryIconClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
   onDragEnter?: (e: React.DragEvent<HTMLDivElement>) => void;
-  nonInteractive?: boolean;
+  onDragLeave?: NoneToVoidFunction;
 }
 
 const ListItem = ({
@@ -109,13 +110,14 @@ const ListItem = ({
   contextActions,
   withPortalForMenu,
   href,
-  onMouseDown,
+  nonInteractive,
   onClick,
-  onContextMenu,
   clickArg,
+  onMouseDown,
+  onContextMenu,
   onSecondaryIconClick,
   onDragEnter,
-  nonInteractive,
+  onDragLeave,
 }: OwnProps) => {
   let containerRef = useRef<HTMLDivElement>();
   if (ref) {
@@ -231,6 +233,7 @@ const ListItem = ({
       style={style}
       onMouseDown={onMouseDown}
       onDragEnter={onDragEnter}
+      onDragLeave={onDragLeave}
     >
       <ButtonElementTag
         className={buildClassName('ListItem-button', isTouched && 'active', buttonClassName)}
