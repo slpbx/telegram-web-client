@@ -1,8 +1,9 @@
+import { CRM_CHAT_ACCOUNT_ID } from '../config';
 import { ACCOUNT_SLOT } from './multiaccount';
 
 const cacheApi = self.caches;
 
-const SUFFIX = ACCOUNT_SLOT ? `_${ACCOUNT_SLOT}` : '';
+const SUFFIX = `_${CRM_CHAT_ACCOUNT_ID}` + (ACCOUNT_SLOT ? `_${ACCOUNT_SLOT}` : '');
 
 let isSupported: boolean | undefined;
 

@@ -2,6 +2,7 @@ import type { AccountInfo, SessionUserInfo, SharedSessionData } from '../types';
 
 import {
   ACCOUNT_QUERY,
+  CRM_CHAT_ACCOUNT_ID,
   DATA_BROADCAST_CHANNEL_PREFIX,
   ESTABLISH_BROADCAST_CHANNEL_PREFIX,
   GLOBAL_STATE_CACHE_PREFIX,
@@ -18,11 +19,11 @@ export const ACCOUNT_SLOT = WORKER_ACCOUNT_SLOT || (
   IS_MULTIACCOUNT_SUPPORTED ? getAccountSlot(globalThis.location.href) : undefined
 );
 
-export const DATA_BROADCAST_CHANNEL_NAME = `${DATA_BROADCAST_CHANNEL_PREFIX}_${ACCOUNT_SLOT || 1}`;
-export const ESTABLISH_BROADCAST_CHANNEL_NAME = `${ESTABLISH_BROADCAST_CHANNEL_PREFIX}_${ACCOUNT_SLOT || 1}`;
-export const MULTITAB_STORAGE_KEY = `${MULTITAB_LOCALSTORAGE_KEY_PREFIX}_${ACCOUNT_SLOT || 1}`;
+export const DATA_BROADCAST_CHANNEL_NAME = `${DATA_BROADCAST_CHANNEL_PREFIX}_${CRM_CHAT_ACCOUNT_ID}_${ACCOUNT_SLOT || 1}`;
+export const ESTABLISH_BROADCAST_CHANNEL_NAME = `${ESTABLISH_BROADCAST_CHANNEL_PREFIX}_${CRM_CHAT_ACCOUNT_ID}_${ACCOUNT_SLOT || 1}`;
+export const MULTITAB_STORAGE_KEY = `${MULTITAB_LOCALSTORAGE_KEY_PREFIX}_${CRM_CHAT_ACCOUNT_ID}_${ACCOUNT_SLOT || 1}`;
 export const GLOBAL_STATE_CACHE_KEY = ACCOUNT_SLOT
-  ? `${GLOBAL_STATE_CACHE_PREFIX}_${ACCOUNT_SLOT}` : GLOBAL_STATE_CACHE_PREFIX;
+  ? `${GLOBAL_STATE_CACHE_PREFIX}_${CRM_CHAT_ACCOUNT_ID}_${ACCOUNT_SLOT}` : `${GLOBAL_STATE_CACHE_PREFIX}_${CRM_CHAT_ACCOUNT_ID}`;
 
 export function getAccountSlot(url: string) {
   const params = new URL(url).searchParams;
@@ -70,7 +71,7 @@ function getAccountInfo(slot: number): AccountInfo | undefined {
 
 export function loadSlotSession(slot: number | undefined): SharedSessionData | undefined {
   try {
-    const data = JSON.parse(localStorage.getItem(`${SESSION_ACCOUNT_PREFIX}${slot || 1}`) || '{}') as SharedSessionData;
+    const data = JSON.parse(localStorage.getItem(`${CRM_CHAT_ACCOUNT_ID}_${SESSION_ACCOUNT_PREFIX}${slot || 1}`) || '{}') as SharedSessionData;
     if (!data.dcId) return undefined;
     return data;
   } catch (e) {
@@ -94,7 +95,7 @@ export function storeAccountData(slot: number | undefined, data: Partial<Session
 }
 
 export function writeSlotSession(slot: number | undefined, data: SharedSessionData) {
-  localStorage.setItem(`${SESSION_ACCOUNT_PREFIX}${slot || 1}`, JSON.stringify(data));
+  localStorage.setItem(`${CRM_CHAT_ACCOUNT_ID}_${SESSION_ACCOUNT_PREFIX}${slot || 1}`, JSON.stringify(data));
 }
 
 export function getAccountSlotUrl(slot: number, forLogin?: boolean, isTest?: boolean) {
