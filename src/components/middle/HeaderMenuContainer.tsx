@@ -44,6 +44,7 @@ import {
   selectUser,
   selectUserFullInfo,
 } from '../../global/selectors';
+import { CAN_BLOCK_CONTACT, CAN_DELETE_CHAT } from '../../util/crmchat';
 import { isUserId } from '../../util/entities/ids';
 import { disableScrolling } from '../../util/scrollLock';
 
@@ -799,7 +800,7 @@ const HeaderMenuContainer: FC<OwnProps & StateProps> = ({
               {isBlocked ? oldLang('BotRestart') : oldLang('Bot.Stop')}
             </MenuItem>
           )}
-          {isPrivate && !isChatWithSelf && !isBot && (
+          {isPrivate && !isChatWithSelf && !isBot && CAN_BLOCK_CONTACT && (
             <MenuItem
               icon={isBlocked ? 'user' : 'hand-stop'}
               onClick={isBlocked ? handleUnblock : handleBlock}
@@ -807,7 +808,7 @@ const HeaderMenuContainer: FC<OwnProps & StateProps> = ({
               {isBlocked ? oldLang('Unblock') : oldLang('BlockUser')}
             </MenuItem>
           )}
-          {canLeave && (
+          {canLeave && CAN_DELETE_CHAT && (
             <>
               <MenuSeparator />
               <MenuItem

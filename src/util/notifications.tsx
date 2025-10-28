@@ -6,7 +6,7 @@ import type {
 } from '../api/types';
 import { ApiMediaFormat } from '../api/types';
 
-import { APP_NAME, DEBUG, IS_TEST } from '../config';
+import { APP_NAME, DEBUG, IS_TEST, SERVICE_NOTIFICATIONS_USER_ID } from '../config';
 import {
   getChatAvatarHash,
   getChatTitle,
@@ -31,6 +31,7 @@ import { callApi } from '../api/gramjs';
 import { IS_TAURI } from './browser/globalEnvironment';
 import { IS_SERVICE_WORKER_SUPPORTED, IS_TOUCH_ENV } from './browser/windowEnvironment';
 import jsxToHtml from './element/jsxToHtml';
+import { CAN_ACCESS_SERVICE_NOTIFICATIONS } from './crmchat';
 import { buildCollectionByKey } from './iteratees';
 import { getTranslationFn } from './localization';
 import * as mediaLoader from './mediaLoader';
@@ -412,6 +413,8 @@ export async function notifyAboutMessage({
   message,
   isReaction = false,
 }: { chat: ApiChat; message: Partial<ApiMessage>; isReaction?: boolean }) {
+  if (chat.id === SERVICE_NOTIFICATIONS_USER_ID && !CAN_ACCESS_SERVICE_NOTIFICATIONS) return;
+
   const global = getGlobal();
   const { hasWebNotifications } = selectSettingsKeys(global);
   if (!checkIfShouldNotify(chat, message)) return;

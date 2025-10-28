@@ -229,3 +229,13 @@ async function blobUrlToDataURI(blobUrl: string) {
     reader.readAsDataURL(blob);
   });
 }
+
+const urlParams = new URLSearchParams(window.location.search);
+const isChatter = urlParams.get('p') === '0';
+
+export const CAN_DELETE_CHAT = !isChatter;
+export const CAN_DELETE_MESSAGES = !isChatter;
+export const CAN_ACCESS_SETTINGS = !isChatter;
+export const CAN_ACCESS_SERVICE_NOTIFICATIONS = !isChatter;
+export const CAN_BLOCK_CONTACT = !isChatter;
+export const CAN_MUTE_CHAT = !isChatter;

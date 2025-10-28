@@ -34,6 +34,7 @@ import {
   selectUserFullInfo,
 } from '../../global/selectors';
 import { ARE_CALLS_SUPPORTED, IS_APP } from '../../util/browser/windowEnvironment';
+import { CAN_DELETE_CHAT, CAN_MUTE_CHAT } from '../../util/crmchat';
 import { isUserId } from '../../util/entities/ids';
 import focusNoScroll from '../../util/focusNoScroll';
 
@@ -504,8 +505,8 @@ export default memo(withGlobal<OwnProps>(
     const canSearch = isMainThread || isDiscussionThread;
     const canCall = ARE_CALLS_SUPPORTED && isUserId(chat.id) && !isChatWithSelf && !bot && !chat.isSupport
       && !isAnonymousForwardsChat(chat.id);
-    const canMute = isMainThread && !isChatWithSelf && !canSubscribe;
-    const canLeave = isSavedDialog || (isMainThread && !canSubscribe);
+    const canMute = isMainThread && !isChatWithSelf && !canSubscribe && CAN_MUTE_CHAT;
+    const canLeave = (isSavedDialog || (isMainThread && !canSubscribe)) && CAN_DELETE_CHAT;
     const canEnterVoiceChat = ARE_CALLS_SUPPORTED && isMainThread && chat.isCallActive;
     const canCreateVoiceChat = ARE_CALLS_SUPPORTED && isMainThread && !chat.isCallActive
       && (chat.adminRights?.manageCall || (chat.isCreator && isChatBasicGroup(chat))) && !chat.isMonoforum;

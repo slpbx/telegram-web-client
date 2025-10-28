@@ -16,12 +16,11 @@ import type {
   ApiUserStatus,
 } from '../../../api/types';
 import type { ObserveFn } from '../../../hooks/useIntersectionObserver';
-import type { DisplayedProperty } from '../../../util/crmchat';
 import type { ChatAnimationTypes } from './hooks';
 import { MAIN_THREAD_ID } from '../../../api/types';
 import { StoryViewerOrigin } from '../../../types';
 
-import { ALL_FOLDER_ID, CHAT_HEIGHT_PX, UNMUTE_TIMESTAMP } from '../../../config';
+import { ALL_FOLDER_ID, CHAT_HEIGHT_PX, SERVICE_NOTIFICATIONS_USER_ID, UNMUTE_TIMESTAMP } from '../../../config';
 import {
   groupStatefulContent,
   isUserOnline,
@@ -55,6 +54,7 @@ import {
 } from '../../../global/selectors';
 import { IS_OPEN_IN_NEW_TAB_SUPPORTED } from '../../../util/browser/windowEnvironment';
 import buildClassName from '../../../util/buildClassName';
+import { CAN_ACCESS_SERVICE_NOTIFICATIONS, type DisplayedProperty } from '../../../util/crmchat';
 import { isUserId } from '../../../util/entities/ids';
 import { getChatFolderIds } from '../../../util/folderManager';
 import { createLocationHash } from '../../../util/routing';
@@ -405,6 +405,8 @@ const Chat: FC<OwnProps & StateProps> = ({
     className,
   );
 
+  const shouldHideLastMessage = chat.id === SERVICE_NOTIFICATIONS_USER_ID && !CAN_ACCESS_SERVICE_NOTIFICATIONS;
+
   return (
     <ListItem
       ref={ref}
@@ -465,7 +467,7 @@ const Chat: FC<OwnProps & StateProps> = ({
           />
           {isMuted && !isSavedDialog && <Icon name="muted" />}
           <div className="separator" />
-          {lastMessage && (
+          {lastMessage && !shouldHideLastMessage && (
             <LastMessageMeta
               message={lastMessage}
               outgoingStatus={!isSavedDialog ? lastMessageOutgoingStatus : undefined}
@@ -474,7 +476,7 @@ const Chat: FC<OwnProps & StateProps> = ({
           )}
         </div>
         <div className="subtitle">
-          {renderSubtitle()}
+          {!shouldHideLastMessage && renderSubtitle()}
           {!isPreview && (
             <ChatBadge
               chat={chat}

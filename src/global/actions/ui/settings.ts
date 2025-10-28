@@ -5,6 +5,7 @@ import { type LangCode, LeftColumnContent, SettingsScreens } from '../../../type
 
 import { requestMutation } from '../../../lib/fasterdom/fasterdom';
 import { IS_IOS } from '../../../util/browser/windowEnvironment';
+import { CAN_ACCESS_SETTINGS } from '../../../util/crmchat';
 import { disableDebugConsole, initDebugConsole } from '../../../util/debugConsole';
 import { getCurrentTabId } from '../../../util/establishMultitabRole';
 import { oldSetLanguage, setTimeFormat } from '../../../util/oldLangProvider';
@@ -163,6 +164,12 @@ addActionHandler('openLeftColumnContent', (global, actions, payload): ActionRetu
 addActionHandler('openSettingsScreen', (global, actions, payload): ActionReturnType => {
   const { screen = SettingsScreens.Main, tabId = getCurrentTabId() } = payload;
   const tabState = selectTabState(global, tabId);
+
+  if (!CAN_ACCESS_SETTINGS) {
+    actions.openLeftColumnContent({ contentKey: LeftColumnContent.ChatList, tabId });
+    return;
+  }
+
   // Force settings only if new screen is passed, do not on resets
   if (payload.screen) actions.openLeftColumnContent({ contentKey: LeftColumnContent.Settings, tabId });
   return updateTabState(global, {

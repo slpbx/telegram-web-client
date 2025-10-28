@@ -8,6 +8,7 @@ import { SERVICE_NOTIFICATIONS_USER_ID } from '../config';
 import { getCanDeleteChat, isChatArchived, isChatChannel, isChatGroup } from '../global/helpers';
 import { IS_TAURI } from '../util/browser/globalEnvironment';
 import { IS_OPEN_IN_NEW_TAB_SUPPORTED } from '../util/browser/windowEnvironment';
+import { CAN_DELETE_CHAT, CAN_MUTE_CHAT } from '../util/crmchat';
 import { isUserId } from '../util/entities/ids';
 import { compact } from '../util/iteratees';
 import useLang from './useLang';
@@ -129,12 +130,12 @@ const useChatContextActions = ({
         handler: togglePinned,
       };
 
-    const actionDelete = {
+    const actionDelete = CAN_DELETE_CHAT ? {
       title: deleteTitle,
       icon: 'delete',
       destructive: true,
       handler: handleDelete,
-    };
+    } : undefined;
 
     if (isSavedDialog) {
       return compact([actionOpenInNewTab, actionQuickPreview, actionPin, actionDelete]) as MenuItemContextAction[];
@@ -194,7 +195,7 @@ const useChatContextActions = ({
       actionMaskAsRead,
       actionMarkAsUnread,
       actionPin,
-      !isSelf && actionMute,
+      !isSelf && CAN_MUTE_CHAT && actionMute,
       !isSelf && !isServiceNotifications && !isInFolder && actionArchive,
       actionReport,
       actionDelete,

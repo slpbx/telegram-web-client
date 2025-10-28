@@ -41,6 +41,7 @@ import SettingsStickers from './SettingsStickers';
 import SettingsTwoFa from './twoFa/SettingsTwoFa';
 
 import './Settings.scss';
+import { CAN_ACCESS_SETTINGS } from '../../../util/crmchat';
 
 const TRANSITION_RENDER_COUNT = Object.keys(SettingsScreens).length / 2;
 const TRANSITION_DURATION = 200;
@@ -507,6 +508,10 @@ const Settings: FC<OwnProps> = ({
         {renderCurrentSectionContent(isScreenActive, activeKey)}
       </>
     );
+  }
+
+  if (!CAN_ACCESS_SETTINGS) {
+    return undefined;
   }
 
   return (

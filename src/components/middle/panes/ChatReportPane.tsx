@@ -10,6 +10,7 @@ import {
 import { isApiPeerChat, isApiPeerUser } from '../../../global/helpers/peers';
 import { selectPeer } from '../../../global/selectors';
 import buildClassName from '../../../util/buildClassName';
+import { CAN_BLOCK_CONTACT, CAN_DELETE_CHAT } from '../../../util/crmchat';
 
 import useCurrentOrPrev from '../../../hooks/useCurrentOrPrev';
 import useFlag from '../../../hooks/useFlag';
@@ -50,6 +51,8 @@ const ChatReportPane: FC<OwnProps & StateProps> = ({
   currentUserId,
   onPaneStateChange,
 }) => {
+  canBlockContact = CAN_BLOCK_CONTACT && canBlockContact;
+
   const {
     openAddContactDialog,
     blockUser,
@@ -193,8 +196,9 @@ const ChatReportPane: FC<OwnProps & StateProps> = ({
           <Checkbox
             className="dialog-checkbox"
             label={lang('DeleteThisChat')}
-            checked={shouldDeleteChat}
+            checked={CAN_DELETE_CHAT && shouldDeleteChat}
             onCheck={setShouldDeleteChat}
+            disabled={!CAN_DELETE_CHAT}
           />
         )}
         {user && canReportSpam && (

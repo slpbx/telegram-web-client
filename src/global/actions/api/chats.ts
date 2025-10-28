@@ -34,6 +34,7 @@ import {
   TOPICS_SLICE_SECOND_LOAD,
 } from '../../../config';
 import { copyTextToClipboard } from '../../../util/clipboard';
+import { CAN_DELETE_CHAT } from '../../../util/crmchat';
 import { formatShareText, processDeepLink } from '../../../util/deeplink';
 import { isDeepLink } from '../../../util/deepLinkParser';
 import { isUserId } from '../../../util/entities/ids';
@@ -845,6 +846,11 @@ addActionHandler('deleteChatUser', (global, actions, payload): ActionReturnType 
     return;
   }
 
+  /* [crmchat] check if user can delete chat */
+  if (!CAN_DELETE_CHAT) {
+    return;
+  }
+
   global = leaveChat(global, chatId);
   setGlobal(global);
 
@@ -862,6 +868,11 @@ addActionHandler('deleteChat', (global, actions, payload): ActionReturnType => {
     return;
   }
 
+  /* [crmchat] check if user can delete chat */
+  if (!CAN_DELETE_CHAT) {
+    return;
+  }
+
   global = leaveChat(global, chatId);
   setGlobal(global);
 
@@ -876,6 +887,11 @@ addActionHandler('leaveChannel', async (global, actions, payload): Promise<void>
   const { chatId, tabId = getCurrentTabId() } = payload;
   const chat = selectChat(global, chatId);
   if (!chat) {
+    return;
+  }
+
+  /* [crmchat] check if user can delete chat */
+  if (!CAN_DELETE_CHAT) {
     return;
   }
 
@@ -901,6 +917,11 @@ addActionHandler('deleteChannel', (global, actions, payload): ActionReturnType =
   const { chatId, tabId = getCurrentTabId() } = payload;
   const chat = selectChat(global, chatId);
   if (!chat) {
+    return;
+  }
+
+  /* [crmchat] check if user can delete chat */
+  if (!CAN_DELETE_CHAT) {
     return;
   }
 

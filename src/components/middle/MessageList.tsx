@@ -55,6 +55,7 @@ import { selectIsChatRestricted } from '../../global/selectors/chats';
 import { selectActiveRestrictionReasons, selectCurrentMessageList } from '../../global/selectors/messages';
 import animateScroll, { isAnimatingScroll, restartCurrentScrollAnimation } from '../../util/animateScroll';
 import buildClassName from '../../util/buildClassName';
+import { CAN_ACCESS_SERVICE_NOTIFICATIONS } from '../../util/crmchat.ts';
 import { isUserId } from '../../util/entities/ids';
 import { orderBy } from '../../util/iteratees';
 import { isLocalMessageId } from '../../util/keys/messageKey';
@@ -762,7 +763,7 @@ const MessageList: FC<OwnProps & StateProps> = ({
       <MessageListAccountInfo chatId={chatId} hasMessages={hasMessages} />
     ) : activeKey === Content.ContactGreeting ? (
       <ContactGreeting key={chatId} userId={chatId} />
-    ) : activeKey === Content.NoMessages ? (
+    ) : activeKey === Content.NoMessages || (isServiceNotificationsChat && !CAN_ACCESS_SERVICE_NOTIFICATIONS) ? (
       <NoMessages
         chatId={chatId}
         topic={topic}

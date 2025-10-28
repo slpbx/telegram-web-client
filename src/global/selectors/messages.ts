@@ -27,6 +27,7 @@ import {
   WEB_APP_PLATFORM,
 } from '../../config';
 import { IS_TRANSLATION_SUPPORTED } from '../../util/browser/windowEnvironment';
+import { CAN_DELETE_MESSAGES } from '../../util/crmchat';
 import { isUserId } from '../../util/entities/ids';
 import { getCurrentTabId } from '../../util/establishMultitabRole';
 import { findLast } from '../../util/iteratees';
@@ -751,7 +752,7 @@ export function selectAllowedMessageActionsSlow<T extends GlobalState>(
   const canNotDeleteBoostMessage = isBoostMessage && isOwn
     && !chat.isCreator && !getHasAdminRight(chat, 'deleteMessages');
 
-  const canDelete = (!isLocal || isFailed) && !isServiceNotification && !canNotDeleteBoostMessage && (
+  const canDelete = CAN_DELETE_MESSAGES && (!isLocal || isFailed) && !isServiceNotification && !canNotDeleteBoostMessage && (
     isPrivate
     || isOwn
     || isBasicGroup

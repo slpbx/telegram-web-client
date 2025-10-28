@@ -27,6 +27,7 @@ import { selectPremiumLimit } from '../../../global/selectors/limits';
 import { selectSharedSettings } from '../../../global/selectors/sharedState';
 import { IS_MULTIACCOUNT_SUPPORTED } from '../../../util/browser/globalEnvironment';
 import { IS_TAURI } from '../../../util/browser/globalEnvironment';
+import { CAN_ACCESS_SETTINGS } from '../../../util/crmchat';
 import { getPromptInstall } from '../../../util/installPrompt';
 import { switchPermanentWebVersion } from '../../../util/permanentWebVersion';
 
@@ -190,12 +191,14 @@ const LeftSideMenuItems = ({
           onMenuClosed={onBotMenuClosed}
         />
       ))}
-      <MenuItem
-        icon="settings"
-        onClick={onSelectSettings}
-      >
-        {lang('MenuSettings')}
-      </MenuItem>
+      {CAN_ACCESS_SETTINGS && (
+        <MenuItem
+          icon="settings"
+          onClick={onSelectSettings}
+        >
+          {lang('MenuSettings')}
+        </MenuItem>
+      )}
       <MenuItem
         icon="darkmode"
         onClick={handleDarkModeToggle}
