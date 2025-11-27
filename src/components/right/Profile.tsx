@@ -4,6 +4,7 @@ import { getActions, getGlobal, withGlobal } from '../../global';
 import type {
   ApiBotPreviewMedia,
   ApiChat,
+  ApiChatFullInfo,
   ApiChatMember,
   ApiMessage,
   ApiProfileTab,
@@ -12,6 +13,7 @@ import type {
   ApiStoryAlbum,
   ApiTypeStory,
   ApiUser,
+  ApiUserFullInfo,
   ApiUserStatus,
 } from '../../api/types';
 import type { ProfileCollectionKey } from '../../global/selectors/payments';
@@ -100,7 +102,6 @@ import Audio from '../common/Audio';
 import Document from '../common/Document';
 import SavedGift from '../common/gift/SavedGift';
 import GroupChatInfo from '../common/GroupChatInfo';
-import Icon from '../common/icons/Icon';
 import Media from '../common/Media';
 import NothingFound from '../common/NothingFound';
 import PreviewMedia from '../common/PreviewMedia';
@@ -183,7 +184,7 @@ type StateProps = {
   isSavedMessages?: boolean;
   isSynced?: boolean;
   hasAvatar?: boolean;
-  mainTab?: ApiProfileTab;
+  peerFullInfo?: ApiUserFullInfo | ApiChatFullInfo;
   canUpdateMainTab?: boolean;
   canAutoPlayGifs?: boolean;
 };
@@ -272,7 +273,7 @@ const Profile = ({
   isSavedMessages,
   isSynced,
   hasAvatar,
-  mainTab,
+  peerFullInfo,
   canUpdateMainTab,
   canAutoPlayGifs,
   onProfileStateChange,
@@ -324,6 +325,7 @@ const Profile = ({
 
   const isUser = isUserId(chatId);
   const validMainTabTypes = isUser ? VALID_USER_MAIN_TAB_TYPES : VALID_CHANNEL_MAIN_TAB_TYPES;
+  const mainTab = peerFullInfo?.mainTab;
 
   const tabs = useMemo(() => {
     const arr: LocalTabProps[] = [];
@@ -391,7 +393,7 @@ const Profile = ({
       const contextActions: MenuItemContextAction[] | undefined = canUpdateMainTab && mainTab !== tab.type
         && validMainTabTypes.has(tab.type) ? [{
           title: lang('ProfileMenuSetMainTab'),
-          icon: 'replace',
+          icon: 'reorder-tabs',
           handler: () => {
             setMainProfileTab({ chatId, tab: tab.type as ApiProfileTab });
           },
@@ -428,10 +430,10 @@ const Profile = ({
     setActiveTab(tabs[0].type); // Set default tab
   }, [isClosed, profileTab, tabs]);
 
-  useEffectWithPrevDeps(([prevMainTab]) => {
-    if (prevMainTab || !mainTab) return;
-    setActiveTab(mainTab); // Only focus when loading full info
-  }, [mainTab]);
+  useEffectWithPrevDeps(([prevPeerFullInfo]) => {
+    if (prevPeerFullInfo || !peerFullInfo?.mainTab) return;
+    setActiveTab(peerFullInfo.mainTab); // Only focus when loading full info
+  }, [peerFullInfo]);
 
   const handleSwitchTab = useCallback((index: number) => {
     startAutoScrollToTabsIfNeeded();
@@ -1019,10 +1021,13 @@ const Profile = ({
             ))}
             {!isCurrentUserPremium && (
               <>
-                {}
-                <Button className="show-more-channels" onClick={() => openPremiumModal()}>
+                <Button
+                  className="show-more-channels"
+                  onClick={() => openPremiumModal()}
+                  iconName="unlock-badge"
+                  iconAlignment="end"
+                >
                   {oldLang('UnlockSimilar')}
-                  <Icon name="unlock-badge" />
                 </Button>
                 <div className="more-similar">
                   {renderText(oldLang('MoreSimilarText', limitSimilarPeers), ['simple_markdown'])}
@@ -1051,10 +1056,8 @@ const Profile = ({
             ))}
             {!isCurrentUserPremium && (
               <>
-                {}
-                <Button className="show-more-bots" onClick={() => openPremiumModal()}>
+                <Button className="show-more-bots" onClick={() => openPremiumModal()} iconName="unlock-badge">
                   {lang('UnlockMoreSimilarBots')}
-                  <Icon name="unlock-badge" />
                 </Button>
                 <div className="more-similar">
                   {renderText(lang('MoreSimilarBotsDescription', { count: limitSimilarPeers }, {
@@ -1113,7 +1116,6 @@ const Profile = ({
           chatOrUserId={profileId}
           isSavedDialog={isSavedDialog}
           isOwnProfile={isOwnProfile}
-          style={createVtnStyle('chatExtra')}
         />
       </div>
     );
@@ -1221,9 +1223,8 @@ const Profile = ({
           isShown={canRenderContent}
           onClick={handleNewMemberDialogOpen}
           ariaLabel={oldLang('lng_channel_add_users')}
-        >
-          <Icon name="add-user-filled" />
-        </FloatingActionButton>
+          iconName="add-user-filled"
+        />
       )}
       {canDeleteMembers && (
         <DeleteMemberModal
@@ -1364,7 +1365,7 @@ export default memo(withGlobal<OwnProps>(
       commonChatIds: commonChats?.ids,
       monoforumChannel,
       hasAvatar,
-      mainTab: peerFullInfo?.mainTab,
+      peerFullInfo,
       canUpdateMainTab: selectCanUpdateMainTab(global, chatId),
       canAutoPlayGifs,
     };

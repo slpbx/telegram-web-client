@@ -36,6 +36,7 @@ import { ApiMessageEntityTypes, MAIN_THREAD_ID } from '../../types';
 
 import {
   DELETED_COMMENTS_CHANNEL_ID,
+  LOCAL_MESSAGES_LIMIT,
   SERVICE_NOTIFICATIONS_USER_ID,
   SPONSORED_MESSAGE_CACHE_MS,
   SUPPORTED_AUDIO_CONTENT_TYPES,
@@ -46,7 +47,7 @@ import { getEmojiOnlyCountForMessage } from '../../../global/helpers/getEmojiOnl
 import { addTimestampEntities } from '../../../util/dates/timestamp';
 import { omitUndefined, pick } from '../../../util/iteratees';
 import { toJSNumber } from '../../../util/numbers';
-import { getServerTime, getServerTimeOffset } from '../../../util/serverTime';
+import { getServerTime } from '../../../util/serverTime';
 import { interpolateArray } from '../../../util/waveform';
 import {
   buildApiCurrencyAmount,
@@ -76,8 +77,6 @@ import { buildApiRestrictionReasons } from './misc';
 import { buildApiPeerColor, buildApiPeerId, getApiChatIdFromMtpPeer } from './peers';
 import { buildMessageReactions } from './reactions';
 
-const LOCAL_MESSAGES_LIMIT = 1e6; // 1M
-
 const LOCAL_MEDIA_UPLOADING_TEMP_ID = 'temp';
 const INPUT_WAVEFORM_LENGTH = 63;
 const MIN_SCHEDULED_PERIOD = 10;
@@ -85,6 +84,10 @@ const MIN_SCHEDULED_PERIOD = 10;
 let localMessageCounter = 0;
 function getNextLocalMessageId(lastMessageId = 0) {
   return lastMessageId + (++localMessageCounter / LOCAL_MESSAGES_LIMIT);
+}
+
+export function incrementLocalMessageCounter() {
+  localMessageCounter++;
 }
 
 let currentUserId!: string;
@@ -251,6 +254,7 @@ export function buildApiMessageWithChatId(
     viewsCount: mtpMessage.views,
     forwardsCount: mtpMessage.forwards,
     isScheduled,
+    scheduleRepeatPeriod: mtpMessage.scheduleRepeatPeriod,
     isFromScheduled: mtpMessage.fromScheduled,
     isSilent: mtpMessage.silent,
     isPinned: mtpMessage.pinned,
@@ -439,6 +443,7 @@ export function buildLocalMessage(
   contact?: ApiContact,
   groupedId?: string,
   scheduledAt?: number,
+  scheduleRepeatPeriod?: number,
   sendAs?: ApiPeer,
   story?: ApiStory | ApiStorySkipped,
   isInvertedMedia?: true,
@@ -472,7 +477,7 @@ export function buildLocalMessage(
       pollId: localPoll?.id,
       todo: localTodo,
     }),
-    date: scheduledAt || Math.round(Date.now() / 1000) + getServerTimeOffset(),
+    date: scheduledAt || getServerTime(),
     isOutgoing: !isChannel,
     senderId: chat.type !== 'chatTypePrivate' ? (sendAs?.id || currentUserId) : undefined,
     replyInfo: resultReplyInfo,
@@ -482,6 +487,7 @@ export function buildLocalMessage(
       ...(media && (media.photo || media.video) && { isInAlbum: true }),
     }),
     ...(scheduledAt && { isScheduled: true }),
+    scheduleRepeatPeriod,
     isForwardingAllowed: true,
     isInvertedMedia,
     effectId,
@@ -503,6 +509,7 @@ export function buildLocalForwardedMessage({
   toThreadId,
   message,
   scheduledAt,
+  scheduleRepeatPeriod,
   noAuthors,
   noCaptions,
   isCurrentUserPremium,
@@ -513,6 +520,7 @@ export function buildLocalForwardedMessage({
   toThreadId?: number;
   message: ApiMessage;
   scheduledAt?: number;
+  scheduleRepeatPeriod?: number;
   noAuthors?: boolean;
   noCaptions?: boolean;
   isCurrentUserPremium?: boolean;
@@ -562,7 +570,8 @@ export function buildLocalForwardedMessage({
     id: localId,
     chatId: toChat.id,
     content: updatedContent,
-    date: scheduledAt || Math.round(Date.now() / 1000) + getServerTimeOffset(),
+    date: scheduledAt || getServerTime(),
+    scheduleRepeatPeriod,
     isOutgoing: !asIncomingInChatWithSelf && toChat.type !== 'chatTypeChannel',
     senderId: toChat.type !== 'chatTypePrivate' ? (sendAs?.id || currentUserId) : undefined,
     sendingState: 'messageSendingStatePending',

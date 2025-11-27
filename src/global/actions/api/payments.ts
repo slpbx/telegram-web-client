@@ -484,7 +484,7 @@ addActionHandler('closePremiumModal', (global, actions, payload): ActionReturnTy
 
 addActionHandler('openPremiumModal', async (global, actions, payload): Promise<void> => {
   const {
-    initialSection, fromUserId, isSuccess, isGift, monthsAmount, toUserId, gift,
+    initialSection, fromUserId, isSuccess, isGift, daysAmount, toUserId, gift,
     tabId = getCurrentTabId(),
   } = payload || {};
 
@@ -503,7 +503,7 @@ addActionHandler('openPremiumModal', async (global, actions, payload): Promise<v
       fromUserId,
       toUserId,
       isGift,
-      monthsAmount,
+      daysAmount,
       isSuccess,
       gift,
     },
@@ -1115,6 +1115,29 @@ addActionHandler('transferGift', (global, actions, payload): ActionReturnType =>
   };
 
   payInputStarInvoice(global, invoice, transferStars, tabId);
+});
+
+addActionHandler('removeGiftDescription', (global, actions, payload): ActionReturnType => {
+  const { gift, price, tabId = getCurrentTabId() } = payload;
+
+  const invoice: ApiInputInvoice = {
+    type: 'stargiftDropOriginalDetails',
+    inputSavedGift: gift,
+  };
+
+  payInputStarInvoice(global, invoice, price, tabId);
+});
+
+addActionHandler('upgradePrepaidGift', (global, actions, payload): ActionReturnType => {
+  const { peerId, hash, stars, tabId = getCurrentTabId() } = payload;
+
+  const invoice: ApiInputInvoice = {
+    type: 'stargiftPrepaidUpgrade',
+    peerId,
+    hash,
+  };
+
+  payInputStarInvoice(global, invoice, stars, tabId);
 });
 
 async function payInputStarInvoice<T extends GlobalState>(

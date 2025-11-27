@@ -7,7 +7,7 @@ import buildClassName from '../../util/buildClassName';
 
 import { getIsMobile } from '../../hooks/useAppLayout';
 import useHorizontalScroll from '../../hooks/useHorizontalScroll';
-import useOldLang from '../../hooks/useOldLang';
+import useLang from '../../hooks/useLang';
 
 import StoryRibbonButton from './StoryRibbonButton';
 
@@ -21,6 +21,7 @@ interface OwnProps {
 
 interface StateProps {
   orderedPeerIds: string[];
+  stealthModeActiveUntil?: number;
   usersById: Record<string, ApiUser>;
   chatsById: Record<string, ApiChat>;
 }
@@ -29,11 +30,12 @@ function StoryRibbon({
   isArchived,
   className,
   orderedPeerIds,
+  stealthModeActiveUntil,
   usersById,
   chatsById,
   isClosing,
 }: OwnProps & StateProps) {
-  const lang = useOldLang();
+  const lang = useLang();
   const fullClassName = buildClassName(
     styles.root,
     !orderedPeerIds.length && styles.hidden,
@@ -65,6 +67,7 @@ function StoryRibbon({
             key={peerId}
             peer={peer}
             isArchived={isArchived}
+            stealthModeActiveUntil={stealthModeActiveUntil}
           />
         );
       })}
@@ -78,8 +81,11 @@ export default memo(withGlobal<OwnProps>(
     const usersById = global.users.byId;
     const chatsById = global.chats.byId;
 
+    const stealthMode = global.stories.stealthMode;
+
     return {
       orderedPeerIds: isArchived ? archived : active,
+      stealthModeActiveUntil: stealthMode.activeUntil,
       usersById,
       chatsById,
     };

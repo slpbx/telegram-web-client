@@ -18,7 +18,7 @@ import useDevicePixelRatio from '../../../hooks/window/useDevicePixelRatio';
 import styles from './RadialPatternBackground.module.scss';
 
 type OwnProps = {
-  backgroundColors: string[];
+  backgroundColors?: string[];
   patternIcon?: ApiSticker;
   patternColor?: number;
   patternSize?: number;
@@ -29,6 +29,7 @@ type OwnProps = {
   className?: string;
   clearBottomSector?: boolean;
   yPosition?: number;
+  withAdaptiveHeight?: boolean;
 };
 
 const BASE_RING_ITEM_COUNT = 8;
@@ -53,6 +54,7 @@ const RadialPatternBackground = ({
   clearBottomSector,
   className,
   yPosition,
+  withAdaptiveHeight,
 }: OwnProps) => {
   const containerRef = useRef<HTMLDivElement>();
   const canvasRef = useRef<HTMLCanvasElement>();
@@ -125,7 +127,8 @@ const RadialPatternBackground = ({
     if (!width || !height) return;
 
     const centerX = width / 2;
-    const centerY = yPosition !== undefined ? yPosition * dpr : height / 2;
+    const centerY = withAdaptiveHeight ? height / 2
+      : yPosition !== undefined ? yPosition * dpr : width / 2;
 
     ctx.clearRect(0, 0, width, height);
 
@@ -133,14 +136,13 @@ const RadialPatternBackground = ({
       x, y, sizeFactor,
     }) => {
       const renderX = x * Math.max(width, MIN_SIZE * dpr) + centerX;
-      const renderY = yPosition !== undefined ? y * Math.max(width, MIN_SIZE * dpr) + centerY
-        : y * Math.max(height, MIN_SIZE * dpr) + centerY;
+      const renderY = y * Math.max(withAdaptiveHeight ? height : width, MIN_SIZE * dpr) + centerY;
       const size = patternSize * dpr * sizeFactor;
 
       ctx.drawImage(emojiImage, renderX - size / 2, renderY - size / 2, size, size);
     });
 
-    const patternColor = backgroundColors[1] ?? backgroundColors[0];
+    const patternColor = backgroundColors?.[1] ?? backgroundColors?.[0] ?? '#000000';
     const isDark = getColorLuma(hex2rgb(patternColor)) < DARK_LUMA_THRESHOLD;
     ctx.fillStyle = adjustHsv(patternColor, 0.5, isDark ? 0.28 : -0.28);
     ctx.globalCompositeOperation = 'source-in';
@@ -185,10 +187,14 @@ const RadialPatternBackground = ({
   return (
     <div
       ref={containerRef}
-      className={buildClassName(styles.root, withLinearGradient && styles.withLinearGradient, className)}
+      className={buildClassName(
+        styles.root,
+        withLinearGradient && Boolean(backgroundColors?.length) && styles.withLinearGradient,
+        className,
+      )}
       style={buildStyle(
-        `--_bg-light: ${backgroundColors[0]}`,
-        `--_bg-dark: ${backgroundColors[1] ?? backgroundColors[0]}`,
+        backgroundColors && `--_bg-light: ${backgroundColors[0]}`,
+        backgroundColors && `--_bg-dark: ${backgroundColors[1] ?? backgroundColors[0]}`,
         yPosition !== undefined && `--_y-shift: ${yPosition}px`,
       )}
     >

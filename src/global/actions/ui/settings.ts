@@ -162,7 +162,7 @@ addActionHandler('openLeftColumnContent', (global, actions, payload): ActionRetu
 });
 
 addActionHandler('openSettingsScreen', (global, actions, payload): ActionReturnType => {
-  const { screen = SettingsScreens.Main, tabId = getCurrentTabId() } = payload;
+  const { screen, tabId = getCurrentTabId() } = payload;
   const tabState = selectTabState(global, tabId);
 
   if (!CAN_ACCESS_SETTINGS) {
@@ -171,11 +171,11 @@ addActionHandler('openSettingsScreen', (global, actions, payload): ActionReturnT
   }
 
   // Force settings only if new screen is passed, do not on resets
-  if (payload.screen) actions.openLeftColumnContent({ contentKey: LeftColumnContent.Settings, tabId });
+  if (payload.screen !== undefined) actions.openLeftColumnContent({ contentKey: LeftColumnContent.Settings, tabId });
   return updateTabState(global, {
     leftColumn: {
       ...tabState.leftColumn,
-      settingsScreen: screen,
+      settingsScreen: screen || SettingsScreens.Main,
     },
   }, tabId);
 });

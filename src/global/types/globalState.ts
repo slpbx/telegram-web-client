@@ -313,7 +313,7 @@ export type GlobalState = {
     byId: Record<string, ApiStarGiftRegular>;
     idsByCategory: Record<StarGiftCategory, string[]>;
   };
-  myCollectibleGifts?: {
+  myUniqueGifts?: {
     byId: Record<string, ApiSavedStarGift>;
     ids: string[];
     nextOffset?: string;

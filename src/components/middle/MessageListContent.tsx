@@ -1,4 +1,4 @@
-import type { ElementRef, FC } from '../../lib/teact/teact';
+import type { ElementRef } from '../../lib/teact/teact';
 import { getIsHeavyAnimating, memo } from '../../lib/teact/teact';
 import { getActions, getGlobal } from '../../global';
 
@@ -37,12 +37,14 @@ import usePreviousDeprecated from '../../hooks/usePreviousDeprecated';
 import useMessageObservers from './hooks/useMessageObservers';
 import useScrollHooks from './hooks/useScrollHooks';
 
+import Icon from '../common/icons/Icon';
 import MiniTable, { type TableEntry } from '../common/MiniTable';
 import ActionMessage from './message/ActionMessage';
 import Message from './message/Message';
 import SenderGroupContainer from './message/SenderGroupContainer';
 import SponsoredMessage from './message/SponsoredMessage';
 import MessageListAccountInfo from './MessageListAccountInfo';
+import MessageListBottomMarker from './MessageListBottomMarker';
 
 import actionMessageStyles from './message/ActionMessage.module.scss';
 
@@ -58,6 +60,7 @@ interface OwnProps {
   withUsers: boolean;
   isChannelChat: boolean | undefined;
   isChatMonoforum?: boolean;
+  isBotForum?: boolean;
   isEmptyThread?: boolean;
   isComments?: boolean;
   noAvatars: boolean;
@@ -75,15 +78,16 @@ interface OwnProps {
   noAppearanceAnimation: boolean;
   isSavedDialog?: boolean;
   isQuickPreview?: boolean;
+  canPost?: boolean;
+  shouldScrollToBottom?: boolean;
   onScrollDownToggle?: BooleanToVoidFunction;
   onNotchToggle?: AnyToVoidFunction;
   onIntersectPinnedMessage?: OnIntersectPinnedMessage;
-  canPost?: boolean;
 }
 
 const UNREAD_DIVIDER_CLASS = 'unread-divider';
 
-const MessageListContent: FC<OwnProps> = ({
+const MessageListContent = ({
   canShowAds,
   chatId,
   threadId,
@@ -97,6 +101,7 @@ const MessageListContent: FC<OwnProps> = ({
   withUsers,
   isChannelChat,
   isChatMonoforum,
+  isBotForum,
   noAvatars,
   containerRef,
   anchorIdRef,
@@ -112,17 +117,19 @@ const MessageListContent: FC<OwnProps> = ({
   noAppearanceAnimation,
   isSavedDialog,
   isQuickPreview,
+  shouldScrollToBottom,
+  canPost,
   onScrollDownToggle,
   onNotchToggle,
   onIntersectPinnedMessage,
-  canPost,
-}) => {
+}: OwnProps) => {
   const { openHistoryCalendar } = getActions();
 
   const getIsHeavyAnimating2 = getIsHeavyAnimating;
   const getIsReady = useDerivedSignal(() => isReady && !getIsHeavyAnimating2(), [isReady, getIsHeavyAnimating2]);
 
   const areDatesClickable = !isSavedDialog && !isSchedule;
+  const shouldRenderSponsoredMessage = canShowAds && isViewportNewest;
 
   const {
     observeIntersectionForReading,
@@ -135,17 +142,17 @@ const MessageListContent: FC<OwnProps> = ({
     backwardsTriggerRef,
     forwardsTriggerRef,
     fabTriggerRef,
-  } = useScrollHooks(
+  } = useScrollHooks({
     type,
     containerRef,
     messageIds,
     getContainerHeight,
     isViewportNewest,
     isUnread,
+    isReady,
     onScrollDownToggle,
     onNotchToggle,
-    isReady,
-  );
+  });
 
   const oldLang = useOldLang();
   const lang = useLang();
@@ -239,6 +246,20 @@ const MessageListContent: FC<OwnProps> = ({
     return undefined;
   };
 
+  const renderBotForumTopicAction = () => {
+    if (!isBotForum || threadId !== MAIN_THREAD_ID) return undefined;
+    return (
+      <div className={buildClassName('local-action-message', actionMessageStyles.root)} key="botforum-new-topic">
+        <div className={actionMessageStyles.contentBox}>
+          <Icon className={actionMessageStyles.botForumTopicIcon} name="topic-new" />
+          <h3 className={actionMessageStyles.botForumTopicTitle}>{lang('BotForumActionNew')}</h3>
+          <span className={actionMessageStyles.botForumTopicDescription}>{lang('BotForumActionNewDescription')}</span>
+          <Icon className={actionMessageStyles.botForumTopicArrow} name="down" />
+        </div>
+      </div>
+    );
+  };
+
   const messageCountToAnimate = noAppearanceAnimation ? 0 : messageGroups.reduce((acc, messageGroup) => {
     return acc + messageGroup.senderGroups.flat().length;
   }, 0);
@@ -306,7 +327,7 @@ const MessageListContent: FC<OwnProps> = ({
 
         const documentGroupId = !isMessageAlbum && message.groupedId ? message.groupedId : undefined;
         const nextDocumentGroupId = nextMessage && !isAlbum(nextMessage) ? nextMessage.groupedId : undefined;
-        const isTopicTopMessage = message.id === threadId;
+        const isThreadTopMessage = message.id === threadId;
 
         const position = {
           isFirstInGroup: messageIndex === 0,
@@ -340,7 +361,7 @@ const MessageListContent: FC<OwnProps> = ({
             observeIntersectionForPlaying={observeIntersectionForPlaying}
             album={album}
             noAvatars={noAvatars}
-            withAvatar={position.isLastInGroup && withUsers && !isOwn && (!isTopicTopMessage || !isComments)}
+            withAvatar={position.isLastInGroup && withUsers && !isOwn && (!isThreadTopMessage || !isComments)}
             withSenderName={position.isFirstInGroup && withUsers && !isOwn}
             threadId={threadId}
             messageListType={type}
@@ -357,15 +378,6 @@ const MessageListContent: FC<OwnProps> = ({
             onIntersectPinnedMessage={onIntersectPinnedMessage}
             getIsMessageListReady={getIsReady}
           />,
-          message.id === threadId && (
-            // eslint-disable-next-line react-x/no-duplicate-key
-            <div className="local-action-message" key="discussion-started">
-              <span>
-                {oldLang(isEmptyThread
-                  ? (isComments ? 'NoComments' : 'NoReplies') : 'DiscussionStarted')}
-              </span>
-            </div>
-          ),
         ]);
       }).flat();
 
@@ -376,7 +388,7 @@ const MessageListContent: FC<OwnProps> = ({
       const lastMessageId = getMessageOriginalId(lastMessage);
       const lastAppearanceOrder = messageCountToAnimate - appearanceIndex;
 
-      const isTopicTopMessage = lastMessage.id === threadId;
+      const isThreadTopMessage = lastMessage.id === threadId;
       const isOwn = isOwnMessage(lastMessage);
 
       const firstMessageOrAlbum = senderGroup[0];
@@ -387,8 +399,8 @@ const MessageListContent: FC<OwnProps> = ({
       const id = (firstMessageId === lastMessageId) ? `message-group-${firstMessageId}`
         : `message-group-${firstMessageId}-${lastMessageId}`;
 
-      const withAvatar = withUsers && !isOwn && (!isTopicTopMessage || !isComments);
-      return (
+      const withAvatar = withUsers && !isOwn && (!isThreadTopMessage || !isComments);
+      return compact([
         <SenderGroupContainer
           key={key}
           id={id}
@@ -398,9 +410,17 @@ const MessageListContent: FC<OwnProps> = ({
           canPost={canPost}
         >
           {senderGroupElements}
-        </SenderGroupContainer>
-      );
-    });
+        </SenderGroupContainer>,
+        isThreadTopMessage && (
+          <div className="local-action-message" key={`discussion-started-${lastMessageId}`}>
+            <span>
+              {oldLang(isEmptyThread
+                ? (isComments ? 'NoComments' : 'NoReplies') : 'DiscussionStarted')}
+            </span>
+          </div>
+        ),
+      ]);
+    }).flat();
   }
 
   const dateGroups = messageGroups.map((
@@ -445,6 +465,7 @@ const MessageListContent: FC<OwnProps> = ({
       {shouldRenderAccountInfo
         && <MessageListAccountInfo key={`account_info_${chatId}`} chatId={chatId} hasMessages />}
       {dateGroups.flat()}
+      {isViewportNewest && renderBotForumTopicAction()}
       {withHistoryTriggers && (
         <div
           ref={forwardsTriggerRef}
@@ -457,7 +478,14 @@ const MessageListContent: FC<OwnProps> = ({
         key="fab-trigger"
         className="fab-trigger"
       />
-      {canShowAds && isViewportNewest && (
+      {isViewportNewest && (
+        <MessageListBottomMarker
+          key="bottom-marker"
+          isFocused={shouldScrollToBottom}
+          className={shouldRenderSponsoredMessage ? 'with-sponsored' : undefined}
+        />
+      )}
+      {shouldRenderSponsoredMessage && (
         <SponsoredMessage
           key={chatId}
           chatId={chatId}

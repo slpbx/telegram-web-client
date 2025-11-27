@@ -75,6 +75,7 @@ import {
   buildLocalMessage,
   buildPreparedInlineMessage,
   buildUploadingMedia,
+  incrementLocalMessageCounter,
 } from '../apiBuilders/messages';
 import { getApiChatIdFromMtpPeer } from '../apiBuilders/peers';
 import { buildApiUser, buildApiUserStatuses } from '../apiBuilders/users';
@@ -299,7 +300,8 @@ export function sendMessageLocal(
 ) {
   const {
     chat, lastMessageId, text, entities, replyInfo, suggestedPostInfo, attachment, sticker, story, gif, poll, todo,
-    contact, scheduledAt, groupedId, sendAs, wasDrafted, isInvertedMedia, effectId, isPending, messagePriceInStars,
+    contact, scheduledAt, scheduleRepeatPeriod, groupedId, sendAs, wasDrafted, isInvertedMedia, effectId, isPending,
+    messagePriceInStars,
   } = params;
 
   if (!chat) return undefined;
@@ -322,6 +324,7 @@ export function sendMessageLocal(
     contact,
     groupedId,
     scheduledAt,
+    scheduleRepeatPeriod,
     sendAs,
     story,
     isInvertedMedia,
@@ -351,7 +354,7 @@ export function sendApiMessage(
     chat, text, entities, replyInfo, suggestedPostInfo, suggestedMedia,
     attachment, sticker, story, gif, poll, todo, contact,
 
-    isSilent, scheduledAt, groupedId, noWebPage, sendAs, shouldUpdateStickerSetOrder,
+    isSilent, scheduledAt, scheduleRepeatPeriod, groupedId, noWebPage, sendAs, shouldUpdateStickerSetOrder,
     isInvertedMedia, effectId, webPageMediaSize, webPageUrl, messagePriceInStars,
   } = params;
 
@@ -383,6 +386,7 @@ export function sendApiMessage(
       groupedId,
       isSilent,
       scheduledAt,
+      scheduleRepeatPeriod,
       messagePriceInStars,
     }, randomId, localMessage, onProgress);
   }
@@ -483,6 +487,7 @@ export function sendApiMessage(
       replyTo: replyInfo && buildInputReplyTo(replyInfo),
       silent: isSilent || undefined,
       scheduleDate: scheduledAt,
+      scheduleRepeatPeriod,
       sendAs: sendAs && buildInputPeer(sendAs.id, sendAs.accessHash),
       updateStickersetsOrder: shouldUpdateStickerSetOrder || undefined,
       invertMedia: isInvertedMedia || undefined,
@@ -555,6 +560,7 @@ function sendGroupedMedia(
     groupedId,
     isSilent,
     scheduledAt,
+    scheduleRepeatPeriod,
     sendAs,
     messagePriceInStars,
   }: {
@@ -567,6 +573,7 @@ function sendGroupedMedia(
     groupedId: string;
     isSilent?: boolean;
     scheduledAt?: number;
+    scheduleRepeatPeriod?: number;
     sendAs?: ApiPeer;
     messagePriceInStars?: number;
   },
@@ -644,6 +651,7 @@ function sendGroupedMedia(
       replyTo: replyInfo && buildInputReplyTo(replyInfo),
       ...(isSilent && { silent: isSilent }),
       ...(scheduledAt && { scheduleDate: scheduledAt }),
+      ...(scheduleRepeatPeriod && { scheduleRepeatPeriod }),
       ...(sendAs && { sendAs: buildInputPeer(sendAs.id, sendAs.accessHash) }),
       ...(messagePriceInStars && { allowPaidStars: BigInt(messagePriceInStars * count) }),
       ...(suggestedPostInfo && { suggestedPost: buildInputSuggestedPost(suggestedPostInfo) }),
@@ -755,6 +763,7 @@ export async function editMessage({
       peer: buildInputPeer(chat.id, chat.accessHash),
       id: message.id,
       ...(isScheduled && { scheduleDate: message.date }),
+      ...(message.scheduleRepeatPeriod && { scheduleRepeatPeriod: message.scheduleRepeatPeriod }),
       ...(noWebPage && { noWebpage: noWebPage }),
       ...(isInvertedMedia && { invertMedia: isInvertedMedia }),
     }), { shouldThrow: true });
@@ -892,15 +901,18 @@ export async function rescheduleMessage({
   chat,
   message,
   scheduledAt,
+  scheduleRepeatPeriod,
 }: {
   chat: ApiChat;
   message: ApiMessage;
   scheduledAt: number;
+  scheduleRepeatPeriod?: number;
 }) {
   await invokeRequest(new GramJs.messages.EditMessage({
     peer: buildInputPeer(chat.id, chat.accessHash),
     id: message.id,
     scheduleDate: scheduledAt,
+    scheduleRepeatPeriod,
   }));
 }
 
@@ -1255,23 +1267,21 @@ export async function markMessageListRead({
 }) {
   const isChannel = getEntityTypeById(chat.id) === 'channel';
 
-  // Workaround for local message IDs overflowing some internal `Buffer` range check
-  const fixedMaxId = Math.min(maxId, MAX_INT_32);
   if (isChannel && threadId === MAIN_THREAD_ID) {
     await invokeRequest(new GramJs.channels.ReadHistory({
       channel: buildInputChannel(chat.id, chat.accessHash),
-      maxId: fixedMaxId,
+      maxId,
     }));
-  } else if (isChannel) {
+  } else if (threadId !== MAIN_THREAD_ID) {
     await invokeRequest(new GramJs.messages.ReadDiscussion({
       peer: buildInputPeer(chat.id, chat.accessHash),
       msgId: Number(threadId),
-      readMaxId: fixedMaxId,
+      readMaxId: maxId,
     }));
   } else {
     const result = await invokeRequest(new GramJs.messages.ReadHistory({
       peer: buildInputPeer(chat.id, chat.accessHash),
-      maxId: fixedMaxId,
+      maxId,
     }));
 
     if (result) {
@@ -1843,7 +1853,7 @@ export async function fetchExtendedMedia({
 export function forwardMessagesLocal(params: ForwardMessagesParams) {
   const {
     toChat, toThreadId, messages,
-    scheduledAt, sendAs, noAuthors, noCaptions,
+    scheduledAt, scheduleRepeatPeriod, sendAs, noAuthors, noCaptions,
     isCurrentUserPremium, wasDrafted, lastMessageId,
   } = params;
 
@@ -1856,6 +1866,7 @@ export function forwardMessagesLocal(params: ForwardMessagesParams) {
       toThreadId: Number(toThreadId),
       message,
       scheduledAt,
+      scheduleRepeatPeriod,
       noAuthors,
       noCaptions,
       isCurrentUserPremium,
@@ -1878,7 +1889,7 @@ export function forwardMessagesLocal(params: ForwardMessagesParams) {
 export async function forwardApiMessages(params: ForwardMessagesParams) {
   const {
     fromChat, toChat, toThreadId, isSilent,
-    scheduledAt, sendAs, withMyScore, noAuthors, noCaptions,
+    scheduledAt, scheduleRepeatPeriod, sendAs, withMyScore, noAuthors, noCaptions,
     forwardedLocalMessagesSlice, messagePriceInStars,
   } = params;
 
@@ -1903,6 +1914,7 @@ export async function forwardApiMessages(params: ForwardMessagesParams) {
       dropMediaCaptions: noCaptions || undefined,
       ...(toThreadId && { topMsgId: Number(toThreadId) }),
       ...(scheduledAt && { scheduleDate: scheduledAt }),
+      ...(scheduleRepeatPeriod && { scheduleRepeatPeriod }),
       ...(sendAs && { sendAs: buildInputPeer(sendAs.id, sendAs.accessHash) }),
       ...(priceInStars && { allowPaidStars: BigInt(priceInStars) }),
     }), {
@@ -2554,4 +2566,8 @@ export async function fetchPreparedInlineMessage({
   if (!result) return undefined;
 
   return buildPreparedInlineMessage(result);
+}
+
+export function incrementLocalMessagesCounter() {
+  incrementLocalMessageCounter();
 }

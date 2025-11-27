@@ -40,11 +40,10 @@ import useEnsureMessage from '../../../hooks/useEnsureMessage';
 import useFlag from '../../../hooks/useFlag';
 import { type ObserveFn, useOnIntersect } from '../../../hooks/useIntersectionObserver';
 import useLastCallback from '../../../hooks/useLastCallback';
-import useMessageResizeObserver from '../../../hooks/useResizeMessageObserver';
 import useShowTransition from '../../../hooks/useShowTransition';
 import { type OnIntersectPinnedMessage } from '../hooks/usePinnedMessage';
 import useFluidBackgroundFilter from './hooks/useFluidBackgroundFilter';
-import useFocusMessage from './hooks/useFocusMessage';
+import useFocusMessageListElement from './hooks/useFocusMessageListElement';
 
 import ActionMessageText from './ActionMessageText';
 import ChannelPhoto from './actions/ChannelPhoto';
@@ -125,11 +124,11 @@ const ActionMessage = ({
   hasUnreadReaction,
   isResizingContainer,
   scrollTargetPosition,
+  isAccountFrozen,
   onIntersectPinnedMessage,
   observeIntersectionForBottom,
   observeIntersectionForLoading,
   observeIntersectionForPlaying,
-  isAccountFrozen,
 }: OwnProps & StateProps) => {
   const {
     requestConfetti,
@@ -168,17 +167,14 @@ const ActionMessage = ({
 
   useOnIntersect(ref, !shouldSkipRender ? observeIntersectionForBottom : undefined);
 
-  useMessageResizeObserver(ref, !shouldSkipRender && isLastInList && action.type !== 'channelJoined');
-
   useEnsureMessage(
     replyToPeerId || chatId,
     replyToMsgId,
     replyMessage,
     id,
   );
-  useFocusMessage({
+  useFocusMessageListElement({
     elementRef: ref,
-    chatId,
     isFocused,
     focusDirection,
     noFocusHighlight,
@@ -290,7 +286,7 @@ const ActionMessage = ({
           isGift: true,
           fromUserId: sender?.id,
           toUserId: sender && sender.id === currentUserId ? chatId : currentUserId,
-          monthsAmount: action.months,
+          daysAmount: action.days,
         });
         break;
       }

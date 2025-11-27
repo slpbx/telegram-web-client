@@ -1,8 +1,8 @@
-import type {
-  ApiChat, ApiChatFullInfo, ApiChatType,
-} from '../../api/types';
 import type { ChatListType } from '../../types';
 import type { GlobalState, TabArgs } from '../types';
+import {
+  type ApiChat, type ApiChatFullInfo, type ApiChatType,
+} from '../../api/types';
 
 import {
   ALL_FOLDER_ID, ARCHIVED_FOLDER_ID, MEMBERS_LOAD_SLICE, SAVED_FOLDER_ID, SERVICE_NOTIFICATIONS_USER_ID,
@@ -382,4 +382,9 @@ export function selectIsChatRestricted<T extends GlobalState>(global: T, chatId:
 
   const activeRestrictions = selectActiveRestrictionReasons(global, chat.restrictionReasons);
   return activeRestrictions.length > 0;
+}
+
+export function selectAreFoldersPresent<T extends GlobalState>(global: T) {
+  const ids = global.chatFolders.orderedIds;
+  return Boolean(ids && ids.length > 1);
 }

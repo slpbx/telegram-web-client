@@ -1,3 +1,5 @@
+@use '../../../styles/mixins';
+
 .businessLocation {
   flex-shrink: 0;
 
@@ -7,6 +9,8 @@
   border-radius: 0.25rem;
 
   object-fit: cover;
+
+  @include mixins.with-vt-type('chatExtra');
 }
 
 .personalChannel {
@@ -16,6 +20,8 @@
   column-gap: 0.5rem;
 
   margin-bottom: 0.5rem;
+
+  @include mixins.with-vt-type('chatExtra');
 }
 
 .personalChannelTitle {
@@ -29,6 +35,11 @@
   color: var(--color-text-secondary);
 }
 
+.phone, .description, .link, .miniapp, .notifications, .location, .note, .savedMessages, .botEmojiStatus,
+.botLocation, .subscribers {
+  @include mixins.with-vt-type('chatExtra');
+}
+
 .botVerificationSection,
 .sectionInfo {
   font-size: 0.875rem;
@@ -37,6 +48,8 @@
 
 .botVerificationSection {
   padding-inline: 1.25rem;
+
+  @include mixins.with-vt-type('chatExtra');
 }
 
 .botVerificationIcon {
@@ -67,4 +80,105 @@
 .openAppButton {
   margin-top: 0.5rem;
   margin-bottom: 0.5rem;
+}
+
+.note {
+  @include mixins.with-vt-type('profileNote');
+}
+
+.noteSubtitle {
+  display: flex !important;
+  align-items: center;
+
+  @include mixins.with-vt-type('profileNote');
+}
+
+.noteListItemIcon {
+  align-self: flex-start;
+  padding-top: 1rem;
+}
+
+.noteHint {
+  margin-left: auto;
+}
+
+.noteText {
+  position: relative;
+  overflow: hidden;
+  display: inline-block;
+  width: 100%;
+
+  &::after {
+    pointer-events: none;
+    content: '';
+
+    position: absolute;
+    bottom: 0;
+    left: 0;
+
+    width: 100%;
+    height: 1.5rem;
+
+    opacity: 0;
+    background: linear-gradient(to top, var(--color-background) 0%, transparent 100%);
+
+    transition: opacity 0.3s ease;
+  }
+
+  @include mixins.with-vt-type('profileNote');
+}
+
+.noteTextCollapsed::after {
+  opacity: 1;
+}
+
+.noteExpandIcon {
+  margin-inline-start: 0.125rem;
+  font-size: 0.9375rem;
+  line-height: 0.9375rem;
+
+  @include mixins.with-vt-type('profileNote');
+}
+
+.clickable {
+  cursor: var(--custom-cursor, pointer);
+}
+
+@include mixins.on-active-vt('profileNote') {
+  &::view-transition-image-pair(.noteText) {
+    overflow: hidden;
+  }
+
+  &::view-transition-old(.noteText),
+  &::view-transition-new(.noteText) {
+    animation-name: none;
+  }
+}
+
+@include mixins.on-active-vt('profileNoteExpand') {
+  &::view-transition-old(.noteExpandIcon) {
+    animation-name: vt-expand-icon-spin;
+  }
+
+  &::view-transition-new(.noteExpandIcon) {
+    display: none;
+  }
+
+  &::view-transition-old(.noteText) {
+    display: none;
+  }
+}
+
+@include mixins.on-active-vt('profileNoteCollapse') {
+  &::view-transition-old(.noteExpandIcon) {
+    animation-name: vt-collapse-icon-spin;
+  }
+
+  &::view-transition-new(.noteExpandIcon) {
+    display: none;
+  }
+
+  &::view-transition-new(.noteText) {
+    display: none;
+  }
 }

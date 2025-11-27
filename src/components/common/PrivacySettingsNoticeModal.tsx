@@ -9,6 +9,7 @@ import { selectTabState, selectUser } from '../../global/selectors';
 import { LOCAL_TGS_URLS } from './helpers/animatedAssets';
 import renderText from './helpers/renderText';
 
+import useLang from '../../hooks/useLang';
 import useLastCallback from '../../hooks/useLastCallback';
 import useOldLang from '../../hooks/useOldLang';
 
@@ -16,7 +17,6 @@ import Button from '../ui/Button';
 import Modal, { ANIMATION_DURATION } from '../ui/Modal';
 import Separator from '../ui/Separator';
 import AnimatedIconWithPreview from './AnimatedIconWithPreview';
-import Icon from './icons/Icon';
 
 import styles from './PrivacySettingsNoticeModal.module.scss';
 
@@ -32,7 +32,6 @@ type StateProps = {
 const CLOSE_ANIMATION_DURATION = ANIMATION_DURATION + ANIMATION_END_DELAY;
 
 const PrivacySettingsNoticeModal = ({ isOpen, isReadDate, user }: OwnProps & StateProps) => {
-  const lang = useOldLang();
   const {
     updateGlobalPrivacySettings,
     openPremiumModal,
@@ -41,6 +40,10 @@ const PrivacySettingsNoticeModal = ({ isOpen, isReadDate, user }: OwnProps & Sta
     setPrivacyVisibility,
     loadUser,
   } = getActions();
+
+  const oldLang = useOldLang();
+  const lang = useLang();
+
   const userName = getUserFirstOrLastName(user);
 
   const handleShowReadTime = useLastCallback(() => {
@@ -48,7 +51,7 @@ const PrivacySettingsNoticeModal = ({ isOpen, isReadDate, user }: OwnProps & Sta
     closePrivacySettingsNoticeModal();
 
     setTimeout(() => {
-      showNotification({ message: lang('PremiumReadSet') });
+      showNotification({ message: oldLang('PremiumReadSet') });
     }, CLOSE_ANIMATION_DURATION);
   });
 
@@ -61,7 +64,7 @@ const PrivacySettingsNoticeModal = ({ isOpen, isReadDate, user }: OwnProps & Sta
     closePrivacySettingsNoticeModal();
 
     setTimeout(() => {
-      showNotification({ message: lang('PremiumLastSeenSet') });
+      showNotification({ message: oldLang('PremiumLastSeenSet') });
     }, CLOSE_ANIMATION_DURATION);
   });
 
@@ -87,9 +90,8 @@ const PrivacySettingsNoticeModal = ({ isOpen, isReadDate, user }: OwnProps & Sta
           size="smaller"
           onClick={handleClose}
           ariaLabel="Close"
-        >
-          <Icon name="close" />
-        </Button>
+          iconName="close"
+        />
         <AnimatedIconWithPreview
           tgsUrl={isReadDate ? LOCAL_TGS_URLS.ReadTime : LOCAL_TGS_URLS.LastSeen}
           size={84}
@@ -98,11 +100,11 @@ const PrivacySettingsNoticeModal = ({ isOpen, isReadDate, user }: OwnProps & Sta
           noLoop
         />
         <h2 className={styles.header}>
-          {lang(isReadDate ? 'PremiumReadHeader1' : 'PremiumLastSeenHeader1')}
+          {oldLang(isReadDate ? 'PremiumReadHeader1' : 'PremiumLastSeenHeader1')}
         </h2>
         <p className={styles.desc}>
           {renderText(
-            lang(
+            oldLang(
               isReadDate ? 'PremiumReadText1' : 'PremiumLastSeenText1Locked',
               userName,
             ),
@@ -113,13 +115,13 @@ const PrivacySettingsNoticeModal = ({ isOpen, isReadDate, user }: OwnProps & Sta
           onClick={isReadDate ? handleShowReadTime : handleShowLastSeen}
           className={styles.button}
         >
-          {lang(isReadDate ? 'PremiumReadButton1' : 'PremiumLastSeenButton1')}
+          {oldLang(isReadDate ? 'PremiumReadButton1' : 'PremiumLastSeenButton1')}
         </Button>
-        <Separator className={styles.separator}>{lang('PremiumOr')}</Separator>
-        <h2 className={styles.header}>{lang('PremiumReadHeader2')}</h2>
+        <Separator className={styles.separator}>{oldLang('PremiumOr')}</Separator>
+        <h2 className={styles.header}>{oldLang('PremiumReadHeader2')}</h2>
         <p className={styles.desc}>
           {renderText(
-            lang(isReadDate ? 'PremiumReadText2' : 'PremiumLastSeenText2', userName),
+            oldLang(isReadDate ? 'PremiumReadText2' : 'PremiumLastSeenText2', userName),
             ['simple_markdown'],
           )}
         </p>
@@ -128,7 +130,7 @@ const PrivacySettingsNoticeModal = ({ isOpen, isReadDate, user }: OwnProps & Sta
           onClick={handleOpenPremium}
           className={styles.button}
         >
-          {lang('PremiumLastSeenButton2')}
+          {oldLang('PremiumLastSeenButton2')}
         </Button>
       </div>
     </Modal>

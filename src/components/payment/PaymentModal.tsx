@@ -27,7 +27,6 @@ import useLastCallback from '../../hooks/useLastCallback';
 import useOldLang from '../../hooks/useOldLang';
 import usePreviousDeprecated from '../../hooks/usePreviousDeprecated';
 
-import Icon from '../common/icons/Icon';
 import Button from '../ui/Button';
 import Modal from '../ui/Modal';
 import Spinner from '../ui/Spinner';
@@ -561,17 +560,16 @@ const PaymentModal: FC<OwnProps & StateProps> = ({
       onClose={closeModal}
       onCloseAnimationEnd={handleModalClose}
     >
-      <div className="header" dir={oldLang.isRtl ? 'rtl' : undefined}>
+      <div className="header" dir={lang.isRtl ? 'rtl' : undefined}>
         <Button
           className="close-button"
           color="translucent"
           round
           size="smaller"
+          iconName={step === PaymentStep.Checkout ? 'close' : 'arrow-left'}
           onClick={step === PaymentStep.Checkout ? closeModal : handleBackClick}
           ariaLabel={lang('Close')}
-        >
-          <Icon name={step === PaymentStep.Checkout ? 'close' : 'arrow-left'} />
-        </Button>
+        />
         <h3>{modalHeader}</h3>
       </div>
       {step !== undefined ? (

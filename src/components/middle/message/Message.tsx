@@ -14,6 +14,7 @@ import type {
   ApiAvailableReaction,
   ApiChat,
   ApiChatMember,
+  ApiKeyboardButton,
   ApiMessage,
   ApiMessageOutgoingStatus,
   ApiPeer,
@@ -27,7 +28,6 @@ import type {
   ApiUser,
   ApiWebPage,
 } from '../../../api/types';
-import type { ActionPayloads } from '../../../global/types';
 import type { ObserveFn } from '../../../hooks/useIntersectionObserver';
 import type {
   ActiveEmojiInteraction,
@@ -125,13 +125,13 @@ import { selectSharedSettings } from '../../../global/selectors/sharedState';
 import { IS_TAURI } from '../../../util/browser/globalEnvironment';
 import { IS_ANDROID, IS_TRANSLATION_SUPPORTED } from '../../../util/browser/windowEnvironment';
 import buildClassName from '../../../util/buildClassName';
+import buildStyle from '../../../util/buildStyle';
 import { isUserId } from '../../../util/entities/ids';
 import { getMessageKey } from '../../../util/keys/messageKey';
 import { getServerTime } from '../../../util/serverTime';
 import stopEvent from '../../../util/stopEvent';
 import { isElementInViewport } from '../../../util/visibility/isElementInViewport';
 import { calculateDimensionsForMessageMedia, getStickerDimensions, REM } from '../../common/helpers/mediaDimensions';
-import { getPeerColorClass } from '../../common/helpers/peerColor';
 import renderText from '../../common/helpers/renderText';
 import { getCustomEmojiSize } from '../composer/helpers/customEmoji';
 import { buildContentClassName } from './helpers/buildContentClassName';
@@ -148,12 +148,12 @@ import { useOnIntersect } from '../../../hooks/useIntersectionObserver';
 import useLang from '../../../hooks/useLang';
 import useLastCallback from '../../../hooks/useLastCallback';
 import useOldLang from '../../../hooks/useOldLang';
+import usePeerColor from '../../../hooks/usePeerColor';
 import usePreviousDeprecated from '../../../hooks/usePreviousDeprecated';
-import useMessageResizeObserver from '../../../hooks/useResizeMessageObserver';
 import useShowTransition from '../../../hooks/useShowTransition';
 import useTextLanguage from '../../../hooks/useTextLanguage';
 import useDetectChatLanguage from './hooks/useDetectChatLanguage';
-import useFocusMessage from './hooks/useFocusMessage';
+import useFocusMessageListElement from './hooks/useFocusMessageListElement';
 import useInnerHandlers from './hooks/useInnerHandlers';
 import useMessageTranslation from './hooks/useMessageTranslation';
 import useOuterHandlers from './hooks/useOuterHandlers';
@@ -214,27 +214,25 @@ type MessagePositionProperties = {
   isLastInList: boolean;
 };
 
-type OwnProps =
-  {
-    message: ApiMessage;
-    album?: IAlbum;
-    noAvatars?: boolean;
-    withAvatar?: boolean;
-    withSenderName?: boolean;
-    threadId: ThreadId;
-    messageListType: MessageListType;
-    noComments: boolean;
-    noReplies: boolean;
-    appearanceOrder: number;
-    isJustAdded: boolean;
-    memoFirstUnreadIdRef?: { current: number | undefined };
-    getIsMessageListReady?: Signal<boolean>;
-    observeIntersectionForBottom?: ObserveFn;
-    observeIntersectionForLoading?: ObserveFn;
-    observeIntersectionForPlaying?: ObserveFn;
-    onIntersectPinnedMessage?: OnIntersectPinnedMessage;
-  }
-  & MessagePositionProperties;
+type OwnProps = {
+  message: ApiMessage;
+  album?: IAlbum;
+  noAvatars?: boolean;
+  withAvatar?: boolean;
+  withSenderName?: boolean;
+  threadId: ThreadId;
+  messageListType: MessageListType;
+  noComments: boolean;
+  noReplies: boolean;
+  appearanceOrder: number;
+  isJustAdded: boolean;
+  memoFirstUnreadIdRef?: { current: number | undefined };
+  getIsMessageListReady?: Signal<boolean>;
+  observeIntersectionForBottom?: ObserveFn;
+  observeIntersectionForLoading?: ObserveFn;
+  observeIntersectionForPlaying?: ObserveFn;
+  onIntersectPinnedMessage?: OnIntersectPinnedMessage;
+} & MessagePositionProperties;
 
 type StateProps = {
   theme: ThemeKey;
@@ -266,6 +264,7 @@ type StateProps = {
   isResizingContainer?: boolean;
   isForwarding?: boolean;
   isChatWithSelf?: boolean;
+  isBotForum?: boolean;
   isRepliesChat?: boolean;
   isAnonymousForwards?: boolean;
   isChannel?: boolean;
@@ -394,6 +393,7 @@ const Message = ({
   isResizingContainer,
   isForwarding,
   isChatWithSelf,
+  isBotForum,
   isRepliesChat,
   isAnonymousForwards,
   isChannel,
@@ -461,8 +461,9 @@ const Message = ({
     openSuggestedPostApprovalModal,
     disableContextMenuHint,
     animateUnreadReaction,
-    focusLastMessage,
+    focusMessage,
     markMentionsRead,
+    openThread,
   } = getActions();
 
   const ref = useRef<HTMLDivElement>();
@@ -523,6 +524,7 @@ const Message = ({
 
   const {
     id: messageId, chatId, forwardInfo, viaBotId, isTranscriptionError, factCheck,
+    isTypingDraft,
   } = message;
 
   useUnmountCleanup(() => {
@@ -697,15 +699,24 @@ const Message = ({
     requestEffect();
   });
 
+  const handleFocusSelf = useLastCallback(() => {
+    focusMessage({
+      chatId,
+      threadId,
+      messageId,
+      noHighlight: true,
+    });
+  });
+
   useEffect(() => {
     if (!isLastInList) {
       return;
     }
 
     if (withVoiceTranscription && transcribedText) {
-      focusLastMessage();
+      handleFocusSelf();
     }
-  }, [focusLastMessage, isLastInList, transcribedText, withVoiceTranscription]);
+  }, [isLastInList, transcribedText, withVoiceTranscription]);
 
   useEffect(() => {
     const element = ref.current;
@@ -805,6 +816,13 @@ const Message = ({
       (photo || video || storyData || (location?.mediaType === 'geo')) && (!hasText || isInvertedMedia))
     );
 
+  const { className: peerColorClass, style: peerColorStyle } = usePeerColor({
+    peer: messageColorPeer,
+    noUserColors,
+    shouldReset: true,
+    theme,
+  });
+
   const contentClassName = buildContentClassName(message, album, {
     poll,
     webPage,
@@ -820,7 +838,7 @@ const Message = ({
     hasReactions,
     isGeoLiveActive: location?.mediaType === 'geoLive' && !isGeoLiveExpired(message),
     withVoiceTranscription,
-    peerColorClass: getPeerColorClass(messageColorPeer, noUserColors, true),
+    peerColorClass,
     hasOutsideReactions,
   });
 
@@ -874,9 +892,8 @@ const Message = ({
     replyStory,
   );
 
-  useFocusMessage({
+  useFocusMessageListElement({
     elementRef: ref,
-    chatId,
     isFocused,
     focusDirection,
     noFocusHighlight,
@@ -892,8 +909,6 @@ const Message = ({
   const signature = viaBusinessBotTitle || (canShowPostAuthor && message.postAuthorTitle)
     || ((asForwarded || isChatWithSelf) && forwardInfo?.postAuthorTitle)
     || undefined;
-
-  useMessageResizeObserver(ref, isLastInList);
 
   useEffect(() => {
     const bottomMarker = bottomMarkerRef.current;
@@ -987,8 +1002,10 @@ const Message = ({
   ]);
 
   const {
-    contentWidth, style, reactionsMaxWidth,
+    contentWidth, style: sizeStyles, reactionsMaxWidth,
   } = sizeCalculations;
+
+  const contentStyle = buildStyle(peerColorStyle, sizeStyles);
 
   function renderMessageText(isForAnimation?: boolean) {
     if (!textMessage) return undefined;
@@ -1009,6 +1026,7 @@ const Message = ({
         canBeEmpty={hasFactCheck}
         maxTimestamp={maxTimestamp}
         threadId={threadId}
+        shouldAnimateTyping={isTypingDraft}
       />
     );
   }
@@ -1522,25 +1540,45 @@ const Message = ({
     );
   }
 
-  const handleSuggestedMessageButton = useLastCallback((payload: ActionPayloads['clickBotInlineButton']) => {
-    if (payload.button.type !== 'suggestedMessage') return;
-    if (payload.button.buttonType === 'approve') {
-      openSuggestedPostApprovalModal({
+  const handleInlineButtonClick = useLastCallback((button: ApiKeyboardButton) => {
+    clickBotInlineButton({
+      chatId,
+      messageId: message.id,
+      threadId,
+      button,
+    });
+  });
+
+  const handleLocalInlineButtonClick = useLastCallback((button: ApiKeyboardButton) => {
+    if (button.type === 'openThread') {
+      openThread({
         chatId,
-        messageId: message.id,
+        threadId: messageTopic!.id,
       });
       return;
     }
 
-    if (payload.button.buttonType === 'decline') {
-      openDeclineDialog();
+    if (button.type === 'suggestedMessage') {
+      if (button.buttonType === 'approve') {
+        openSuggestedPostApprovalModal({
+          chatId,
+          messageId: message.id,
+        });
+        return;
+      }
+
+      if (button.buttonType === 'decline') {
+        openDeclineDialog();
+        return;
+      }
+
+      clickSuggestedMessageButton({
+        chatId,
+        messageId: message.id,
+        button,
+      });
       return;
     }
-
-    clickSuggestedMessageButton({
-      ...payload,
-      button: payload.button,
-    });
   });
 
   const handleDeclineReasonChange = useLastCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1654,11 +1692,52 @@ const Message = ({
   const shouldRenderSuggestedPostButtons = message.suggestedPostInfo
     && !message.isOutgoing && !message.suggestedPostInfo.isAccepted && !message.suggestedPostInfo.isRejected;
 
-  const isSuggestedPostExpired = useMemo(() => {
+  const isSuggestedPostExpired = (() => {
     if (!message.suggestedPostInfo?.scheduleDate || !minFutureTime) return false;
     const now = getServerTime();
     return message.suggestedPostInfo.scheduleDate <= now + minFutureTime;
-  }, [message.suggestedPostInfo, minFutureTime]);
+  })();
+
+  const suggestedPostButtons: ApiKeyboardButton[][] | undefined = useMemo(() => {
+    if (!shouldRenderSuggestedPostButtons) return undefined;
+    return [
+      [
+        {
+          type: 'suggestedMessage',
+          buttonType: 'decline',
+          text: lang('SuggestedPostDecline'),
+        },
+        {
+          type: 'suggestedMessage',
+          buttonType: 'approve',
+          text: lang('SuggestedPostApprove'),
+          disabled: isSuggestedPostExpired,
+        },
+      ],
+      [
+        {
+          type: 'suggestedMessage',
+          buttonType: 'suggestChanges',
+          text: lang('SuggestedPostSuggestChanges'),
+        },
+      ],
+    ];
+  }, [isSuggestedPostExpired, lang, shouldRenderSuggestedPostButtons]);
+
+  const openThreadButtons: ApiKeyboardButton[][] | undefined = useMemo(() => {
+    if (!isBotForum || message.inlineButtons || !messageTopic || !isLastInList ||
+      threadId !== MAIN_THREAD_ID
+    ) return undefined;
+
+    return [
+      [{
+        type: 'openThread',
+        text: lang('BotForumContinueThreadButton'),
+      }],
+    ];
+  }, [isBotForum, lang, message.inlineButtons, messageTopic, isLastInList, threadId]);
+
+  const additionalInlineButtons = suggestedPostButtons || openThreadButtons;
 
   return (
     <div
@@ -1710,7 +1789,7 @@ const Message = ({
       >
         <div
           className={contentClassName}
-          style={style}
+          style={contentStyle}
           dir="auto"
         >
           {asForwarded && !isInDocumentGroupNotFirst && (
@@ -1744,9 +1823,8 @@ const Message = ({
                   size="tiny"
                   ariaLabel={oldLang('lng_context_forward_msg')}
                   onClick={isLastInDocumentGroup ? handleGroupForward : handleForward}
-                >
-                  <Icon name="share-filled" />
-                </Button>
+                  iconName="share-filled"
+                />
               )}
               {canFocus && (
                 <Button
@@ -1756,9 +1834,8 @@ const Message = ({
                   size="tiny"
                   ariaLabel={lang('FocusMessage')}
                   onClick={isPinnedList ? handleFocus : handleFocusForwarded}
-                >
-                  <Icon name="arrow-right" />
-                </Button>
+                  iconName="arrow-right"
+                />
               )}
             </div>
           )}
@@ -1773,36 +1850,12 @@ const Message = ({
           {withQuickReactionButton && quickReactionPosition === 'in-content' && renderQuickReactionButton()}
         </div>
         {message.inlineButtons && (
-          <InlineButtons message={message} onClick={clickBotInlineButton} />
+          <InlineButtons inlineButtons={message.inlineButtons} onClick={handleInlineButtonClick} />
         )}
-        {shouldRenderSuggestedPostButtons && (
+        {additionalInlineButtons && (
           <InlineButtons
-            message={{
-              ...message,
-              inlineButtons: [
-                [
-                  {
-                    type: 'suggestedMessage',
-                    buttonType: 'decline',
-                    text: lang('SuggestedPostDecline'),
-                  },
-                  {
-                    type: 'suggestedMessage',
-                    buttonType: 'approve',
-                    text: lang('SuggestedPostApprove'),
-                    disabled: isSuggestedPostExpired,
-                  },
-                ],
-                [
-                  {
-                    type: 'suggestedMessage',
-                    buttonType: 'suggestChanges',
-                    text: lang('SuggestedPostSuggestChanges'),
-                  },
-                ],
-              ],
-            }}
-            onClick={handleSuggestedMessageButton}
+            inlineButtons={additionalInlineButtons}
+            onClick={handleLocalInlineButtonClick}
           />
         )}
         {reactionsPosition === 'outside' && !isStoryMention && (
@@ -1967,8 +2020,8 @@ export default memo(withGlobal<OwnProps>(
 
     const hasUnreadReaction = chat?.unreadReactions?.includes(message.id);
 
-    const hasTopicChip = threadId === MAIN_THREAD_ID && chat?.isForum && isFirstInGroup;
-    const messageTopic = hasTopicChip ? selectTopicFromMessage(global, message) : undefined;
+    const hasTopicChip = threadId === MAIN_THREAD_ID && chat?.isForum && !chat.isBotForum && isFirstInGroup;
+    const messageTopic = selectTopicFromMessage(global, message);
 
     const chatTranslations = selectChatTranslations(global, chatId);
 
@@ -2029,6 +2082,7 @@ export default memo(withGlobal<OwnProps>(
       isForwarding,
       reactionMessage,
       isChatWithSelf,
+      isBotForum: chat?.isBotForum,
       isRepliesChat: isSystemBotChat,
       isAnonymousForwards,
       isChannel,

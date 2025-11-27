@@ -17,6 +17,7 @@ import type { IconName } from '../../../types/icons/index';
 import type { AnimationLevel, ThemeKey } from '../../../types/index';
 import { MediaViewerOrigin } from '../../../types/index';
 
+import { SERVICE_NOTIFICATIONS_USER_ID } from '../../../config.ts';
 import {
   getUserStatus, isAnonymousForwardsChat, isChatChannel, isSystemBot, isUserOnline,
 } from '../../../global/helpers/index';
@@ -69,8 +70,6 @@ import RadialPatternBackground from './RadialPatternBackground.tsx';
 import './ProfileInfo.scss';
 import styles from './ProfileInfo.module.scss';
 
-const MAX_LEVEL_ICON = 90;
-
 type OwnProps = {
   isExpanded?: boolean;
   peerId: string;
@@ -98,14 +97,20 @@ type StateProps = {
   theme: ThemeKey;
   isPlain?: boolean;
   savedGifts?: ApiSavedGifts;
+  hasAvatar?: boolean;
+  isSystemAccount?: boolean;
 };
+
+const MAX_LEVEL_ICON = 90;
 
 const EMOJI_STATUS_SIZE = 24;
 const EMOJI_TOPIC_SIZE = 120;
 const LOAD_MORE_THRESHOLD = 3;
 const MAX_PHOTO_DASH_COUNT = 30;
 const STATUS_UPDATE_INTERVAL = 1000 * 60; // 1 min
+
 const PATTERN_Y_SHIFT = 8 * REM;
+const PATTERN_PLAIN_Y_SHIFT = 5.25 * REM;
 
 const ProfileInfo = ({
   isExpanded,
@@ -130,6 +135,8 @@ const ProfileInfo = ({
   theme,
   isPlain,
   savedGifts,
+  hasAvatar,
+  isSystemAccount,
   onExpand,
 }: OwnProps & StateProps) => {
   const {
@@ -184,6 +191,8 @@ const ProfileInfo = ({
       storyColors: [...colors.storyColors].reverse(),
     };
   }, [profileColorOption, theme, collectibleEmojiStatus]);
+
+  const hasPatternBackground = profileColorSet?.bgColors || backgroundEmoji;
 
   const pinnedGifts = useMemo(() => {
     return savedGifts?.gifts.filter((gift) => {
@@ -286,7 +295,7 @@ const ProfileInfo = ({
       return;
     }
 
-    onExpand?.();
+    if (hasAvatar) onExpand?.();
   });
 
   function handleSelectFallbackPhoto() {
@@ -369,6 +378,7 @@ const ProfileInfo = ({
         user={user}
         chat={chat}
         photo={photo}
+        theme={theme}
         canPlayVideo={Boolean(isActive && canPlayVideo)}
         className={buildClassName(isActive && styles.activeProfilePhoto)}
         style={isActive ? createVtnStyle('avatar', true) : undefined}
@@ -445,7 +455,7 @@ const ProfileInfo = ({
           <span className={styles.userStatus} dir="auto">
             {getUserStatus(oldLang, user, userStatus)}
           </span>
-          {userStatus?.isReadDateRestrictedByMe && (
+          {userStatus?.isReadDateRestrictedByMe && !isSystemAccount && (
             <span className={styles.getStatus} onClick={handleOpenGetReadDateModal}>
               <span>{oldLang('StatusHiddenShow')}</span>
             </span>
@@ -488,17 +498,17 @@ const ProfileInfo = ({
       )}
       dir={lang.isRtl ? 'rtl' : undefined}
     >
-      {profileColorSet?.bgColors && (
+      {hasPatternBackground && (
         <RadialPatternBackground
-          backgroundColors={profileColorSet.bgColors}
+          backgroundColors={profileColorSet?.bgColors}
           patternIcon={backgroundEmoji}
           patternSize={16}
           withLinearGradient={!collectibleEmojiStatus}
           className={styles.radialPatternBackground}
-          yPosition={PATTERN_Y_SHIFT}
+          yPosition={isPlain ? PATTERN_PLAIN_Y_SHIFT : PATTERN_Y_SHIFT}
         />
       )}
-      {pinnedGifts && (
+      {Boolean(pinnedGifts?.length) && (
         <ProfilePinnedGifts
           peerId={peerId}
           gifts={pinnedGifts}
@@ -575,7 +585,7 @@ const ProfileInfo = ({
           size="jumbo"
           peer={peer}
           style={createVtnStyle('avatar', true)}
-          onClick={handleMinimizedAvatarClick}
+          onClick={hasAvatar ? handleMinimizedAvatarClick : undefined}
         />
       )}
 
@@ -626,6 +636,10 @@ export default memo(withGlobal<OwnProps>(
 
     const hasBackground = selectPeerHasProfileBackground(global, peerId);
     const savedGifts = selectPeerSavedGifts(global, peerId);
+    const hasAvatar = Boolean(peer?.avatarPhotoId);
+
+    const isAnonymousForwards = isAnonymousForwardsChat(peerId);
+    const isSystemAccount = isSystemBot(peerId) || isAnonymousForwards || peer?.id === SERVICE_NOTIFICATIONS_USER_ID;
 
     return {
       user,
@@ -645,6 +659,8 @@ export default memo(withGlobal<OwnProps>(
       theme,
       isPlain: !hasBackground,
       savedGifts,
+      hasAvatar,
+      isSystemAccount,
     };
   },
 )(ProfileInfo));

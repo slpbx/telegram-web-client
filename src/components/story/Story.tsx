@@ -137,11 +137,11 @@ function Story({
   isCurrentUserPremium,
   stealthMode,
   withHeaderAnimation,
+  paidMessagesStars,
+  isAccountFrozen,
   onDelete,
   onClose,
   onReport,
-  paidMessagesStars,
-  isAccountFrozen,
 }: OwnProps & StateProps) {
   const {
     viewStory,
@@ -158,7 +158,7 @@ function Story({
     loadPeerSettings,
     fetchChat,
     loadStoryViews,
-    toggleStealthModal,
+    openStealthModal,
   } = getActions();
   const serverTime = getServerTime();
 
@@ -197,6 +197,7 @@ function Story({
   const isChatStory = !isUserStory;
   const isChannelStory = isChatStory && isChatChannel(peer as ApiChat);
   const isOut = isLoadedStory && story.isOut;
+  const isUnsupportedStory = isLoadedStory && Object.keys(story.content).length === 0;
 
   const canPinToProfile = useCurrentOrPrev(
     isOut ? !story.isInProfile : undefined,
@@ -210,7 +211,7 @@ function Story({
     isOut && (story.date + viewersExpirePeriod) < getServerTime(),
   );
 
-  const forwardSenderTitle = forwardSender ? getPeerTitle(oldLang, forwardSender)
+  const forwardSenderTitle = forwardSender ? getPeerTitle(lang, forwardSender)
     : (isLoadedStory && story.forwardInfo?.fromName);
 
   const canCopyLink = Boolean(
@@ -229,7 +230,8 @@ function Story({
   );
 
   const canPlayStory = Boolean(
-    hasFullData && !shouldForcePause && isAppFocused && !isComposerHasFocus && !isCaptionExpanded
+    (hasFullData || isUnsupportedStory)
+    && !shouldForcePause && isAppFocused && !isComposerHasFocus && !isCaptionExpanded
     && !isPausedBySpacebar && !isPausedByLongPress,
   );
 
@@ -244,11 +246,11 @@ function Story({
   const {
     shouldRender: shouldRenderSkeleton,
     transitionClassNames: skeletonTransitionClassNames,
-  } = useShowTransitionDeprecated(!hasFullData);
+  } = useShowTransitionDeprecated(!hasFullData && !isUnsupportedStory);
 
   const {
     transitionClassNames: mediaTransitionClassNames,
-  } = useShowTransitionDeprecated(Boolean(fullMediaData));
+  } = useShowTransitionDeprecated(Boolean(fullMediaData) && !isUnsupportedStory);
 
   const thumbRef = useCanvasBlur(thumbnail, !hasThumb);
   const previewTransitionClassNames = useMediaTransitionDeprecated(previewBlobUrl);
@@ -340,17 +342,17 @@ function Story({
     onEnd: handleLongPressEnd,
   });
 
-  const isUnsupported = useUnsupportedMedia(
+  const isUnsupportedVideo = useUnsupportedMedia(
     videoRef,
     undefined,
     !isVideo || !fullMediaData || isStreamingSupported,
   );
 
   const hasAllData = fullMediaData && (!altMediaHash || altMediaData);
-  // Play story after media has been downloaded
   useEffect(() => {
-    if (hasAllData && !isUnsupported) handlePlayStory();
-  }, [hasAllData, isUnsupported]);
+    // Start progress to the nest slide after media has been downloaded or it is unsupported
+    if (hasAllData || isUnsupportedVideo || isUnsupportedStory) handlePlayStory();
+  }, [hasAllData, isUnsupportedVideo, isUnsupportedStory]);
 
   useBackgroundMode(unmarkAppFocused, markAppFocused);
 
@@ -503,7 +505,7 @@ function Story({
       : story.isForContacts ? 'contacts' : (story.isForCloseFriends ? 'closeFriends' : 'nobody');
 
     let message;
-    const myName = getPeerTitle(oldLang, peer);
+    const myName = getPeerTitle(lang, peer);
     switch (visibility) {
       case 'nobody':
         message = oldLang('StorySelectedContactsHint', myName);
@@ -536,14 +538,14 @@ function Story({
     if (stealthMode.activeUntil && getServerTime() < stealthMode.activeUntil) {
       const diff = stealthMode.activeUntil - getServerTime();
       showNotification({
-        title: oldLang('StealthModeOn'),
-        message: oldLang('Story.ToastStealthModeActiveText', formatMediaDuration(diff)),
+        title: lang('StealthModeOnTitle'),
+        message: lang('StealthModeOnHint', { time: formatMediaDuration(diff) }),
         duration: STEALTH_MODE_NOTIFICATION_DURATION,
       });
       return;
     }
 
-    toggleStealthModal({ isOpen: true });
+    openStealthModal({});
   });
 
   const handleDownload = useLastCallback(() => {
@@ -569,13 +571,12 @@ function Story({
           color="translucent-white"
           onClick={onTrigger}
           className={buildClassName(styles.button, isOpen && 'active')}
-          ariaLabel={oldLang('AccDescrOpenMenu2')}
-        >
-          <Icon name="more" />
-        </Button>
+          ariaLabel={lang('AriaLabelOpenMenu')}
+          iconName="more"
+        />
       );
     };
-  }, [isMobile, oldLang]);
+  }, [isMobile, lang]);
 
   function renderStoriesTabs() {
     return (
@@ -654,7 +655,7 @@ function Story({
         />
         <div className={styles.senderMeta}>
           <span onClick={handleOpenChat} className={styles.senderName}>
-            {renderText(getPeerTitle(oldLang, peer) || '')}
+            {renderText(getPeerTitle(lang, peer) || '')}
           </span>
           <div className={styles.storyMetaRow}>
             {forwardSenderTitle && (
@@ -679,7 +680,7 @@ function Story({
               >
                 <Avatar peer={fromPeer} size="micro" />
                 <span className={styles.headerTitle}>
-                  {renderText(getPeerTitle(oldLang, fromPeer) || '')}
+                  {renderText(getPeerTitle(lang, fromPeer) || '')}
                 </span>
               </span>
             )}
@@ -714,9 +715,8 @@ function Story({
               disabled={!hasFullData}
               onClick={handleVolumeMuted}
               ariaLabel={oldLang('Volume')}
-            >
-              <Icon name={(isMuted || noSound) ? 'speaker-muted-story' : 'speaker-story'} />
-            </Button>
+              iconName={(isMuted || noSound) ? 'speaker-muted-story' : 'speaker-story'}
+            />
           )}
           <DropdownMenu
             className={styles.buttonMenu}
@@ -764,9 +764,8 @@ function Story({
             color="translucent-white"
             ariaLabel={oldLang('Close')}
             onClick={onClose}
-          >
-            <Icon name="close" />
-          </Button>
+            iconName="close"
+          />
         </div>
       </div>
     );
@@ -842,6 +841,12 @@ function Story({
           </OptimizedVideo>
         )}
 
+        {isUnsupportedStory && (
+          <div className={buildClassName(styles.media, styles.unsupportedMedia)}>
+            <span>{lang('StoryUnsupported')}</span>
+          </div>
+        )}
+
         {!isPausedByLongPress && !isComposerHasFocus && (
           <>
             <button
@@ -874,7 +879,7 @@ function Story({
                 withStory
                 storyViewerMode="disabled"
               />
-              <div className={styles.name}>{renderText(getPeerTitle(oldLang, peer) || '')}</div>
+              <div className={styles.name}>{renderText(getPeerTitle(lang, peer) || '')}</div>
             </div>
           </div>
         )}
@@ -941,7 +946,6 @@ export default memo(withGlobal<OwnProps>((global, {
       isMuted,
       viewModal,
       isPrivacyModalOpen,
-      isStealthModalOpen,
       storyList,
     },
     forwardMessages: { storyId: forwardedStoryId },
@@ -951,8 +955,10 @@ export default memo(withGlobal<OwnProps>((global, {
     reportModal,
     giftInfoModal,
     isPaymentMessageConfirmDialogOpen,
+    storyStealthModal,
   } = tabState;
   const { isOpen: isPremiumModalOpen } = premiumModal || {};
+  const isStealthModalOpen = Boolean(storyStealthModal);
   const story = selectPeerStory(global, peerId, storyId);
   const isLoadedStory = story && 'content' in story;
   const shouldForcePause = Boolean(

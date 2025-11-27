@@ -276,7 +276,7 @@ export type ApiCheckedGiftCode = {
   giveawayMessageId?: number;
   toId?: string;
   date: number;
-  months: number;
+  days: number;
   usedAt?: number;
 };
 
@@ -399,10 +399,22 @@ export type ApiInputInvoiceStarGiftTransfer = {
   recipientId: string;
 };
 
+export type ApiInputInvoiceStarGiftDropOriginalDetails = {
+  type: 'stargiftDropOriginalDetails';
+  inputSavedGift: ApiInputSavedStarGift;
+};
+
+export type ApiInputInvoiceStarGiftPrepaidUpgrade = {
+  type: 'stargiftPrepaidUpgrade';
+  peerId: string;
+  hash: string;
+};
+
 export type ApiInputInvoice = ApiInputInvoiceMessage | ApiInputInvoiceSlug | ApiInputInvoiceGiveaway
   | ApiInputInvoiceGiftCode | ApiInputInvoicePremiumGiftStars | ApiInputInvoiceStars | ApiInputInvoiceStarsGift
   | ApiInputInvoiceStarsGiveaway | ApiInputInvoiceStarGift | ApiInputInvoiceChatInviteSubscription
-  | ApiInputInvoiceStarGiftUpgrade | ApiInputInvoiceStarGiftTransfer | ApiInputInvoiceStarGiftResale;
+  | ApiInputInvoiceStarGiftUpgrade | ApiInputInvoiceStarGiftTransfer | ApiInputInvoiceStarGiftResale
+  | ApiInputInvoiceStarGiftDropOriginalDetails | ApiInputInvoiceStarGiftPrepaidUpgrade;
 
 /* Used for Invoice request */
 export type ApiRequestInputInvoiceMessage = {
@@ -472,11 +484,23 @@ export type ApiRequestInputInvoiceStarGiftTransfer = {
   recipient: ApiPeer;
 };
 
+export type ApiRequestInputInvoiceStarGiftDropOriginalDetails = {
+  type: 'stargiftDropOriginalDetails';
+  inputSavedGift: ApiRequestInputSavedStarGift;
+};
+
+export type ApiRequestInputInvoiceStarGiftPrepaidUpgrade = {
+  type: 'stargiftPrepaidUpgrade';
+  peer: ApiPeer;
+  hash: string;
+};
+
 export type ApiRequestInputInvoice = ApiRequestInputInvoiceMessage | ApiRequestInputInvoiceSlug
   | ApiRequestInputInvoiceGiveaway | ApiRequestInputInvoiceStars | ApiRequestInputInvoiceStarsGiveaway
   | ApiRequestInputInvoiceChatInviteSubscription | ApiRequestInputInvoiceStarGift
   | ApiRequestInputInvoiceStarGiftUpgrade | ApiRequestInputInvoiceStarGiftTransfer
-  | ApiRequestInputInvoicePremiumGiftStars | ApiRequestInputInvoiceStarGiftResale;
+  | ApiRequestInputInvoicePremiumGiftStars | ApiRequestInputInvoiceStarGiftResale
+  | ApiRequestInputInvoiceStarGiftDropOriginalDetails | ApiRequestInputInvoiceStarGiftPrepaidUpgrade;
 
 export interface ApiUniqueStarGiftValueInfo {
   isLastSaleOnFragment?: true;

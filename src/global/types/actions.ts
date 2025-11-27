@@ -22,7 +22,6 @@ import type {
   ApiInputSavedStarGift,
   ApiInputSuggestedPostInfo,
   ApiKeyboardButton,
-  ApiKeyboardButtonSuggestedMessage,
   ApiLimitTypeWithModal,
   ApiMessage,
   ApiMessageEntity,
@@ -45,6 +44,7 @@ import type {
   ApiSendMessageAction,
   ApiSessionData,
   ApiStarGift,
+  ApiStarGiftAttributeOriginalDetails,
   ApiStarGiftUnique,
   ApiStarsSubscription,
   ApiStarsTransaction,
@@ -59,6 +59,7 @@ import type {
   ApiUser,
   ApiVideo,
   BotsPrivacyType,
+  KeyboardButtonSuggestedMessage,
   LinkContext,
   PrivacyVisibility,
 } from '../../api/types';
@@ -460,6 +461,7 @@ export interface ActionPayloads {
     chatId: string;
     messageId: number;
     scheduledAt: number;
+    scheduleRepeatPeriod?: number;
   };
   deleteScheduledMessages: { messageIds: number[] } & WithTabId;
   // Message
@@ -469,6 +471,7 @@ export interface ActionPayloads {
     chatId?: string;
     threadId?: ThreadId;
     shouldForceRender?: boolean;
+    forceLastSlice?: boolean;
     onLoaded?: NoneToVoidFunction;
     onError?: NoneToVoidFunction;
   } & WithTabId;
@@ -1024,8 +1027,8 @@ export interface ActionPayloads {
     scrollTargetPosition?: ScrollTargetPosition;
     timestamp?: number;
   } & WithTabId;
+  scrollMessageListToBottom: WithTabId | undefined;
 
-  focusLastMessage: WithTabId | undefined;
   updateDraftReplyInfo: Partial<ApiInputMessageReplyInfo> & WithTabId;
   resetDraftReplyInfo: WithTabId | undefined;
   updateDraftSuggestedPostInfo: Partial<ApiInputSuggestedPostInfo> & WithTabId;
@@ -1698,9 +1701,10 @@ export interface ActionPayloads {
     reaction?: ApiReaction;
     shouldAddToRecent?: boolean;
   } & WithTabId;
-  toggleStealthModal: {
-    isOpen: boolean;
-  } & WithTabId;
+  openStealthModal: ({
+    targetPeerId: string;
+  } | Record<string, never>) & WithTabId;
+  closeStealthModal: WithTabId | undefined;
   activateStealthMode: {
     isForPast?: boolean;
     isForFuture?: boolean;
@@ -1867,6 +1871,11 @@ export interface ActionPayloads {
     firstName: string;
     lastName?: string;
     shouldSharePhoneNumber?: boolean;
+    note?: ApiFormattedText;
+  } & WithTabId;
+  updateContactNote: {
+    userId: string;
+    note: ApiFormattedText;
   } & WithTabId;
   toggleNoPaidMessagesException: {
     userId: string;
@@ -1926,6 +1935,7 @@ export interface ActionPayloads {
   forwardMessages: {
     isSilent?: boolean;
     scheduledAt?: number;
+    scheduleRepeatPeriod?: number;
   } & WithTabId;
   setForwardNoAuthors: {
     noAuthors: boolean;
@@ -2077,7 +2087,7 @@ export interface ActionPayloads {
   clickSuggestedMessageButton: {
     chatId: string;
     messageId: number;
-    button: ApiKeyboardButtonSuggestedMessage;
+    button: KeyboardButtonSuggestedMessage;
   } & WithTabId;
 
   switchBotInline: {
@@ -2485,7 +2495,7 @@ export interface ActionPayloads {
     toUserId?: string;
     isSuccess?: boolean;
     isGift?: boolean;
-    monthsAmount?: number;
+    daysAmount?: number;
     gift?: ApiStarGift;
   } & WithTabId) | undefined;
   closePremiumModal: WithTabId | undefined;
@@ -2549,7 +2559,7 @@ export interface ActionPayloads {
   loadPremiumGifts: undefined;
   loadTonGifts: undefined;
   loadStarGifts: undefined;
-  loadMyCollectibleGifts: {
+  loadMyUniqueGifts: {
     shouldRefresh?: true;
   } | undefined;
   updateResaleGiftsFilter: {
@@ -2623,6 +2633,11 @@ export interface ActionPayloads {
     shouldKeepOriginalDetails?: boolean;
     upgradeStars?: number;
   } & WithTabId;
+  upgradePrepaidGift: {
+    peerId: string;
+    hash: string;
+    stars: number;
+  } & WithTabId;
 
   openGiftWithdrawModal: {
     gift: ApiSavedStarGift;
@@ -2650,12 +2665,22 @@ export interface ActionPayloads {
     transferStars?: number;
     recipientId: string;
   } & WithTabId;
+  removeGiftDescription: {
+    gift: ApiInputSavedStarGift;
+    price: number;
+  } & WithTabId;
   closeGiftTransferModal: WithTabId | undefined;
   openGiftTransferConfirmModal: {
     gift: ApiSavedStarGift;
     recipientId: string;
   } & WithTabId;
   closeGiftTransferConfirmModal: WithTabId | undefined;
+  openGiftDescriptionRemoveModal: {
+    gift: ApiSavedStarGift;
+    price: number;
+    details: ApiStarGiftAttributeOriginalDetails;
+  } & WithTabId;
+  closeGiftDescriptionRemoveModal: WithTabId | undefined;
   updateSelectedGiftCollection: {
     peerId: string;
     collectionId: number;

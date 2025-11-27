@@ -250,9 +250,8 @@ const MessageContextMenu: FC<OwnProps> = ({
   const shouldShowGiftButton = isUserId(message.chatId)
     && canGift && (isPremiumGift || isGiftCode || isStarGift || isStarGiftUnique);
 
-  const [areItemsHidden, hideItems] = useFlag();
   const [isReady, markIsReady, unmarkIsReady] = useFlag();
-  const { isMobile, isDesktop } = useAppLayout();
+  const { isMobile } = useAppLayout();
   const seenByDatesCount = useMemo(() => (seenByDates ? Object.keys(seenByDates).length : 0), [seenByDates]);
 
   const handleAfterCopy = useLastCallback(() => {
@@ -266,12 +265,6 @@ const MessageContextMenu: FC<OwnProps> = ({
     openGiftModal({ forUserId: message.chatId });
     onClose();
   });
-
-  useEffect(() => {
-    if (isOpen && areItemsHidden && !isReactionPickerOpen) {
-      onClose();
-    }
-  }, [onClose, isOpen, isReactionPickerOpen, areItemsHidden]);
 
   useEffect(() => {
     if (customEmojiSets?.length) {
@@ -314,27 +307,20 @@ const MessageContextMenu: FC<OwnProps> = ({
   );
 
   const getTriggerElement = useLastCallback(() => {
-    return document.querySelector(`.Transition_slide-active > .MessageList div[data-message-id="${message.id}"]`);
+    return document.querySelector(`.Transition_slide-active > .MessageList`);
   });
 
-  const getRootElement = useLastCallback(() => document.querySelector('.Transition_slide-active > .MessageList'));
+  const getRootElement = useLastCallback(() => document.body);
 
   const getMenuElement = useLastCallback(() => document.querySelector('.MessageContextMenu .bubble'));
 
   const getLayout = useLastCallback(() => {
-    const extraHeightAudioPlayer = (isMobile
-      && (document.querySelector<HTMLElement>('.AudioPlayer-content'))?.offsetHeight) || 0;
-    const middleColumn = document.getElementById('MiddleColumn')!;
-    const middleColumnComputedStyle = getComputedStyle(middleColumn);
-    const headerToolsHeight = parseFloat(middleColumnComputedStyle.getPropertyValue('--middle-header-panes-height'));
-    const extraHeightPinned = headerToolsHeight || 0;
-
     return {
       extraPaddingX: SCROLLBAR_WIDTH,
       extraTopPadding: (document.querySelector<HTMLElement>('.MiddleHeader')!).offsetHeight,
-      extraMarginTop: extraHeightPinned + extraHeightAudioPlayer,
-      shouldAvoidNegativePosition: !isDesktop,
+      shouldAvoidNegativePosition: true,
       menuElMinWidth: withReactions && isMobile ? REACTION_SELECTOR_WIDTH_REM * REM : undefined,
+      withPortal: true,
     };
   });
 
@@ -355,7 +341,7 @@ const MessageContextMenu: FC<OwnProps> = ({
 
   const handleOpenMessageReactionPicker = useLastCallback((position: IAnchorPosition) => {
     onReactionPickerOpen!(position);
-    hideItems();
+    onClose();
   });
 
   return (
@@ -371,6 +357,7 @@ const MessageContextMenu: FC<OwnProps> = ({
       className={buildClassName(
         'MessageContextMenu', 'fluid', withReactions && 'with-reactions',
       )}
+      withPortal
       onClose={onClose}
       onCloseAnimationEnd={onCloseAnimationEnd}
     >
@@ -394,7 +381,6 @@ const MessageContextMenu: FC<OwnProps> = ({
           canPlayAnimatedEmojis={canPlayAnimatedEmojis}
           onShowMore={handleOpenMessageReactionPicker}
           onClose={onClose}
-          className={buildClassName(areItemsHidden && 'ReactionSelector-hidden')}
         />
       )}
 
@@ -402,9 +388,8 @@ const MessageContextMenu: FC<OwnProps> = ({
         ref={scrollableRef}
         className={buildClassName(
           'MessageContextMenu_items scrollable-content custom-scroll',
-          areItemsHidden && 'MessageContextMenu_items-hidden',
         )}
-        dir={oldLang.isRtl ? 'rtl' : undefined}
+        dir={lang.isRtl ? 'rtl' : undefined}
       >
         {shouldShowGiftButton
           && (
@@ -504,7 +489,7 @@ const MessageContextMenu: FC<OwnProps> = ({
               disabled={!canShowReactionsCount && !seenByDatesCount}
             >
               <span className="MessageContextMenu--seen-by-label-wrapper">
-                <span className="MessageContextMenu--seen-by-label" dir={oldLang.isRtl ? 'rtl' : undefined}>
+                <span className="MessageContextMenu--seen-by-label" dir={lang.isRtl ? 'rtl' : undefined}>
                   {canShowReactionsCount && message.reactors?.count ? (
                     canShowSeenBy && seenByDatesCount
                       ? oldLang(

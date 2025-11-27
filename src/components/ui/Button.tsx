@@ -22,7 +22,7 @@ import './Button.scss';
 export type OwnProps = {
   ref?: ElementRef<HTMLButtonElement | HTMLAnchorElement>;
   type?: 'button' | 'submit' | 'reset';
-  children: React.ReactNode;
+  children?: React.ReactNode;
   size?: 'default' | 'smaller' | 'tiny';
   color?: (
     'primary' | 'secondary' | 'gray' | 'danger' | 'translucent' | 'translucent-white' | 'translucent-black'
@@ -35,6 +35,7 @@ export type OwnProps = {
   pill?: boolean;
   badge?: boolean;
   fluid?: boolean;
+  inline?: boolean;
   isText?: boolean;
   isLoading?: boolean;
   ariaLabel?: string;
@@ -88,6 +89,7 @@ const Button: FC<OwnProps> = ({
   pill,
   badge,
   fluid,
+  inline,
   isText,
   isLoading,
   isShiny,
@@ -157,7 +159,8 @@ const Button: FC<OwnProps> = ({
     withPremiumGradient && 'premium',
     isRectangular && 'rectangular',
     noForcedUpperCase && 'no-upper-case',
-    iconAlignment && iconName && `content-with-icon-${iconAlignment}`,
+    inline && 'inline',
+    Boolean(iconName && children) && `content-with-icon-${iconAlignment}`,
   );
 
   const handleClick = useLastCallback((e: ReactMouseEvent<HTMLButtonElement, MouseEvent>) => {
@@ -204,6 +207,10 @@ const Button: FC<OwnProps> = ({
 
     if (!icon) {
       return children;
+    }
+
+    if (!children) {
+      return icon;
     }
 
     return (

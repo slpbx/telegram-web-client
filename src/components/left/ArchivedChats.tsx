@@ -16,14 +16,13 @@ import useOldLang from '../../hooks/useOldLang';
 import useShowTransitionDeprecated from '../../hooks/useShowTransitionDeprecated';
 import useLeftHeaderButtonRtlForumTransition from './main/hooks/useLeftHeaderButtonRtlForumTransition';
 
-import Icon from '../common/icons/Icon';
 import StoryRibbon from '../story/StoryRibbon';
 import StoryToggler from '../story/StoryToggler';
 import Button from '../ui/Button';
 import DropdownMenu from '../ui/DropdownMenu';
 import MenuItem from '../ui/MenuItem';
 import ChatList from './main/ChatList';
-import ForumPanel from './main/ForumPanel';
+import ForumPanel from './main/forum/ForumPanel';
 
 import './ArchivedChats.scss';
 
@@ -98,9 +97,8 @@ const ArchivedChats: FC<OwnProps> = ({
             shouldDisableDropdownMenuTransitionRef.current && lang.isRtl && 'disable-transition',
           )}
           onTransitionEnd={handleDropdownMenuTransitionEnd}
-        >
-          <Icon name="arrow-left" />
-        </Button>
+          iconName="arrow-left"
+        />
         {shouldRenderTitle && <h3 className={titleClassNames}>{lang('ArchivedChats')}</h3>}
         <div className="story-toggler-wrapper">
           <StoryToggler canShow isArchived />
@@ -134,6 +132,7 @@ const ArchivedChats: FC<OwnProps> = ({
           isMainList
           foldersDispatch={foldersDispatch}
           archiveSettings={archiveSettings}
+          isStoryRibbonShown={isStoryRibbonShown}
         />
       </div>
       {shouldRenderForumPanel && (

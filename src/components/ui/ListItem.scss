@@ -90,7 +90,7 @@
     }
 
     > .ListItem-main-icon {
-      margin-right: 1.75rem;
+      margin-inline-end: 1.75rem;
       font-size: 1.5rem;
       color: var(--color-text-secondary);
     }
@@ -223,14 +223,6 @@
       padding: 0.5625rem;
     }
 
-    &.chat-item-with-tags {
-      .ListItem-button {
-        align-items: flex-start;
-        height: 72px;
-        padding: 0.375rem 0.5625rem;
-      }
-    }
-
     &.contact-list-item {
       .ListItem-button {
         padding: 0.5rem;
@@ -242,7 +234,7 @@
     }
 
     .Avatar {
-      margin-right: 0.5rem;
+      margin-inline-end: 0.5rem;
     }
 
     .info {
@@ -376,15 +368,6 @@
     }
 
     &[dir="rtl"] {
-      .ListItem-button {
-        padding: 0.5625rem 0.5625rem 0.5625rem 0.6875rem;
-      }
-
-      .Avatar {
-        margin-right: 0;
-        margin-left: 0.5rem;
-      }
-
       .info > .status {
         width: 100%;
       }

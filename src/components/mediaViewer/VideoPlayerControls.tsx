@@ -14,7 +14,6 @@ import type { IconName } from '../../types/icons';
 import { IS_IOS, IS_TOUCH_ENV } from '../../util/browser/windowEnvironment';
 import buildClassName from '../../util/buildClassName';
 import { formatMediaDuration } from '../../util/dates/dateFormat';
-import { formatFileSize } from '../../util/textFormat';
 
 import useAppLayout from '../../hooks/useAppLayout';
 import useCurrentTimeSignal from '../../hooks/useCurrentTimeSignal';
@@ -24,7 +23,7 @@ import useLastCallback from '../../hooks/useLastCallback';
 import useOldLang from '../../hooks/useOldLang';
 import useControlsSignal from './hooks/useControlsSignal';
 
-import Icon from '../common/icons/Icon';
+import AnimatedFileSize from '../common/AnimatedFileSize';
 import Button from '../ui/Button';
 import Menu from '../ui/Menu';
 import MenuItem from '../ui/MenuItem';
@@ -190,9 +189,8 @@ const VideoPlayerControls: FC<OwnProps> = ({
           className="play"
           round
           onClick={onPlayPause}
-        >
-          <Icon name={isPlaying ? 'pause' : 'play'} />
-        </Button>
+          iconName={isPlaying ? 'pause' : 'play'}
+        />
         <Button
           ariaLabel="Volume"
           size="tiny"
@@ -200,16 +198,15 @@ const VideoPlayerControls: FC<OwnProps> = ({
           className="volume"
           round
           onClick={onVolumeClick}
-        >
-          <Icon name={volumeIcon} />
-        </Button>
+          iconName={volumeIcon}
+        />
         {!IS_IOS && (
           <RangeSlider bold className="volume-slider" value={isMuted ? 0 : volume * 100} onChange={onVolumeChange} />
         )}
         {renderTime(currentTime, duration)}
         {!isBuffered && (
           <div className="player-file-size">
-            {`${formatFileSize(lang, fileSize * bufferedProgress)} / ${formatFileSize(lang, fileSize)}`}
+            <AnimatedFileSize size={fileSize} progress={bufferedProgress} />
           </div>
         )}
         <div className="spacer" />
@@ -231,9 +228,8 @@ const VideoPlayerControls: FC<OwnProps> = ({
             className="fullscreen"
             round
             onClick={onPictureInPictureChange}
-          >
-            <Icon name="pip" />
-          </Button>
+            iconName="pip"
+          />
         )}
         {isFullscreenSupported && (
           <Button
@@ -243,9 +239,8 @@ const VideoPlayerControls: FC<OwnProps> = ({
             className="fullscreen"
             round
             onClick={onChangeFullscreen}
-          >
-            <Icon name={isFullscreen ? 'smallscreen' : 'fullscreen'} />
-          </Button>
+            iconName={isFullscreen ? 'smallscreen' : 'fullscreen'}
+          />
         )}
       </div>
       <Menu

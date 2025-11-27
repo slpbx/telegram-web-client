@@ -39,6 +39,10 @@
     display: none;
   }
 
+  &.with-bottom-snap {
+    scroll-snap-type: y proximity;
+  }
+
   .messages-container {
     display: flex;
     flex-direction: column;
@@ -52,6 +56,10 @@
 
     .force-messages-scroll & {
       margin-top: 100vh !important;
+    }
+
+    .fab-trigger {
+      scroll-snap-align: end;
     }
 
     @media (max-width: 600px) {
@@ -322,6 +330,11 @@
     &::-webkit-scrollbar-thumb {
       background-color: transparent !important;
     }
+  }
+
+  .list-bottom-marker.with-sponsored {
+    position: relative;
+    top: -1rem; // Prevent overlapping with the sponsored message
   }
 
   @media (pointer: coarse) {

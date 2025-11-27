@@ -1,13 +1,12 @@
 import type {
+  ApiFormattedText,
   ApiMessage, ApiPoll, ApiPollResult, ApiQuickReply, ApiSponsoredMessage, ApiThreadInfo,
   ApiWebPage,
   ApiWebPageFull,
 } from '../../api/types';
 import type {
-  FocusDirection,
   MessageList,
   MessageListType,
-  ScrollTargetPosition,
   TabThread,
   Thread,
   ThreadId,
@@ -48,6 +47,7 @@ import {
   selectTabState,
   selectThreadIdFromMessage,
   selectThreadInfo,
+  selectThreadParam,
   selectViewportIds,
   selectWebPage,
 } from '../selectors';
@@ -719,40 +719,16 @@ export function updateQuickReplyMessages<T extends GlobalState>(
 }
 
 export function updateFocusedMessage<T extends GlobalState>(
-  {
-    global,
-    chatId,
-    messageId,
-    threadId = MAIN_THREAD_ID,
-    noHighlight = false,
-    isResizingContainer = false,
-    quote,
-    quoteOffset,
-    scrollTargetPosition,
-  }: {
-    global: T;
-    chatId?: string;
-    messageId?: number;
-    threadId?: ThreadId;
-    noHighlight?: boolean;
-    isResizingContainer?: boolean;
-    quote?: string;
-    quoteOffset?: number;
-    scrollTargetPosition?: ScrollTargetPosition;
-  },
-  ...[tabId = getCurrentTabId()]: TabArgs<T>
+  global: T, update: Partial<TabState['focusedMessage']> | undefined, ...[tabId = getCurrentTabId()]: TabArgs<T>
 ): T {
+  if (!update) {
+    return updateTabState(global, { focusedMessage: undefined }, tabId);
+  }
+
   return updateTabState(global, {
     focusedMessage: {
       ...selectTabState(global, tabId).focusedMessage,
-      chatId,
-      threadId,
-      messageId,
-      noHighlight,
-      isResizingContainer,
-      quote,
-      quoteOffset,
-      scrollTargetPosition,
+      ...update,
     },
   }, tabId);
 }
@@ -787,18 +763,6 @@ export function deleteSponsoredMessage<T extends GlobalState>(
       sponsoredByChatId: omit(byChatId, [chatId]),
     },
   };
-}
-
-export function updateFocusDirection<T extends GlobalState>(
-  global: T, direction?: FocusDirection,
-  ...[tabId = getCurrentTabId()]: TabArgs<T>
-): T {
-  return updateTabState(global, {
-    focusedMessage: {
-      ...selectTabState(global, tabId).focusedMessage,
-      direction,
-    },
-  }, tabId);
 }
 
 export function enterMessageSelectMode<T extends GlobalState>(
@@ -1101,4 +1065,25 @@ export function updatePollVote<T extends GlobalState>(
       results: newResults,
     },
   });
+}
+
+export function updateTypingDraft<T extends GlobalState>(
+  global: T,
+  chatId: string,
+  threadId: ThreadId | undefined = MAIN_THREAD_ID,
+  randomId: string,
+  text: ApiFormattedText,
+) {
+  const typingDraftStore = selectThreadParam(global, chatId, threadId, 'typingDraftIdByRandomId');
+  const messageId = typingDraftStore?.[randomId];
+  if (!messageId) {
+    return global;
+  }
+
+  global = updateChatMessage(global, chatId, messageId, {
+    content: {
+      text,
+    },
+  });
+  return global;
 }

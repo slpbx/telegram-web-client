@@ -100,6 +100,7 @@ export type ThreadId = string | number;
 
 export type ThemeKey = 'light' | 'dark';
 export type AnimationLevel = 0 | 1 | 2;
+export type FoldersPosition = 'top' | 'left';
 export type PerformanceTypeKey = (
   'pageTransitions' | 'messageSendingAnimations' | 'mediaViewerAnimations'
   | 'messageComposerAnimations' | 'contextMenuAnimations' | 'contextMenuBlur' | 'rightColumnAnimations'
@@ -588,6 +589,13 @@ export type StarGiftInfo = {
   shouldUpgrade?: boolean;
 };
 
+export type TypingDraft = {
+  senderId: string;
+  id: string;
+  date: number;
+  text: ApiFormattedText;
+};
+
 export interface TabThread {
   scrollOffset?: number;
   replyStack?: number[];
@@ -610,6 +618,7 @@ export interface Thread {
   threadInfo?: ApiThreadInfo;
   firstMessageId?: number;
   typingStatus?: ApiTypingStatus;
+  typingDraftIdByRandomId?: Record<string, number>;
 }
 
 export interface ServiceNotification {
@@ -670,7 +679,7 @@ export type WebPageMediaSize = 'large' | 'small';
 
 export type AttachmentCompression = 'compress' | 'original';
 
-export type StarGiftCategory = 'all' | 'myCollectibles' | 'resale';
+export type StarGiftCategory = 'all' | 'myUnique' | 'collectible';
 
 export type CallSound = (
   'join' | 'allowTalk' | 'leave' | 'connecting' | 'incoming' | 'end' | 'connect' | 'busy' | 'ringing'
@@ -714,6 +723,7 @@ export type SendMessageParams = {
   contact?: ApiContact;
   isSilent?: boolean;
   scheduledAt?: number;
+  scheduleRepeatPeriod?: number;
   groupedId?: string;
   noWebPage?: boolean;
   sendAs?: ApiPeer;
@@ -749,6 +759,7 @@ export type ForwardMessagesParams = {
   messages: ApiMessage[];
   isSilent?: boolean;
   scheduledAt?: number;
+  scheduleRepeatPeriod?: number;
   sendAs?: ApiPeer;
   withMyScore?: boolean;
   noAuthors?: boolean;

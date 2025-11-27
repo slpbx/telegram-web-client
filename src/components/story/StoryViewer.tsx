@@ -26,10 +26,8 @@ import { dispatchPriorityPlaybackEvent } from '../../hooks/usePriorityPlaybackCh
 import useSlideSizes from './hooks/useSlideSizes';
 import useStoryProps from './hooks/useStoryProps';
 
-import Icon from '../common/icons/Icon';
 import Button from '../ui/Button';
 import ShowTransition from '../ui/ShowTransition';
-import StealthModeModal from './StealthModeModal';
 import StoryDeleteConfirmModal from './StoryDeleteConfirmModal';
 import StorySettings from './StorySettings';
 import StorySlides from './StorySlides';
@@ -157,9 +155,8 @@ function StoryViewer({
         color="translucent-white"
         ariaLabel={lang('Close')}
         onClick={handleClose}
-      >
-        <Icon name="close" />
-      </Button>
+        iconName="close"
+      />
 
       <StorySlides
         isOpen={isOpen}
@@ -175,7 +172,6 @@ function StoryViewer({
         onClose={handleCloseDeleteModal}
       />
       <StoryViewModal />
-      <StealthModeModal />
       <StorySettings isOpen={isPrivacyModalOpen} onClose={closeStoryPrivacyEditor} />
     </ShowTransition>
   );

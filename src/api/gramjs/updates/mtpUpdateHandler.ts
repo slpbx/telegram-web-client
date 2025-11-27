@@ -28,6 +28,7 @@ import {
   buildChatTypingStatus,
 } from '../apiBuilders/chats';
 import {
+  buildApiFormattedText,
   buildApiPhoto, buildApiUsernames, buildPrivacyRules,
 } from '../apiBuilders/common';
 import { omitVirtualClassFields } from '../apiBuilders/helpers';
@@ -496,10 +497,9 @@ export function updater(update: Update) {
     sendApiUpdate({
       '@type': 'updateChatInbox',
       id: getApiChatIdFromMtpPeer(update.peer),
-      chat: {
-        lastReadInboxMessageId: update.maxId,
-        unreadCount: update.stillUnreadCount,
-      },
+      lastReadInboxMessageId: update.maxId,
+      unreadCount: update.stillUnreadCount,
+      threadId: update.topMsgId,
     });
   } else if (update instanceof GramJs.UpdateReadHistoryOutbox) {
     sendApiUpdate({
@@ -648,22 +648,33 @@ export function updater(update: Update) {
     update instanceof GramJs.UpdateUserTyping
     || update instanceof GramJs.UpdateChatUserTyping
   ) {
-    const id = update instanceof GramJs.UpdateUserTyping
+    const chatId = update instanceof GramJs.UpdateUserTyping
       ? buildApiPeerId(update.userId, 'user')
       : buildApiPeerId(update.chatId, 'chat');
+
+    const threadId = update instanceof GramJs.UpdateUserTyping ? update.topMsgId : undefined;
 
     if (update.action instanceof GramJs.SendMessageEmojiInteraction) {
       sendApiUpdate({
         '@type': 'updateStartEmojiInteraction',
-        id,
+        id: chatId,
         emoji: update.action.emoticon,
         messageId: update.action.msgId,
         interaction: buildApiEmojiInteraction(JSON.parse(update.action.interaction.data)),
       });
+    } else if (update.action instanceof GramJs.SendMessageTextDraftAction) {
+      sendApiUpdate({
+        '@type': 'updateChatTypingDraft',
+        chatId,
+        id: update.action.randomId.toString(),
+        threadId,
+        text: buildApiFormattedText(update.action.text),
+      });
     } else {
       sendApiUpdate({
         '@type': 'updateChatTypingStatus',
-        id,
+        id: chatId,
+        threadId,
         typingStatus: buildChatTypingStatus(update),
       });
     }
@@ -1003,17 +1014,17 @@ export function updater(update: Update) {
     });
   } else if (update instanceof GramJs.UpdateConfig) {
     sendApiUpdate({ '@type': 'updateConfig' });
-  } else if (update instanceof GramJs.UpdateChannelPinnedTopic) {
+  } else if (update instanceof GramJs.UpdatePinnedForumTopic) {
     sendApiUpdate({
       '@type': 'updatePinnedTopic',
-      chatId: buildApiPeerId(update.channelId, 'channel'),
+      chatId: getApiChatIdFromMtpPeer(update.peer),
       topicId: update.topicId,
       isPinned: Boolean(update.pinned),
     });
-  } else if (update instanceof GramJs.UpdateChannelPinnedTopics) {
+  } else if (update instanceof GramJs.UpdatePinnedForumTopics) {
     sendApiUpdate({
       '@type': 'updatePinnedTopicsOrder',
-      chatId: buildApiPeerId(update.channelId, 'channel'),
+      chatId: getApiChatIdFromMtpPeer(update.peer),
       order: update.order || [],
     });
   } else if (update instanceof GramJs.UpdateRecentEmojiStatuses) {

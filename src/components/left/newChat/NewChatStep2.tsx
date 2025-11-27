@@ -14,14 +14,12 @@ import { selectTabState } from '../../../global/selectors';
 import useHistoryBack from '../../../hooks/useHistoryBack';
 import useOldLang from '../../../hooks/useOldLang';
 
-import Icon from '../../common/icons/Icon';
 import PrivateChatInfo from '../../common/PrivateChatInfo';
 import AvatarEditable from '../../ui/AvatarEditable';
 import Button from '../../ui/Button';
 import FloatingActionButton from '../../ui/FloatingActionButton';
 import InputText from '../../ui/InputText';
 import ListItem from '../../ui/ListItem';
-import Spinner from '../../ui/Spinner';
 
 export type OwnProps = {
   isChannel?: boolean;
@@ -156,12 +154,10 @@ const NewChatStep2: FC<OwnProps & StateProps> = ({
           round
           size="smaller"
           color="translucent"
-
           onClick={() => onReset()}
           ariaLabel="Return to member selection"
-        >
-          <Icon name="arrow-left" />
-        </Button>
+          iconName="arrow-left"
+        />
         <h3>{lang(isChannel ? 'NewChannel' : 'NewGroup')}</h3>
       </div>
       <div className="NewChat-inner step-2">
@@ -210,13 +206,9 @@ const NewChatStep2: FC<OwnProps & StateProps> = ({
         onClick={isChannel ? handleCreateChannel : handleCreateGroup}
         disabled={isLoading}
         ariaLabel={isChannel ? lang('ChannelIntro.CreateChannel') : 'Create Group'}
-      >
-        {isLoading ? (
-          <Spinner color="white" />
-        ) : (
-          <Icon name="arrow-right" />
-        )}
-      </FloatingActionButton>
+        iconName="arrow-right"
+        isLoading={isLoading}
+      />
     </div>
   );
 };

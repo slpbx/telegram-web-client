@@ -7,12 +7,13 @@ import type {
 } from '../api/types';
 import type { MessageList, ThreadId } from '../types';
 import type { ActionReturnType, GlobalState, SharedState } from './types';
-import { MAIN_THREAD_ID } from '../api/types';
+import { ApiMessageEntityTypes, MAIN_THREAD_ID } from '../api/types';
 
 import {
   ALL_FOLDER_ID, ANIMATION_LEVEL_DEFAULT,
   ARCHIVED_FOLDER_ID,
   DEBUG,
+  FOLDERS_POSITION_DEFAULT,
   GLOBAL_STATE_CACHE_ARCHIVED_CHAT_LIST_LIMIT,
   GLOBAL_STATE_CACHE_CHAT_LIST_LIMIT,
   GLOBAL_STATE_CACHE_CUSTOM_EMOJI_LIMIT,
@@ -313,6 +314,7 @@ function unsafeMigrateCache(cached: GlobalState, initialState: GlobalState) {
     cached.sharedState.settings = {
       canDisplayChatInTitle: untypedCached.settings.byKey.canDisplayChatInTitle,
       animationLevel: untypedCached.settings.byKey.animationLevel,
+      foldersPosition: FOLDERS_POSITION_DEFAULT,
       messageSendKeyCombo: untypedCached.settings.byKey.messageSendKeyCombo,
       messageTextSize: untypedCached.settings.byKey.messageTextSize,
       performance: untypedCached.settings.performance,
@@ -346,6 +348,10 @@ function unsafeMigrateCache(cached: GlobalState, initialState: GlobalState) {
   if (!cachedSharedSettings.wasAnimationLevelSetManually) {
     cachedSharedSettings.animationLevel = ANIMATION_LEVEL_DEFAULT;
     cachedSharedSettings.performance = INITIAL_PERFORMANCE_STATE_MED;
+  }
+
+  if (!cachedSharedSettings.foldersPosition) {
+    cachedSharedSettings.foldersPosition = FOLDERS_POSITION_DEFAULT;
   }
 
   if (!cached.appConfig) {
@@ -467,7 +473,13 @@ export function serializeGlobal<T extends GlobalState>(global: T) {
 
 function reduceCustomEmojis<T extends GlobalState>(global: T): GlobalState['customEmojis'] {
   const { lastRendered, byId } = global.customEmojis;
-  const idsToSave = lastRendered.slice(0, GLOBAL_STATE_CACHE_CUSTOM_EMOJI_LIMIT);
+  const folderEmojiIds = Object.values(global.chatFolders.byId)
+    .flatMap((folder) => (
+      folder.title.entities
+        ?.filter((entity) => entity.type === ApiMessageEntityTypes.CustomEmoji)
+        ?.map((entity) => entity.documentId) || []
+    ));
+  const idsToSave = unique([...folderEmojiIds, ...lastRendered]).slice(0, GLOBAL_STATE_CACHE_CUSTOM_EMOJI_LIMIT);
   const byIdToSave = pick(byId, idsToSave);
 
   return {
@@ -665,7 +677,7 @@ function reduceMessages<T extends GlobalState>(global: T): GlobalState['messages
     }, {} as GlobalState['messages']['byChatId'][string]['threadsById']);
 
     const cleanedById = Object.values(byId).reduce((acc, message) => {
-      if (!message) return acc;
+      if (!message || message.isTypingDraft) return acc;
 
       let cleanedMessage = omitLocalMedia(message);
       cleanedMessage = omitLocalPaidReactions(cleanedMessage);

@@ -9,6 +9,7 @@ import type { TabState } from '../../../../global/types';
 import { selectIsCurrentUserPremium, selectUser } from '../../../../global/selectors';
 import buildClassName from '../../../../util/buildClassName';
 import buildStyle from '../../../../util/buildStyle';
+import { REM } from '../../../common/helpers/mediaDimensions';
 
 import useCurrentOrPrev from '../../../../hooks/useCurrentOrPrev';
 import useLang from '../../../../hooks/useLang';
@@ -73,6 +74,7 @@ const GiftStatusInfoModal = ({
         className={styles.radialPattern}
         backgroundColors={backdropColors}
         patternIcon={patternIcon.customEmoji}
+        yPosition={6.5 * REM}
       />
     );
   }, [emojiStatus, isOpen, patternIcon]);
@@ -105,19 +107,13 @@ const GiftStatusInfoModal = ({
             {lang('Online')}
           </p>
         </div>
-        <div className={styles.titleContainer}>
-          <div className={styles.giftTitle}>
-            {
-              lang('UniqueStatusWearTitle', {
-                gift: mockPeerWithStatus?.emojiStatus?.title,
-              })
-            }
-          </div>
-          <div className={styles.infoDescription}>
-            {
-              lang('UniqueStatusBenefitsDescription')
-            }
-          </div>
+        <div className={styles.giftTitle}>
+          {lang('UniqueStatusWearTitle', {
+            gift: mockPeerWithStatus?.emojiStatus?.title,
+          })}
+        </div>
+        <div className={styles.infoDescription}>
+          {lang('UniqueStatusBenefitsDescription')}
         </div>
       </div>
     );

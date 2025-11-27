@@ -100,6 +100,7 @@ type OwnProps = {
   onDragEnter?: (chatId: string) => void;
   onDragLeave?: NoneToVoidFunction;
   onReorderAnimationEnd?: NoneToVoidFunction;
+  isFoldersSidebarShown?: boolean;
 };
 
 type StateProps = {
@@ -178,13 +179,13 @@ const Chat: FC<OwnProps & StateProps> = ({
   areTagsEnabled,
   withTags,
   onReorderAnimationEnd,
+  isFoldersSidebarShown,
   crmchatDisplayProperties,
 }) => {
   const {
     openChat,
     openSavedDialog,
     toggleChatInfo,
-    focusLastMessage,
     focusMessage,
     loadTopics,
     openForumPanel,
@@ -194,6 +195,7 @@ const Chat: FC<OwnProps & StateProps> = ({
     openFrozenAccountModal,
     updateChatMutedState,
     openQuickPreview,
+    scrollMessageListToBottom,
   } = getActions();
 
   const { isMobile } = useAppLayout();
@@ -224,7 +226,8 @@ const Chat: FC<OwnProps & StateProps> = ({
     });
   }, [orderedFolderIds, folderId, chatFoldersById, chatFolderIds]);
 
-  const shouldRenderTags = areTagsEnabled && withTags && Boolean(tagFolderIds?.length);
+  const isTagsMode = areTagsEnabled && withTags;
+  const shouldRenderTags = isTagsMode && Boolean(tagFolderIds?.length);
 
   const { renderSubtitle, ref } = useChatListEntry({
     chat,
@@ -243,7 +246,7 @@ const Chat: FC<OwnProps & StateProps> = ({
     isPreview,
     onReorderAnimationEnd,
     topics,
-    noForumTitle: shouldRenderTags,
+    hasTags: shouldRenderTags,
   });
 
   const getIsForumPanelClosed = useSelectorSignal(selectIsForumPanelClosed);
@@ -295,7 +298,7 @@ const Chat: FC<OwnProps & StateProps> = ({
     openChat({ id: chatId, noForumTopicPanel, shouldReplaceHistory: true }, { forceOnHeavyAnimation: true });
 
     if (isSelected && canScrollDown) {
-      focusLastMessage();
+      scrollMessageListToBottom();
     }
   });
 
@@ -447,13 +450,14 @@ const Chat: FC<OwnProps & StateProps> = ({
             forceHidden={getIsForumPanelClosed}
             topics={topics}
             isSelected={isSelected}
+            isOnAvatar
           />
         </div>
         {chat.isCallActive && chat.isCallNotEmpty && (
           <ChatCallStatus isMobile={isMobile} isSelected={isSelected} isActive={withInterfaceAnimations} />
         )}
       </div>
-      <div className={buildClassName('info', areTagsEnabled && withTags && 'has-tags')}>
+      <div className={buildClassName('info', isTagsMode && 'has-tags')}>
         <div className="info-row">
           <FullNameTitle
             peer={isMonoforum ? monoforumChannel! : peer}
@@ -486,13 +490,16 @@ const Chat: FC<OwnProps & StateProps> = ({
               hasMiniApp={user?.hasMainMiniApp}
               topics={topics}
               isSelected={isSelected}
+              transitionClassName="chat-badge-transition"
             />
           )}
         </div>
         {shouldRenderTags && (
           <ChatTags
+            itemClassName="chat-tag"
             orderedFolderIds={tagFolderIds}
             chatFoldersById={chatFoldersById}
+            isFoldersSidebarShown={isFoldersSidebarShown}
           />
         )}
         {Boolean(crmchatDisplayProperties?.length) && (

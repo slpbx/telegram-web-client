@@ -2,10 +2,11 @@ import type { ActionReturnType } from '../../types';
 
 import { formatCurrencyAsString } from '../../../util/formatCurrency';
 import * as langProvider from '../../../util/oldLangProvider';
-import { addActionHandler, setGlobal } from '../../index';
-import { updateStarsBalance } from '../../reducers';
+import { getPeerTitle } from '../../helpers/peers';
+import { addActionHandler, getGlobal, setGlobal } from '../../index';
+import { removeGiftInfoOriginalDetails, updateStarsBalance } from '../../reducers';
 import { updateTabState } from '../../reducers/tabs';
-import { selectTabState } from '../../selectors';
+import { selectPeer, selectTabState } from '../../selectors';
 
 addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
   switch (update['@type']) {
@@ -173,6 +174,40 @@ addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
 
       if (inputInvoice?.type === 'stargiftUpgrade' && global.currentUserId) {
         actions.reloadPeerSavedGifts({ peerId: global.currentUserId });
+      }
+
+      if (inputInvoice?.type === 'stargiftDropOriginalDetails') {
+        global = getGlobal();
+        global = removeGiftInfoOriginalDetails(global, tabId);
+        setGlobal(global);
+
+        actions.closeGiftDescriptionRemoveModal({ tabId });
+        actions.showNotification({
+          message: { key: 'RemoveGiftDescriptionSuccessMessage' },
+          tabId,
+        });
+
+        if (global.currentUserId) {
+          actions.reloadPeerSavedGifts({ peerId: global.currentUserId });
+        }
+      }
+
+      if (inputInvoice?.type === 'stargiftPrepaidUpgrade') {
+        actions.reloadPeerSavedGifts({ peerId: inputInvoice.peerId });
+
+        const lang = langProvider.getTranslationFn();
+        const peer = selectPeer(global, inputInvoice.peerId);
+        const peerTitle = peer ? getPeerTitle(lang, peer) : undefined;
+
+        actions.showNotification({
+          icon: 'gift',
+          title: { key: 'GiftUpgradeSentTitle' },
+          message: {
+            key: 'GiftUpgradeSentMessage',
+            variables: { user: peerTitle },
+          },
+          tabId,
+        });
       }
 
       break;

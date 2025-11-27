@@ -11,6 +11,7 @@ import type {
 import type { BufferedRange } from '../../hooks/useBuffering';
 import type { OldLangFn } from '../../hooks/useOldLang';
 import type { ThemeKey } from '../../types';
+import type { LangFn } from '../../util/localization';
 import { ApiMediaFormat } from '../../api/types';
 import { AudioOrigin } from '../../types';
 
@@ -31,13 +32,13 @@ import { captureEvents } from '../../util/captureEvents';
 import { formatMediaDateTime, formatMediaDuration, formatPastTimeShort } from '../../util/dates/dateFormat';
 import { decodeWaveform, interpolateArray } from '../../util/waveform';
 import { LOCAL_TGS_URLS } from './helpers/animatedAssets';
-import { getFileSizeString } from './helpers/documentInfo';
 import renderText from './helpers/renderText';
 import { MAX_EMPTY_WAVEFORM_POINTS, renderWaveform } from './helpers/waveform';
 
 import useAppLayout from '../../hooks/useAppLayout';
 import useAudioPlayer from '../../hooks/useAudioPlayer';
 import useBuffering from '../../hooks/useBuffering';
+import useLang from '../../hooks/useLang';
 import useLastCallback from '../../hooks/useLastCallback';
 import useMedia from '../../hooks/useMedia';
 import useMediaWithLoadProgress from '../../hooks/useMediaWithLoadProgress';
@@ -47,6 +48,7 @@ import useShowTransitionDeprecated from '../../hooks/useShowTransitionDeprecated
 import Button from '../ui/Button';
 import Link from '../ui/Link';
 import ProgressSpinner from '../ui/ProgressSpinner';
+import AnimatedFileSize from './AnimatedFileSize';
 import AnimatedIcon from './AnimatedIcon';
 import Icon from './icons/Icon';
 
@@ -133,8 +135,8 @@ const Audio = ({
   const isVoice = Boolean(voice || video);
   const isSeeking = useRef<boolean>(false);
   const seekerRef = useRef<HTMLDivElement>();
-  const lang = useOldLang();
-  const { isRtl } = lang;
+  const oldLang = useOldLang();
+  const lang = useLang();
 
   const { isMobile } = useAppLayout();
   const [isActivated, setIsActivated] = useState(false);
@@ -314,7 +316,7 @@ const Audio = ({
   function renderSecondLine() {
     if (isVoice) {
       return (
-        <div className="meta" dir={isRtl ? 'rtl' : undefined}>
+        <div className="meta" dir={lang.isRtl ? 'rtl' : undefined}>
           {formatMediaDuration((voice || video)!.duration)}
         </div>
       );
@@ -323,7 +325,7 @@ const Audio = ({
     const { performer } = audio!;
 
     return (
-      <div className="meta" dir={isRtl ? 'rtl' : undefined}>
+      <div className="meta" dir={lang.isRtl ? 'rtl' : undefined}>
         {formatMediaDuration(duration)}
         <span className="bullet">&bull;</span>
         {performer && <span className="performer" title={performer}>{renderText(performer)}</span>}
@@ -364,14 +366,14 @@ const Audio = ({
                 className="date"
                 onClick={handleDateClick}
               >
-                {formatPastTimeShort(lang, date * 1000)}
+                {formatPastTimeShort(oldLang, date * 1000)}
               </Link>
             )}
           </div>
         </div>
 
         {withSeekline && (
-          <div className="meta search-result" dir={isRtl ? 'rtl' : undefined}>
+          <div className="meta search-result" dir={lang.isRtl ? 'rtl' : undefined}>
             <span className="duration with-seekline" dir="auto">
               {playProgress < 1 && formatMediaDuration(duration * playProgress, duration)}
             </span>
@@ -455,13 +457,13 @@ const Audio = ({
           className="download-button"
           ariaLabel={isDownloading ? 'Cancel download' : 'Download'}
           onClick={handleDownloadClick}
-        >
-          <Icon name={isDownloading ? 'close' : 'arrow-down'} />
-        </Button>
+          iconName={isDownloading ? 'close' : 'arrow-down'}
+        />
       )}
       {origin === AudioOrigin.Search && renderWithTitle()}
       {origin !== AudioOrigin.Search && audio && renderAudio(
         lang,
+        oldLang,
         audio,
         duration,
         isPlaying,
@@ -506,7 +508,8 @@ function getSeeklineSpikeAmounts(isMobile?: boolean, withAvatar?: boolean) {
 }
 
 function renderAudio(
-  lang: OldLangFn,
+  lang: LangFn,
+  oldLang: OldLangFn,
   audio: ApiAudio,
   duration: number,
   isPlaying: boolean,
@@ -536,10 +539,7 @@ function renderAudio(
         </div>
       )}
       {!showSeekline && showProgress && (
-        <div className="meta" dir={isRtl ? 'rtl' : undefined}>
-          {progress ? `${getFileSizeString(audio.size * progress)} / ` : undefined}
-          {getFileSizeString(audio.size)}
-        </div>
+        <AnimatedFileSize className="meta" size={audio.size} progress={progress} />
       )}
       {!showSeekline && !showProgress && (
         <div className="meta" dir={isRtl ? 'rtl' : undefined}>
@@ -554,7 +554,7 @@ function renderAudio(
             <>
               <span className="bullet">&bull;</span>
               <Link className="date" onClick={handleDateClick}>
-                {formatMediaDateTime(lang, date * 1000, true)}
+                {formatMediaDateTime(oldLang, date * 1000, true)}
               </Link>
             </>
           )}

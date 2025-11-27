@@ -42,6 +42,7 @@ import type {
   ApiStarGift,
   ApiStarGiftAttribute,
   ApiStarGiftAttributeCounter,
+  ApiStarGiftAttributeOriginalDetails,
   ApiStarGiftUnique,
   ApiStarGiveawayOption,
   ApiStarsSubscription,
@@ -334,7 +335,6 @@ export type TabState = {
     lastViewedByPeerId?: Record<string, number>;
     isPrivacyModalOpen?: boolean;
     isPaymentConfirmDialogOpen?: boolean;
-    isStealthModalOpen?: boolean;
     viewModal?: {
       storyId: number;
       views?: ApiTypeStoryView[];
@@ -348,6 +348,9 @@ export type TabState = {
       storyIdsByPeerId: Record<string, number[]>;
     };
   };
+  storyStealthModal?: {
+    targetPeerId: string;
+  } | Record<string, never>;
 
   selectedStoryAlbumId?: number;
 
@@ -649,7 +652,7 @@ export type TabState = {
     fromUserId?: string;
     toUserId?: string;
     isGift?: boolean;
-    monthsAmount?: number;
+    daysAmount?: number;
     isSuccess?: boolean;
     gift?: ApiStarGift;
   };
@@ -852,6 +855,12 @@ export type TabState = {
   giftTransferConfirmModal?: {
     gift: ApiSavedStarGift;
     recipientId: string;
+  };
+
+  giftDescriptionRemoveModal?: {
+    gift: ApiSavedStarGift;
+    price: number;
+    details: ApiStarGiftAttributeOriginalDetails;
   };
 
   giftUpgradeModal?: {

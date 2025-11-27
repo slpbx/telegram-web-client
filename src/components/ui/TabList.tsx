@@ -1,6 +1,7 @@
 import type { TeactNode } from '../../lib/teact/teact';
 import { memo, useEffect, useRef } from '../../lib/teact/teact';
 
+import type { ApiMessageEntityCustomEmoji } from '../../api/types';
 import type { MenuItemContextAction } from './ListItem';
 
 import animateHorizontalScroll from '../../util/animateHorizontalScroll';
@@ -8,7 +9,7 @@ import { IS_ANDROID, IS_IOS } from '../../util/browser/windowEnvironment';
 import buildClassName from '../../util/buildClassName';
 
 import useHorizontalScroll from '../../hooks/useHorizontalScroll';
-import useOldLang from '../../hooks/useOldLang';
+import useLang from '../../hooks/useLang';
 import usePreviousDeprecated from '../../hooks/usePreviousDeprecated';
 
 import Tab from './Tab';
@@ -22,6 +23,8 @@ export type TabWithProperties = {
   isBlocked?: boolean;
   isBadgeActive?: boolean;
   contextActions?: MenuItemContextAction[];
+  emoticon?: string | ApiMessageEntityCustomEmoji;
+  noTitleAnimations?: boolean;
 };
 
 type OwnProps = {
@@ -29,8 +32,8 @@ type OwnProps = {
   activeTab: number;
   className?: string;
   tabClassName?: string;
-  onSwitchTab: (index: number) => void;
   contextRootElementSelector?: string;
+  onSwitchTab: (index: number) => void;
 };
 
 const TAB_SCROLL_THRESHOLD_PX = 16;
@@ -47,6 +50,8 @@ const TabList = ({
 }: OwnProps) => {
   const containerRef = useRef<HTMLDivElement>();
   const previousActiveTab = usePreviousDeprecated(activeTab);
+
+  const lang = useLang();
 
   useHorizontalScroll(containerRef, undefined, true);
 
@@ -73,8 +78,6 @@ const TabList = ({
 
     animateHorizontalScroll(container, newLeft, SCROLL_DURATION);
   }, [activeTab]);
-
-  const lang = useOldLang();
 
   return (
     <div

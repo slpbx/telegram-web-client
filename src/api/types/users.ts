@@ -1,14 +1,14 @@
 import type { API_CHAT_TYPES } from '../../config';
 import type { ApiBotInfo } from './bots';
 import type { ApiBusinessIntro, ApiBusinessLocation, ApiBusinessWorkHours } from './business';
-import type { ApiDocument, ApiPhoto } from './messages';
+import type { ApiDocument, ApiFormattedText, ApiPhoto } from './messages';
 import type {
   ApiBotVerification,
   ApiEmojiStatusType,
   ApiFakeType,
-  ApiPeerColor,
   ApiPeerSettings,
   ApiProfileTab,
+  ApiTypePeerColor,
 } from './peers';
 import type { ApiSavedStarGift, ApiStarsRating } from './stars';
 
@@ -40,13 +40,14 @@ export interface ApiUser {
   hasStories?: boolean;
   hasUnreadStories?: boolean;
   maxStoryId?: number;
-  color?: ApiPeerColor;
-  profileColor?: ApiPeerColor;
+  color?: ApiTypePeerColor;
+  profileColor?: ApiTypePeerColor;
   canEditBot?: boolean;
   hasMainMiniApp?: boolean;
   botActiveUsers?: number;
   botVerificationIconId?: string;
   paidMessagesStars?: number;
+  isBotForum?: boolean;
 }
 
 export interface ApiUserFullInfo {
@@ -82,6 +83,7 @@ export interface ApiUserFullInfo {
   paidMessagesStars?: number;
   settings?: ApiPeerSettings;
   mainTab?: ApiProfileTab;
+  note?: ApiFormattedText;
 }
 
 export type ApiUserType = 'userTypeBot' | 'userTypeRegular' | 'userTypeDeleted' | 'userTypeUnknown';

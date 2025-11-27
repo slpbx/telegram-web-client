@@ -50,8 +50,10 @@ type OwnProps = {
   sessions?: Record<string, ApiSession>;
   isAccountFrozen?: boolean;
   isMainList?: boolean;
-  foldersDispatch?: FolderEditDispatch;
   withTags?: boolean;
+  isFoldersSidebarShown?: boolean;
+  isStoryRibbonShown?: boolean;
+  foldersDispatch?: FolderEditDispatch;
 };
 
 const INTERSECTION_THROTTLE = 200;
@@ -68,8 +70,10 @@ const ChatList: FC<OwnProps> = ({
   sessions,
   isAccountFrozen,
   isMainList,
-  foldersDispatch,
   withTags,
+  isFoldersSidebarShown,
+  isStoryRibbonShown,
+  foldersDispatch,
 }) => {
   const {
     openChat,
@@ -203,6 +207,7 @@ const ChatList: FC<OwnProps> = ({
     onOverscroll: handleShowStoryRibbon,
     onReset: handleHideStoryRibbon,
     isDisabled: isSaved,
+    isOverscrolled: isStoryRibbonShown,
   });
 
   function renderChats() {
@@ -231,6 +236,7 @@ const ChatList: FC<OwnProps> = ({
           onDragEnter={handleChatDragEnter}
           onDragLeave={onDragLeave}
           withTags={withTags}
+          isFoldersSidebarShown={isFoldersSidebarShown}
         />
       );
     });
@@ -266,6 +272,7 @@ const ChatList: FC<OwnProps> = ({
           archiveSettings={archiveSettings}
           onClick={handleArchivedClick}
           onDragEnter={handleArchivedDragEnter}
+          isFoldersSidebarShown={isFoldersSidebarShown}
         />
       )}
       {viewportIds?.length ? (

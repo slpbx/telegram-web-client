@@ -1,22 +1,30 @@
 import type { FC } from '../../lib/teact/teact';
 import type React from '../../lib/teact/teact';
 import {
-  memo, useCallback, useEffect, useMemo, useState,
+  memo, useCallback, useEffect, useMemo, useRef, useState,
 } from '../../lib/teact/teact';
+import { getActions, withGlobal } from '../../global';
 
 import type { OldLangFn } from '../../hooks/useOldLang';
+import type { RepeatedMessageMode } from '../../util/scheduledMessages';
 
 import { MAX_INT_32 } from '../../config';
+import { selectIsCurrentUserPremium } from '../../global/selectors';
 import buildClassName from '../../util/buildClassName';
 import { formatDateToString, formatTime, getDayStart } from '../../util/dates/dateFormat';
+import { ALL_REPEAT_MODES, getScheduleRepeatModeText, TEST_SERVER_ONLY_MODES } from '../../util/scheduledMessages';
 
+import useContextMenuHandlers from '../../hooks/useContextMenuHandlers';
 import useFlag from '../../hooks/useFlag';
+import useLang from '../../hooks/useLang';
+import useLastCallback from '../../hooks/useLastCallback';
 import useOldLang from '../../hooks/useOldLang';
 import usePreviousDeprecated from '../../hooks/usePreviousDeprecated';
 
 import Button from '../ui/Button';
+import Menu from '../ui/Menu';
+import MenuItem from '../ui/MenuItem';
 import Modal from '../ui/Modal';
-import Icon from './icons/Icon';
 
 import './CalendarModal.scss';
 
@@ -31,13 +39,20 @@ export type OwnProps = {
   isPastMode?: boolean;
   isOpen: boolean;
   withTimePicker?: boolean;
+  withRepeatMode?: boolean;
+  initialRepeatMode?: RepeatedMessageMode;
   submitButtonLabel?: string;
   secondButtonLabel?: string;
   description?: string;
   onClose: () => void;
-  onSubmit: (date: Date) => void;
+  onSubmit: (date: Date, repeatMode?: RepeatedMessageMode) => void;
   onDateChange?: (date: Date) => void;
   onSecondButtonClick?: NoneToVoidFunction;
+};
+
+type StateProps = {
+  isTestServer?: boolean;
+  isCurrentUserPremium?: boolean;
 };
 
 const WEEKDAY_LETTERS = [
@@ -50,7 +65,7 @@ const WEEKDAY_LETTERS = [
   'lng_weekday7',
 ];
 
-const CalendarModal: FC<OwnProps> = ({
+const CalendarModal: FC<OwnProps & StateProps> = ({
   selectedAt,
   minAt,
   maxAt,
@@ -58,16 +73,38 @@ const CalendarModal: FC<OwnProps> = ({
   isPastMode,
   isOpen,
   withTimePicker,
+  withRepeatMode,
+  initialRepeatMode,
   submitButtonLabel,
   secondButtonLabel,
   description,
+  isTestServer,
+  isCurrentUserPremium,
   onClose,
   onSubmit,
   onDateChange,
   onSecondButtonClick,
 }) => {
-  const lang = useOldLang();
+  const { showNotification } = getActions();
+
+  const menuRef = useRef<HTMLDivElement>();
+  const dialogRef = useRef<HTMLDivElement>();
+
+  const oldLang = useOldLang();
+  const lang = useLang();
   const now = new Date();
+
+  const {
+    isContextMenuOpen: isRepeatMenuOpen,
+    contextMenuAnchor: repeatMenuAnchor,
+    handleContextMenu,
+    handleContextMenuClose,
+    handleContextMenuHide,
+  } = useContextMenuHandlers(menuRef);
+
+  const getRootElement = useLastCallback(() => dialogRef.current);
+  const getMenuElement = useLastCallback(() => menuRef.current!.querySelector('.bubble'));
+  const getTriggerElement = useLastCallback(() => dialogRef.current!.querySelector('.repeat-mode-button'));
 
   const minDate = useMemo(() => {
     if (isFutureMode && !minAt) return new Date();
@@ -92,6 +129,9 @@ const CalendarModal: FC<OwnProps> = ({
   const [selectedMinutes, setSelectedMinutes] = useState<string>(() => (
     formatInputTime(passedSelectedDate.getMinutes())
   ));
+  const [repeatedMessageMode, setRepeatedMessageMode] = useState<RepeatedMessageMode>(
+    initialRepeatMode || 'never',
+  );
 
   const selectedDay = formatDay(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
   const currentYear = currentMonthAndYear.getFullYear();
@@ -99,6 +139,16 @@ const CalendarModal: FC<OwnProps> = ({
 
   const isDisabled = (isFutureMode && selectedDate.getTime() < minDate.getTime())
     || (isPastMode && selectedDate.getTime() > maxDate.getTime());
+
+  useEffect(() => {
+    if (!isOpen) {
+      setRepeatedMessageMode('never');
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    setRepeatedMessageMode(initialRepeatMode || 'never');
+  }, [initialRepeatMode]);
 
   useEffect(() => {
     if (!prevIsOpen && isOpen) {
@@ -145,8 +195,23 @@ const CalendarModal: FC<OwnProps> = ({
   ), [currentMonth, currentYear]);
 
   const submitLabel = useMemo(() => {
-    return submitButtonLabel || formatSubmitLabel(lang, selectedDate);
-  }, [lang, selectedDate, submitButtonLabel]);
+    return submitButtonLabel || formatSubmitLabel(oldLang, selectedDate);
+  }, [oldLang, selectedDate, submitButtonLabel]);
+
+  const handleRepeatModeClick = useLastCallback((e: React.MouseEvent<HTMLButtonElement>) => {
+    if (!isCurrentUserPremium) {
+      showNotification({
+        message: lang('MessageScheduledRepeatPremium'),
+        action: {
+          action: 'openPremiumModal',
+          payload: { },
+        },
+        actionText: lang('PremiumMore'),
+      });
+      return;
+    }
+    handleContextMenu(e);
+  });
 
   function handlePrevMonth() {
     setCurrentMonthAndYear((d) => {
@@ -179,14 +244,15 @@ const CalendarModal: FC<OwnProps> = ({
   }
 
   const handleSubmit = useCallback(() => {
+    const repeatMode = withRepeatMode && repeatedMessageMode !== 'never' ? repeatedMessageMode : undefined;
     if (isFutureMode && selectedDate < minDate) {
-      onSubmit(minDate);
+      onSubmit(minDate, repeatMode);
     } else if (isPastMode && selectedDate > maxDate) {
-      onSubmit(maxDate);
+      onSubmit(maxDate, repeatMode);
     } else {
-      onSubmit(selectedDate);
+      onSubmit(selectedDate, repeatMode);
     }
-  }, [isFutureMode, isPastMode, minDate, maxDate, onSubmit, selectedDate]);
+  }, [isFutureMode, isPastMode, minDate, maxDate, onSubmit, selectedDate, withRepeatMode, repeatedMessageMode]);
 
   const handleChangeHours = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/[^\d]+/g, '');
@@ -228,6 +294,18 @@ const CalendarModal: FC<OwnProps> = ({
     e.target.value = minutesStr;
   }, [selectedDate, onDateChange]);
 
+  const renderRepeatMenuItem = useCallback((mode: RepeatedMessageMode) => {
+    return (
+      <MenuItem key={mode} onClick={() => setRepeatedMessageMode(mode)}>
+        {getScheduleRepeatModeText(mode, lang)}
+      </MenuItem>
+    );
+  }, [lang]);
+
+  const availableRepeatModes = useMemo(() => {
+    return ALL_REPEAT_MODES.filter((mode) => isTestServer || !TEST_SERVER_ONLY_MODES.has(mode));
+  }, [isTestServer]);
+
   function renderTimePicker() {
     return (
       <div className="timepicker">
@@ -252,12 +330,46 @@ const CalendarModal: FC<OwnProps> = ({
     );
   }
 
+  function renderRepeatMode() {
+    const dropDownIconClass = buildClassName('drop-down-icon', !isRepeatMenuOpen && 'expanded-icon');
+
+    return (
+      <div className="repeat-mode" ref={menuRef}>
+        <Button
+          className="repeat-mode-button"
+          onClick={handleRepeatModeClick}
+          noForcedUpperCase
+          isText
+          iconName={isCurrentUserPremium ? 'down' : 'lock-badge'}
+          iconClassName={isCurrentUserPremium ? dropDownIconClass : undefined}
+          iconAlignment="end"
+        >
+          {lang('ScheduleRepeat', { value: getScheduleRepeatModeText(repeatedMessageMode, lang) })}
+        </Button>
+        <Menu
+          isOpen={isRepeatMenuOpen}
+          className="with-menu-transitions"
+          anchor={repeatMenuAnchor}
+          getTriggerElement={getTriggerElement}
+          getRootElement={getRootElement}
+          getMenuElement={getMenuElement}
+          onClose={handleContextMenuClose}
+          onCloseAnimationEnd={handleContextMenuHide}
+          autoClose
+        >
+          {availableRepeatModes.map(renderRepeatMenuItem)}
+        </Menu>
+      </div>
+    );
+  }
+
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
       className="CalendarModal"
       onEnter={handleSubmit}
+      dialogRef={dialogRef}
     >
       <div className="container">
         <div className="month-selector">
@@ -265,13 +377,12 @@ const CalendarModal: FC<OwnProps> = ({
             round
             size="smaller"
             color="translucent"
+            iconName="close"
             onClick={onClose}
-          >
-            <Icon name="close" />
-          </Button>
+          />
 
           <h4>
-            {lang(`lng_month${currentMonth + 1}`)}
+            {oldLang(`lng_month${currentMonth + 1}`)}
             {' '}
             {currentYear}
           </h4>
@@ -280,21 +391,19 @@ const CalendarModal: FC<OwnProps> = ({
             round
             size="smaller"
             color="translucent"
+            iconName="previous"
             disabled={shouldDisablePrevMonth}
             onClick={!shouldDisablePrevMonth ? handlePrevMonth : undefined}
-          >
-            <Icon name="previous" />
-          </Button>
+          />
 
           <Button
             round
             size="smaller"
             color="translucent"
+            iconName="next"
             disabled={shouldDisableNextMonth}
             onClick={!shouldDisableNextMonth ? handleNextMonth : undefined}
-          >
-            <Icon name="next" />
-          </Button>
+          />
         </div>
       </div>
 
@@ -302,7 +411,7 @@ const CalendarModal: FC<OwnProps> = ({
         <div className="calendar-grid">
           {WEEKDAY_LETTERS.map((day) => (
             <div className="day-button faded weekday">
-              <span>{lang(day)}</span>
+              <span>{oldLang(day)}</span>
             </div>
           ))}
           {prevMonthGrid.map((gridDate) => (
@@ -336,6 +445,7 @@ const CalendarModal: FC<OwnProps> = ({
       </div>
 
       {withTimePicker && renderTimePicker()}
+      {withRepeatMode && isOpen && renderRepeatMode()}
 
       <div className="footer">
         {description && (
@@ -426,4 +536,13 @@ function formatSubmitLabel(lang: OldLangFn, date: Date) {
   return lang('Conversation.ScheduleMessage.SendOn', [day, formatTime(lang, date)]);
 }
 
-export default memo(CalendarModal);
+export default memo(withGlobal<OwnProps>(
+  (global): Complete<StateProps> => {
+    const isCurrentUserPremium = selectIsCurrentUserPremium(global);
+
+    return {
+      isTestServer: global.config?.isTestServer,
+      isCurrentUserPremium,
+    };
+  },
+)(CalendarModal));

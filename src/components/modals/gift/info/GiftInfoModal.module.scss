@@ -15,7 +15,6 @@
 
 .upgradeIcon {
   transform: rotateX(180deg);
-  margin-left: 0.25rem;
   font-size: 1.25rem;
 }
 
@@ -49,7 +48,7 @@
 
 .modalContent {
   position: relative;
-  max-height: min(92vh, 48rem) !important;
+  max-height: min(97vh, 48rem) !important;
 }
 
 .headerSplitButton {
@@ -196,4 +195,15 @@
   pointer-events: none;
   margin-inline-start: 0.25rem;
   color: var(--color-primary);
+}
+
+.messageContainer {
+  position: relative;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.removeMessageButton {
+  color: var(--color-primary) !important;
 }

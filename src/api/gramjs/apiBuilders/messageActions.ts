@@ -249,14 +249,14 @@ export function buildApiMessageAction(action: GramJs.TypeMessageAction): ApiMess
   }
   if (action instanceof GramJs.MessageActionGiftPremium) {
     const {
-      currency, amount, months, cryptoCurrency, cryptoAmount, message,
+      currency, amount, days, cryptoCurrency, cryptoAmount, message,
     } = action;
     return {
       mediaType: 'action',
       type: 'giftPremium',
       currency,
       amount: toJSNumber(amount),
-      months,
+      days,
       cryptoCurrency,
       cryptoAmount: toJSNumber(cryptoAmount),
       message: message && buildApiFormattedText(message),
@@ -298,7 +298,7 @@ export function buildApiMessageAction(action: GramJs.TypeMessageAction): ApiMess
   }
   if (action instanceof GramJs.MessageActionGiftCode) {
     const {
-      viaGiveaway, unclaimed, boostPeer, months, slug, currency, amount, cryptoCurrency, cryptoAmount, message,
+      viaGiveaway, unclaimed, boostPeer, days, slug, currency, amount, cryptoCurrency, cryptoAmount, message,
     } = action;
     return {
       mediaType: 'action',
@@ -306,7 +306,7 @@ export function buildApiMessageAction(action: GramJs.TypeMessageAction): ApiMess
       isViaGiveaway: viaGiveaway,
       isUnclaimed: unclaimed,
       boostPeerId: boostPeer && getApiChatIdFromMtpPeer(boostPeer),
-      months,
+      days,
       slug,
       currency,
       amount: toJSNumber(amount),
@@ -390,8 +390,8 @@ export function buildApiMessageAction(action: GramJs.TypeMessageAction): ApiMess
   }
   if (action instanceof GramJs.MessageActionStarGift) {
     const {
-      nameHidden, saved, converted, upgraded, refunded, canUpgrade, gift, message, convertStars, upgradeMsgId,
-      upgradeStars, fromId, peer, savedId,
+      nameHidden, saved, converted, upgraded, refunded, canUpgrade, prepaidUpgrade, gift, message, convertStars,
+      upgradeMsgId, giftMsgId, upgradeStars, fromId, peer, savedId, prepaidUpgradeHash,
     } = action;
 
     const starGift = buildApiStarGift(gift);
@@ -406,20 +406,23 @@ export function buildApiMessageAction(action: GramJs.TypeMessageAction): ApiMess
       isUpgraded: upgraded,
       isRefunded: refunded,
       canUpgrade,
+      isPrepaidUpgrade: prepaidUpgrade,
       gift: starGift,
       message: message && buildApiFormattedText(message),
       starsToConvert: toJSNumber(convertStars),
       upgradeMsgId,
+      giftMsgId,
       alreadyPaidUpgradeStars: toJSNumber(upgradeStars),
       fromId: fromId && getApiChatIdFromMtpPeer(fromId),
       peerId: peer && getApiChatIdFromMtpPeer(peer),
       savedId: savedId !== undefined ? buildApiPeerId(savedId, 'user') : undefined,
+      prepaidUpgradeHash,
     };
   }
   if (action instanceof GramJs.MessageActionStarGiftUnique) {
     const {
       upgrade, transferred, saved, refunded, gift, canExportAt, transferStars, fromId, peer, savedId,
-      resaleAmount,
+      resaleAmount, prepaidUpgrade, dropOriginalDetailsStars,
     } = action;
 
     const starGift = buildApiStarGift(gift);
@@ -432,6 +435,7 @@ export function buildApiMessageAction(action: GramJs.TypeMessageAction): ApiMess
       isTransferred: transferred,
       isSaved: saved,
       isRefunded: refunded,
+      isPrepaidUpgrade: prepaidUpgrade,
       gift: starGift,
       canExportAt,
       transferStars: toJSNumber(transferStars),
@@ -439,6 +443,9 @@ export function buildApiMessageAction(action: GramJs.TypeMessageAction): ApiMess
       peerId: peer && getApiChatIdFromMtpPeer(peer),
       savedId: savedId !== undefined ? buildApiPeerId(savedId, 'user') : undefined,
       resaleAmount: resaleAmount ? buildApiCurrencyAmount(resaleAmount) : undefined,
+      dropOriginalDetailsStars: dropOriginalDetailsStars !== undefined
+        ? toJSNumber(dropOriginalDetailsStars)
+        : undefined,
     };
   }
   if (action instanceof GramJs.MessageActionPaidMessagesPrice) {

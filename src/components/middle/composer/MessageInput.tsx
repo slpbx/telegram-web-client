@@ -14,7 +14,7 @@ import type {
 } from '../../../types';
 import type { Signal } from '../../../util/signals';
 
-import { EDITABLE_INPUT_ID } from '../../../config';
+import { EDITABLE_INPUT_ID, EDITABLE_INPUT_MODAL_ID } from '../../../config';
 import { requestForcedReflow, requestMutation } from '../../../lib/fasterdom/fasterdom';
 import { selectCanPlayAnimatedEmojis, selectDraft, selectIsInSelectMode } from '../../../global/selectors';
 import { selectSharedSettings } from '../../../global/selectors/sharedState';
@@ -23,7 +23,7 @@ import {
   IS_ANDROID, IS_EMOJI_SUPPORTED, IS_IOS, IS_TOUCH_ENV,
 } from '../../../util/browser/windowEnvironment';
 import buildClassName from '../../../util/buildClassName';
-import captureKeyboardListeners from '../../../util/captureKeyboardListeners';
+import captureKeyboardListeners, { hasActiveHandler } from '../../../util/captureKeyboardListeners';
 import { getIsDirectTextInputDisabled } from '../../../util/directInputManager';
 import parseEmojiOnlyString from '../../../util/emoji/parseEmojiOnlyString';
 import focusEditableElement from '../../../util/focusEditableElement';
@@ -34,13 +34,13 @@ import { isSelectionInsideInput } from './helpers/selection';
 import useAppLayout from '../../../hooks/useAppLayout';
 import useDerivedState from '../../../hooks/useDerivedState';
 import useFlag from '../../../hooks/useFlag';
+import useLang from '../../../hooks/useLang';
 import useLastCallback from '../../../hooks/useLastCallback';
 import useOldLang from '../../../hooks/useOldLang';
 import useInputCustomEmojis from './hooks/useInputCustomEmojis';
 
 import Icon from '../../common/icons/Icon';
 import Button from '../../ui/Button';
-import TextTimer from '../../ui/TextTimer';
 import TextFormatter from './TextFormatter.async';
 
 const CONTEXT_MENU_CLOSE_DELAY_MS = 100;
@@ -62,23 +62,21 @@ type OwnProps = {
   isActive: boolean;
   getHtml: Signal<string>;
   placeholder: TeactNode | string;
-  timedPlaceholderLangKey?: string;
-  timedPlaceholderDate?: number;
   forcedPlaceholder?: string;
   noFocusInterception?: boolean;
   canAutoFocus: boolean;
   shouldSuppressFocus?: boolean;
   shouldSuppressTextFormatter?: boolean;
   canSendPlainText?: boolean;
+  isNeedPremium?: boolean;
+  messageListType?: MessageListType;
+  captionLimit?: number;
   onUpdate: (html: string) => void;
   onSuppressedFocus?: () => void;
   onSend: () => void;
   onScroll?: (event: React.UIEvent<HTMLElement>) => void;
-  captionLimit?: number;
   onFocus?: NoneToVoidFunction;
   onBlur?: NoneToVoidFunction;
-  isNeedPremium?: boolean;
-  messageListType?: MessageListType;
 };
 
 type StateProps = {
@@ -126,8 +124,6 @@ const MessageInput: FC<OwnProps & StateProps> = ({
   isActive,
   getHtml,
   placeholder,
-  timedPlaceholderLangKey,
-  timedPlaceholderDate,
   forcedPlaceholder,
   canSendPlainText,
   canAutoFocus,
@@ -138,14 +134,14 @@ const MessageInput: FC<OwnProps & StateProps> = ({
   isSelectModeActive,
   canPlayAnimatedEmojis,
   messageSendKeyCombo,
+  isNeedPremium,
+  messageListType,
   onUpdate,
   onSuppressedFocus,
   onSend,
   onScroll,
   onFocus,
   onBlur,
-  isNeedPremium,
-  messageListType,
 }) => {
   const {
     editLastMessage,
@@ -167,6 +163,7 @@ const MessageInput: FC<OwnProps & StateProps> = ({
   const absoluteContainerRef = useRef<HTMLDivElement>();
 
   const oldLang = useOldLang();
+  const lang = useLang();
   const isContextMenuOpenRef = useRef(false);
   const [isTextFormatterOpen, openTextFormatter, closeTextFormatter] = useFlag();
   const [textFormatterAnchorPosition, setTextFormatterAnchorPosition] = useState<IAnchorPosition>();
@@ -174,16 +171,6 @@ const MessageInput: FC<OwnProps & StateProps> = ({
   const [isTextFormatterDisabled, setIsTextFormatterDisabled] = useState<boolean>(false);
   const { isMobile } = useAppLayout();
   const isMobileDevice = isMobile && (IS_IOS || IS_ANDROID);
-
-  const [shouldDisplayTimer, setShouldDisplayTimer] = useState(false);
-
-  useEffect(() => {
-    setShouldDisplayTimer(Boolean(timedPlaceholderLangKey && timedPlaceholderDate));
-  }, [timedPlaceholderDate, timedPlaceholderLangKey]);
-
-  const handleTimerEnd = useLastCallback(() => {
-    setShouldDisplayTimer(false);
-  });
 
   useInputCustomEmojis(
     getHtml,
@@ -379,6 +366,22 @@ const MessageInput: FC<OwnProps & StateProps> = ({
     document.addEventListener('keydown', handleCloseContextMenu);
   }
 
+  const isSendShortcut = useLastCallback((e: KeyboardEvent | React.KeyboardEvent<HTMLDivElement>) => {
+    return e.key === 'Enter'
+      && !e.shiftKey
+      && !isMobileDevice
+      && (
+        (messageSendKeyCombo === 'enter' && !e.shiftKey)
+        || (messageSendKeyCombo === 'ctrl-enter' && (e.ctrlKey || e.metaKey))
+      );
+  });
+
+  const handleSendShortcut = useLastCallback((e: KeyboardEvent | React.KeyboardEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    closeTextFormatter();
+    onSend();
+  });
+
   function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
     // https://levelup.gitconnected.com/javascript-events-handlers-keyboard-and-load-events-1b3e46a6b0c3#1960
     const { isComposing } = e;
@@ -394,19 +397,8 @@ const MessageInput: FC<OwnProps & StateProps> = ({
       }
     }
 
-    if (!isComposing && e.key === 'Enter' && !e.shiftKey) {
-      if (
-        !isMobileDevice
-        && (
-          (messageSendKeyCombo === 'enter' && !e.shiftKey)
-          || (messageSendKeyCombo === 'ctrl-enter' && (e.ctrlKey || e.metaKey))
-        )
-      ) {
-        e.preventDefault();
-
-        closeTextFormatter();
-        onSend();
-      }
+    if (!isComposing && isSendShortcut(e)) {
+      handleSendShortcut(e);
     } else if (!isComposing && e.key === 'ArrowUp' && !html && !e.metaKey && !e.ctrlKey && !e.altKey) {
       e.preventDefault();
       editLastMessage();
@@ -474,8 +466,7 @@ const MessageInput: FC<OwnProps & StateProps> = ({
   useEffect(() => {
     if (
       !chatId
-      || editableInputId !== EDITABLE_INPUT_ID
-      || noFocusInterception
+      || (editableInputId !== EDITABLE_INPUT_ID && editableInputId !== EDITABLE_INPUT_MODAL_ID)
       || isMobileDevice
       || isSelectModeActive
     ) {
@@ -483,18 +474,29 @@ const MessageInput: FC<OwnProps & StateProps> = ({
     }
 
     const handleDocumentKeyDown = (e: KeyboardEvent) => {
-      if (getIsDirectTextInputDisabled()) {
+      const target = e.target as HTMLElement | undefined;
+      const input = inputRef.current!;
+
+      const shouldHandleDocumentKeyDown =
+        isActive && input && target
+        && target !== input
+        && target.tagName !== 'INPUT'
+        && target.tagName !== 'TEXTAREA'
+        && !target.isContentEditable
+        && !hasActiveHandler('Enter');
+
+      if (!shouldHandleDocumentKeyDown) return;
+
+      if (isSendShortcut(e)) {
+        handleSendShortcut(e);
         return;
       }
 
       const { key } = e;
-      const target = e.target as HTMLElement | undefined;
-
-      if (!target || IGNORE_KEYS.includes(key)) {
+      if (noFocusInterception || getIsDirectTextInputDisabled() || IGNORE_KEYS.includes(key)) {
         return;
       }
 
-      const input = inputRef.current!;
       const isSelectionCollapsed = document.getSelection()?.isCollapsed;
 
       if (
@@ -504,18 +506,10 @@ const MessageInput: FC<OwnProps & StateProps> = ({
         return;
       }
 
-      if (
-        input
-        && target !== input
-        && target.tagName !== 'INPUT'
-        && target.tagName !== 'TEXTAREA'
-        && !target.isContentEditable
-      ) {
-        focusEditableElement(input, true, true);
+      focusEditableElement(input, true, true);
 
-        const newEvent = new KeyboardEvent(e.type, e as any);
-        input.dispatchEvent(newEvent);
-      }
+      const newEvent = new KeyboardEvent(e.type, e as any);
+      input.dispatchEvent(newEvent);
     };
 
     document.addEventListener('keydown', handleDocumentKeyDown, true);
@@ -523,7 +517,8 @@ const MessageInput: FC<OwnProps & StateProps> = ({
     return () => {
       document.removeEventListener('keydown', handleDocumentKeyDown, true);
     };
-  }, [chatId, editableInputId, isMobileDevice, isSelectModeActive, noFocusInterception]);
+  }, [chatId, editableInputId, isMobileDevice,
+    isActive, isSelectModeActive, noFocusInterception]);
 
   useEffect(() => {
     const captureFirstTab = debounce((e: KeyboardEvent) => {
@@ -564,7 +559,7 @@ const MessageInput: FC<OwnProps & StateProps> = ({
   const placeholderAriaLabel = typeof placeholder === 'string' ? placeholder : undefined;
 
   return (
-    <div id={id} onClick={shouldSuppressFocus ? onSuppressedFocus : undefined} dir={oldLang.isRtl ? 'rtl' : undefined}>
+    <div id={id} onClick={shouldSuppressFocus ? onSuppressedFocus : undefined} dir={lang.isRtl ? 'rtl' : undefined}>
       <div
         className={buildClassName('custom-scroll', SCROLLER_CLASS, isNeedPremium && 'is-need-premium')}
         onScroll={onScroll}
@@ -601,9 +596,7 @@ const MessageInput: FC<OwnProps & StateProps> = ({
             >
               {!isAttachmentModalInput && !canSendPlainText
                 && <Icon name="lock-badge" className="placeholder-icon" />}
-              {shouldDisplayTimer ? (
-                <TextTimer langKey={timedPlaceholderLangKey!} endsAt={timedPlaceholderDate!} onEnd={handleTimerEnd} />
-              ) : placeholder}
+              {placeholder}
               {isStoryInput && isNeedPremium && (
                 <Button className="unlock-button" size="tiny" color="adaptive" onClick={handleOpenPremiumModal}>
                   {oldLang('StoryRepliesLockedButton')}

@@ -20,7 +20,6 @@ import type {
   ApiSponsoredMessageReportResult,
   ApiSponsoredPeer,
   ApiStarsSubscriptionPricing,
-  ApiTopic,
 } from '../../types';
 
 import { pickTruthy } from '../../../util/iteratees';
@@ -38,7 +37,6 @@ import {
   buildApiEmojiStatus,
   buildApiPeerColor,
   buildApiPeerId,
-  buildApiPeerNotifySettings,
   buildAvatarPhotoId,
   getApiChatIdFromMtpPeer,
   isMtpPeerChat,
@@ -83,7 +81,7 @@ function buildApiChatFieldsFromPeerEntity(
   const isScam = userOrChannel?.scam;
   const isFake = userOrChannel?.fake;
   const areStoriesHidden = userOrChannel?.storiesHidden;
-  const maxStoryId = userOrChannel?.storiesMaxId;
+  const maxStoryId = userOrChannel?.storiesMaxId?.maxId;
   const botVerificationIconId = userOrChannel?.botVerificationIcon?.toString();
   const storiesUnavailable = userOrChannel?.storiesUnavailable;
   const color = userOrChannel?.color ? buildApiPeerColor(userOrChannel.color) : undefined;
@@ -91,6 +89,7 @@ function buildApiChatFieldsFromPeerEntity(
   const emojiStatus = userOrChannel?.emojiStatus ? buildApiEmojiStatus(userOrChannel.emojiStatus) : undefined;
   const paidMessagesStars = userOrChannel?.sendPaidMessagesStars;
   const isVerified = userOrChannel?.verified;
+  const isForum = channel?.forum || user?.botForumView;
 
   return {
     isMin,
@@ -115,7 +114,8 @@ function buildApiChatFieldsFromPeerEntity(
     profileColor,
     isJoinToSend: channel?.joinToSend,
     isJoinRequest: channel?.joinRequest,
-    isForum: channel?.forum,
+    isForum,
+    isBotForum: user?.botForumView,
     isMonoforum: channel?.monoforum,
     linkedMonoforumId: channel?.linkedMonoforumId !== undefined
       ? buildApiPeerId(channel.linkedMonoforumId, 'channel') : undefined,
@@ -549,50 +549,6 @@ export function buildApiSendAsPeerId(sendAs: GramJs.SendAsPeer): ApiSendAsPeerId
   return {
     id: getApiChatIdFromMtpPeer(sendAs.peer),
     isPremium: sendAs.premiumRequired,
-  };
-}
-
-export function buildApiTopic(forumTopic: GramJs.TypeForumTopic): ApiTopic | undefined {
-  if (forumTopic instanceof GramJs.ForumTopicDeleted) {
-    return undefined;
-  }
-
-  const {
-    id,
-    my,
-    closed,
-    pinned,
-    hidden,
-    short,
-    date,
-    title,
-    iconColor,
-    iconEmojiId,
-    topMessage,
-    unreadCount,
-    unreadMentionsCount,
-    unreadReactionsCount,
-    fromId,
-    notifySettings,
-  } = forumTopic;
-
-  return {
-    id,
-    isClosed: closed,
-    isPinned: pinned,
-    isHidden: hidden,
-    isOwner: my,
-    isMin: short,
-    date,
-    title,
-    iconColor,
-    iconEmojiId: iconEmojiId?.toString(),
-    lastMessageId: topMessage,
-    unreadCount,
-    unreadMentionsCount,
-    unreadReactionsCount,
-    fromId: getApiChatIdFromMtpPeer(fromId),
-    notifySettings: buildApiPeerNotifySettings(notifySettings),
   };
 }
 

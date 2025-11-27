@@ -1,7 +1,6 @@
-import type { ElementRef, FC } from '../../lib/teact/teact';
-import type React from '../../lib/teact/teact';
+import type { ElementRef } from '../../lib/teact/teact';
 import {
-  memo, useMemo, useRef, useState,
+  memo, useRef, useState,
 } from '../../lib/teact/teact';
 
 import type { IconName } from '../../types/icons';
@@ -9,18 +8,20 @@ import type { IconName } from '../../types/icons';
 import { IS_CANVAS_FILTER_SUPPORTED } from '../../util/browser/windowEnvironment';
 import buildClassName from '../../util/buildClassName';
 import { formatMediaDateTime, formatPastTimeShort } from '../../util/dates/dateFormat';
-import { getColorFromExtension, getFileSizeString } from './helpers/documentInfo';
+import { getColorFromExtension } from './helpers/documentInfo';
 import { getDocumentThumbnailDimensions } from './helpers/mediaDimensions';
 import renderText from './helpers/renderText';
 
 import useAppLayout from '../../hooks/useAppLayout';
 import useCanvasBlur from '../../hooks/useCanvasBlur';
+import useLang from '../../hooks/useLang';
 import useMediaTransitionDeprecated from '../../hooks/useMediaTransitionDeprecated';
 import useOldLang from '../../hooks/useOldLang';
 import useShowTransitionDeprecated from '../../hooks/useShowTransitionDeprecated';
 
 import Link from '../ui/Link';
 import ProgressSpinner from '../ui/ProgressSpinner';
+import AnimatedFileSize from './AnimatedFileSize';
 import Icon from './icons/Icon';
 
 import './File.scss';
@@ -47,7 +48,7 @@ type OwnProps = {
   onDateClick?: (e: React.MouseEvent<HTMLAnchorElement>) => void;
 };
 
-const File: FC<OwnProps> = ({
+const File = ({
   ref,
   id,
   name,
@@ -67,8 +68,9 @@ const File: FC<OwnProps> = ({
   actionIcon,
   onClick,
   onDateClick,
-}) => {
-  const lang = useOldLang();
+}: OwnProps) => {
+  const oldLang = useOldLang();
+  const lang = useLang();
   let elementRef = useRef<HTMLDivElement>();
   if (ref) {
     elementRef = ref;
@@ -86,11 +88,6 @@ const File: FC<OwnProps> = ({
   } = useShowTransitionDeprecated(isTransferring, undefined, true);
 
   const color = getColorFromExtension(extension);
-  const sizeString = getFileSizeString(size);
-  const subtitle = useMemo(() => {
-    if (!isTransferring || !transferProgress) return sizeString;
-    return `${getFileSizeString(size * transferProgress)} / ${sizeString}`;
-  }, [isTransferring, size, sizeString, transferProgress]);
 
   const { width, height } = getDocumentThumbnailDimensions(smaller);
 
@@ -153,20 +150,23 @@ const File: FC<OwnProps> = ({
       <div className="file-info">
         <div className="file-title" dir="auto" title={name}>{renderText(name)}</div>
         <div className="file-subtitle" dir="auto">
-          <span>
-            {subtitle}
-          </span>
-          {sender && <span className="file-sender">{renderText(sender)}</span>}
+          <AnimatedFileSize size={size} progress={isTransferring ? transferProgress : undefined} />
+          {sender && (
+            <>
+              <span className="bullet">&bull;</span>
+              <span className="file-sender">{renderText(sender)}</span>
+            </>
+          )}
           {!sender && Boolean(timestamp) && (
             <>
-              <span className="bullet" />
-              <Link onClick={onDateClick}>{formatMediaDateTime(lang, timestamp * 1000, true)}</Link>
+              <span className="bullet">&bull;</span>
+              <Link onClick={onDateClick}>{formatMediaDateTime(oldLang, timestamp * 1000, true)}</Link>
             </>
           )}
         </div>
       </div>
       {sender && Boolean(timestamp) && (
-        <Link onClick={onDateClick}>{formatPastTimeShort(lang, timestamp * 1000)}</Link>
+        <Link onClick={onDateClick}>{formatPastTimeShort(oldLang, timestamp * 1000)}</Link>
       )}
     </div>
   );

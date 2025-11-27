@@ -40,7 +40,6 @@ import useLang from '../../hooks/useLang';
 import useLastCallback from '../../hooks/useLastCallback';
 import useOldLang from '../../hooks/useOldLang';
 
-import Icon from '../common/icons/Icon';
 import Button from '../ui/Button';
 import ConfirmDialog from '../ui/ConfirmDialog';
 import DropdownMenu from '../ui/DropdownMenu';
@@ -384,10 +383,9 @@ const RightHeader: FC<OwnProps & StateProps> = ({
         color="translucent"
         className={isOpen ? 'active' : ''}
         onClick={onTrigger}
-        ariaLabel={lang('AccDescrOpenMenu2')}
-      >
-        <Icon name="more" />
-      </Button>
+        ariaLabel={lang('AriaLabelOpenMenu')}
+        iconName="more"
+      />
     );
   }, [isMobile, lang]);
 
@@ -441,9 +439,8 @@ const RightHeader: FC<OwnProps & StateProps> = ({
                   size="smaller"
                   ariaLabel={oldLang('Edit')}
                   onClick={handleEditInviteClick}
-                >
-                  <Icon name="edit" />
-                </Button>
+                  iconName="edit"
+                />
               )}
               {currentInviteInfo && currentInviteInfo.isRevoked && (
                 <>
@@ -453,9 +450,8 @@ const RightHeader: FC<OwnProps & StateProps> = ({
                     size="smaller"
                     ariaLabel={oldLang('Delete')}
                     onClick={openDeleteDialog}
-                  >
-                    <Icon name="delete" />
-                  </Button>
+                    iconName="delete"
+                  />
                   <ConfirmDialog
                     isOpen={isDeleteDialogOpen}
                     onClose={closeDeleteDialog}
@@ -636,9 +632,8 @@ const RightHeader: FC<OwnProps & StateProps> = ({
                   size="smaller"
                   ariaLabel={oldLang('AddContact')}
                   onClick={handleAddContact}
-                >
-                  <Icon name="add-user" />
-                </Button>
+                  iconName="add-user"
+                />
               )}
               {canManage && !isInsideTopic && (
                 <Button
@@ -647,9 +642,8 @@ const RightHeader: FC<OwnProps & StateProps> = ({
                   size="smaller"
                   ariaLabel={oldLang('Edit')}
                   onClick={handleToggleManagement}
-                >
-                  <Icon name="edit" />
-                </Button>
+                  iconName="edit"
+                />
               )}
               {canEditBot && (
                 <Button
@@ -658,9 +652,8 @@ const RightHeader: FC<OwnProps & StateProps> = ({
                   size="smaller"
                   ariaLabel={oldLang('Edit')}
                   onClick={handleToggleManagement}
-                >
-                  <Icon name="edit" />
-                </Button>
+                  iconName="edit"
+                />
               )}
               {canEditTopic && (
                 <Button
@@ -669,9 +662,8 @@ const RightHeader: FC<OwnProps & StateProps> = ({
                   size="smaller"
                   ariaLabel={oldLang('EditTopic')}
                   onClick={toggleEditTopic}
-                >
-                  <Icon name="edit" />
-                </Button>
+                  iconName="edit"
+                />
               )}
               {canViewStatistics && (
                 <Button
@@ -680,9 +672,8 @@ const RightHeader: FC<OwnProps & StateProps> = ({
                   size="smaller"
                   ariaLabel={oldLang('Statistics')}
                   onClick={handleToggleStatistics}
-                >
-                  <Icon name="stats" />
-                </Button>
+                  iconName="stats"
+                />
               )}
               {isOwnProfile && (
                 <Button
@@ -691,9 +682,8 @@ const RightHeader: FC<OwnProps & StateProps> = ({
                   size="smaller"
                   ariaLabel={lang('Edit')}
                   onClick={handleEditProfile}
-                >
-                  <Icon name="edit" />
-                </Button>
+                  iconName="edit"
+                />
               )}
             </section>
           </>

@@ -118,6 +118,8 @@ export interface GramJsAppConfig extends LimitsConfig {
   verify_age_bot_username?: string;
   verify_age_country?: string;
   verify_age_min?: number;
+  message_typing_draft_ttl?: number;
+  contact_note_length_limit?: number;
 }
 
 function buildEmojiSounds(appConfig: GramJsAppConfig) {
@@ -187,6 +189,7 @@ export function buildAppConfig(json: GramJs.TypeJSONValue, hash: number): ApiApp
       maxReactions: getLimit(appConfig, 'reactions_user_max', 'maxReactions'),
       moreAccounts: DEFAULT_LIMITS.moreAccounts,
     },
+    contactNoteLimit: appConfig.contact_note_length_limit,
     hash,
     storyViewersExpirePeriod: appConfig.story_viewers_expire_period,
     storyChangelogUserId: appConfig.stories_changelog_user_id?.toString(),
@@ -239,6 +242,7 @@ export function buildAppConfig(json: GramJs.TypeJSONValue, hash: number): ApiApp
     verifyAgeBotUsername: appConfig.verify_age_bot_username,
     verifyAgeCountry: appConfig.verify_age_country,
     verifyAgeMin: appConfig.verify_age_min,
+    typingDraftTtl: appConfig.message_typing_draft_ttl,
   };
 
   return {
