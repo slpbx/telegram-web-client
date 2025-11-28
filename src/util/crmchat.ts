@@ -173,7 +173,7 @@ export async function requestSessionFromCrmChat(): Promise<ApiSessionData> {
       new Promise<never>((_, reject) => {
         setTimeout(() => {
           reject(new Error('Session request timed out'));
-        }, 15000);
+        }, 20_000);
       }),
     ]);
   } catch (e) {
