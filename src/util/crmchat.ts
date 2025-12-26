@@ -199,6 +199,8 @@ addActionHandler('apiUpdate', (global, actions, update): void => {
   }
 });
 
+const dcDomain = new URLSearchParams(self.location.search).get('dcDomain') ?? 'dc';
+
 // Patch Worker constructor to pass variables to workers
 const OriginalWorker = window.Worker;
 window.Worker = class PatchedWorker extends OriginalWorker {
@@ -206,6 +208,7 @@ window.Worker = class PatchedWorker extends OriginalWorker {
     const newUrl = url instanceof URL ? url : new URL(url, self.location.href);
     newUrl.searchParams.set('accountId', new URLSearchParams(self.location.search).get('accountId') ?? '');
     newUrl.searchParams.set('_dcAuth', dcAuthParams ?? '');
+    newUrl.searchParams.set('_dcDomain', dcDomain);
     super(newUrl, options);
 
     this.addEventListener('message', (event: WorkerMessageEvent) => {

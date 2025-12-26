@@ -39,7 +39,7 @@ const {
 
 const CSP = `
   default-src 'self';
-  connect-src 'self' wss://*.dc.crmchat.ai wss://*.dcx.crmchat.ai blob: http: https: ${APP_ENV === 'development' ? 'wss: ws: ipc:' : ''};
+  connect-src 'self' wss://*.dc.crmchat.ai wss://*.dcx.crmchat.ai wss://*.ru-dc.crmchat.ai blob: http: https: ${APP_ENV === 'development' ? 'wss: ws: ipc:' : ''};
   script-src 'self' 'wasm-unsafe-eval';
   style-src 'self' 'unsafe-inline';
   img-src 'self' data: blob: https://ss3.4sqi.net/img/categories_v2/;
