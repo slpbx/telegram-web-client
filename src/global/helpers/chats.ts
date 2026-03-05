@@ -9,12 +9,14 @@ import type {
   ApiPeer,
   ApiPeerColorCollectible,
   ApiPreparedInlineMessage,
+  ApiThreadInfo,
   ApiTopic,
 } from '../../api/types';
 import type { OldLangFn } from '../../hooks/useOldLang';
 import type {
   CustomPeer, ThreadId,
 } from '../../types';
+import type { RegularLangKey } from '../../types/language';
 import type { LangFn } from '../../util/localization';
 import { MAIN_THREAD_ID } from '../../api/types';
 
@@ -69,25 +71,18 @@ export function isAnonymousForwardsChat(chatId: string) {
   return chatId === ANONYMOUS_USER_ID;
 }
 
-export function getChatTypeString(chat: ApiChat) {
+export function getChatTypeLangKey(chat: ApiChat): RegularLangKey {
   switch (chat.type) {
     case 'chatTypePrivate':
-      return 'PrivateChat';
+      return 'ChatTypePrivate';
     case 'chatTypeBasicGroup':
     case 'chatTypeSuperGroup':
-      return 'AccDescrGroup';
+      return 'ChatTypeGroup';
     case 'chatTypeChannel':
-      return 'AccDescrChannel';
+      return 'ChatTypeChannel';
     default:
-      return 'Chat';
+      return 'ChatTypeFallback';
   }
-}
-
-export function getPrivateChatUserId(chat: ApiChat) {
-  if (chat.type !== 'chatTypePrivate' && chat.type !== 'chatTypeSecret') {
-    return undefined;
-  }
-  return chat.id;
 }
 
 export function getChatTitle(lang: OldLangFn | LangFn, chat: ApiChat, isSelf = false) {
@@ -345,20 +340,28 @@ export function isChatPublic(chat: ApiChat) {
 }
 
 export function getOrderedTopics(
-  topics: ApiTopic[], pinnedOrder?: number[], shouldSortByLastMessage = false,
+  topics: ApiTopic[],
+  topicThreadInfos?: Record<ThreadId, ApiThreadInfo>,
+  pinnedOrder?: number[],
+  shouldSortByLastMessage = false,
 ): ApiTopic[] {
+  const lastMessageIdComparator = (a: ApiTopic, b: ApiTopic) => (
+    (topicThreadInfos?.[b.id]?.lastMessageId || 0) - (topicThreadInfos?.[a.id]?.lastMessageId || 0)
+  );
+
   if (shouldSortByLastMessage) {
-    return topics.sort((a, b) => b.lastMessageId - a.lastMessageId);
+    return topics.sort(lastMessageIdComparator);
   } else {
     const pinned = topics.filter((topic) => topic.isPinned);
     const ordered = topics
       .filter((topic) => !topic.isPinned && !topic.isHidden)
-      .sort((a, b) => b.lastMessageId - a.lastMessageId);
+      .sort(lastMessageIdComparator);
     const hidden = topics.filter((topic) => !topic.isPinned && topic.isHidden)
-      .sort((a, b) => b.lastMessageId - a.lastMessageId);
+      .sort(lastMessageIdComparator);
 
     const pinnedOrdered = pinnedOrder
-      ? pinnedOrder.map((id) => pinned.find((topic) => topic.id === id)).filter(Boolean) : pinned;
+      ? pinnedOrder.map((id) => pinned.find((topic) => topic.id === id)).filter(Boolean)
+      : pinned;
 
     return [...pinnedOrdered, ...ordered, ...hidden];
   }
@@ -396,23 +399,24 @@ export function getIsSavedDialog(chatId: string, threadId: ThreadId | undefined,
   return chatId === currentUserId && threadId !== MAIN_THREAD_ID;
 }
 
-export function getGroupStatus(lang: OldLangFn, chat: ApiChat) {
-  const chatTypeString = lang(getChatTypeString(chat));
+export function getGroupStatus(lang: LangFn, chat: ApiChat) {
+  const chatTypeKey = getChatTypeLangKey(chat);
+  const isChannel = isChatChannel(chat);
   const { membersCount } = chat;
 
   const global = getGlobal();
   const isRestricted = selectIsChatRestricted(global, chat.id);
   if (isRestricted) {
-    return chatTypeString === 'Channel' ? 'channel is inaccessible' : 'group is inaccessible';
+    return isChannel ? lang('ChannelInaccessible') : lang('GroupInaccessible');
   }
 
   if (!membersCount) {
-    return chatTypeString;
+    return lang(chatTypeKey);
   }
 
-  return chatTypeString === 'Channel'
-    ? lang('Subscribers', membersCount, 'i')
-    : lang('Members', membersCount, 'i');
+  return isChannel
+    ? lang('Subscribers', { count: membersCount }, { pluralValue: membersCount })
+    : lang('NMembers', { count: membersCount }, { pluralValue: membersCount });
 }
 
 export function getCustomPeerFromInvite(invite: ApiChatInviteInfo): CustomPeer {

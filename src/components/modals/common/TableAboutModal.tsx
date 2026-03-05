@@ -1,6 +1,7 @@
 import { memo, type TeactNode } from '../../../lib/teact/teact';
 
 import type { IconName } from '../../../types/icons';
+import type { OwnProps as ButtonProps } from '../../ui/Button';
 
 import buildClassName from '../../../util/buildClassName';
 
@@ -25,6 +26,7 @@ type OwnProps = {
   footer?: TeactNode;
   buttonText?: TeactNode;
   hasBackdrop?: boolean;
+  absoluteCloseButtonColor?: ButtonProps['color'];
   withSeparator?: boolean;
   onClose: NoneToVoidFunction;
   onButtonClick?: NoneToVoidFunction;
@@ -40,6 +42,7 @@ const TableAboutModal = ({
   footer,
   buttonText,
   hasBackdrop,
+  absoluteCloseButtonColor,
   withSeparator,
   contentClassName,
   onClose,
@@ -51,7 +54,7 @@ const TableAboutModal = ({
       className={buildClassName(styles.root, className)}
       contentClassName={buildClassName(styles.content, contentClassName)}
       hasAbsoluteCloseButton
-      absoluteCloseButtonColor={hasBackdrop ? 'translucent-white' : undefined}
+      absoluteCloseButtonColor={absoluteCloseButtonColor || (hasBackdrop ? 'translucent-white' : undefined)}
       onClose={onClose}
     >
       {headerIconName && (
@@ -60,16 +63,16 @@ const TableAboutModal = ({
         </div>
       )}
       {header}
-      <div>
+      <div className={styles.listItems}>
         {listItemData?.map(([icon, title, subtitle]) => {
           return (
             <ListItem
               isStatic
               multiline
               icon={icon}
-              iconClassName={styles.listItemIcon}
+              className={styles.listItem}
             >
-              <span className={buildClassName('title', styles.title)}>{title}</span>
+              <span className={buildClassName('title', styles.listItemTitle)}>{title}</span>
               <span className="subtitle">{subtitle}</span>
             </ListItem>
           );

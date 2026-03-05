@@ -25,6 +25,8 @@ const {
   HEAD,
   APP_ENV = 'production',
   APP_MOCKED_CLIENT = '',
+  HTTPS_CERT_PATH = '',
+  HTTPS_KEY_PATH = '',
 } = process.env;
 
 const DEFAULT_APP_TITLE = `CRMchat TG Client${APP_ENV !== 'production' ? ' Beta' : ''}`;
@@ -58,6 +60,17 @@ export default function createConfig(
   _: any,
   { mode = 'production' }: { mode: 'none' | 'development' | 'production' },
 ): Configuration {
+  let server: Required<Configuration>['devServer']['server'] = 'http';
+  if (HTTPS_CERT_PATH && HTTPS_KEY_PATH) {
+    server = {
+      type: 'https',
+      options: {
+        key: HTTPS_KEY_PATH,
+        cert: HTTPS_CERT_PATH,
+      },
+    };
+  }
+
   return {
     mode,
     entry: './src/index.tsx',
@@ -71,6 +84,7 @@ export default function createConfig(
       client: {
         overlay: false,
       },
+      server,
       static: [
         {
           directory: path.resolve(__dirname, 'public'),
@@ -152,7 +166,7 @@ export default function createConfig(
           ],
         },
         {
-          test: /\.(woff(2)?|ttf|eot|svg|png|jpg|tgs)(\?v=\d+\.\d+\.\d+)?$/,
+          test: /\.(woff(2)?|ttf|eot|svg|png|jpg|tgs|webp)(\?v=\d+\.\d+\.\d+)?$/,
           type: 'asset/resource',
         },
         {

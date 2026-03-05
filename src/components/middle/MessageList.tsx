@@ -13,7 +13,7 @@ import {
   MESSAGE_LIST_SLICE,
   SERVICE_NOTIFICATIONS_USER_ID,
 } from '../../config';
-import { forceMeasure, requestForcedReflow, requestMeasure, requestMutation } from '../../lib/fasterdom/fasterdom';
+import { forceMeasure, requestMeasure, requestMutation } from '../../lib/fasterdom/fasterdom';
 import {
   getIsSavedDialog,
   getMessageHtmlId,
@@ -40,18 +40,22 @@ import {
   selectIsCurrentUserPremium,
   selectIsInSelectMode,
   selectIsViewportNewest,
-  selectLastScrollOffset,
   selectMonoforumChannel,
   selectPerformanceSettingsValue,
-  selectScrollOffset,
   selectTabState,
-  selectThreadInfo,
   selectTopic,
   selectTranslationLanguage,
+  selectUser,
   selectUserFullInfo,
 } from '../../global/selectors';
 import { selectIsChatRestricted } from '../../global/selectors/chats';
 import { selectActiveRestrictionReasons, selectCurrentMessageList } from '../../global/selectors/messages';
+import {
+  selectLastScrollOffset,
+  selectScrollOffset,
+  selectThreadInfo,
+  selectThreadReadState,
+} from '../../global/selectors/threads';
 import animateScroll, { isAnimatingScroll, restartCurrentScrollAnimation } from '../../util/animateScroll';
 import { IS_FIREFOX } from '../../util/browser/windowEnvironment';
 import buildClassName from '../../util/buildClassName';
@@ -64,6 +68,7 @@ import { debounce, onTickEnd } from '../../util/schedulers';
 import getOffsetToContainer from '../../util/visibility/getOffsetToContainer';
 import { REM } from '../common/helpers/mediaDimensions';
 import { groupMessages } from './helpers/groupMessages';
+import { requestMessageListReflow } from './helpers/messageListReflow';
 import { preventMessageInputBlur } from './helpers/preventMessageInputBlur';
 
 import useInterval from '../../hooks/schedulers/useInterval';
@@ -146,7 +151,7 @@ type StateProps = {
   translationLanguage?: string;
   shouldAutoTranslate?: boolean;
   isActive?: boolean;
-  isBotForum?: boolean;
+  canManageBotForumTopics?: boolean;
   shouldScrollToBottom?: boolean;
 };
 
@@ -196,7 +201,7 @@ const MessageList = ({
   canPost,
   isSynced,
   isActive,
-  isBotForum,
+  canManageBotForumTopics,
   shouldScrollToBottom,
   // eslint-disable-next-line @typescript-eslint/no-shadow
   isChatMonoforum,
@@ -675,7 +680,7 @@ const MessageList = ({
       }, MESSAGE_ANIMATION_DURATION);
     }
 
-    requestForcedReflow(() => {
+    requestMessageListReflow(() => {
       const { scrollTop, scrollHeight, offsetHeight } = container;
       const scrollOffset = scrollOffsetRef.current;
 
@@ -743,6 +748,8 @@ const MessageList = ({
 
           requestMeasure(() => {
             isScrollTopJustUpdatedRef.current = false;
+
+            updateBottomSnapClass();
           });
         }
 
@@ -807,7 +814,7 @@ const MessageList = ({
     Content.StarsRequired
   ) : isContactRequirePremium && !hasMessages ? (
     Content.PremiumRequired
-  ) : (isBot || isNonContact) && !hasMessages ? (
+  ) : (isBot || isNonContact) && !hasMessages && threadId === MAIN_THREAD_ID ? (
     Content.AccountInfo
   ) : shouldRenderGreeting ? (
     Content.ContactGreeting
@@ -873,7 +880,7 @@ const MessageList = ({
         noAppearanceAnimation={!messageGroups || !shouldAnimateAppearanceRef.current}
         isQuickPreview={isQuickPreview}
         canPost={canPost}
-        isBotForum={isBotForum}
+        canManageBotForumTopics={canManageBotForumTopics}
         shouldScrollToBottom={shouldScrollToBottom}
         onScrollDownToggle={onScrollDownToggle}
         onNotchToggle={onNotchToggle}
@@ -905,7 +912,9 @@ export default memo(withGlobal<OwnProps>(
     const tabState = selectTabState(global);
     const currentUserId = global.currentUserId!;
     const chat = selectChat(global, chatId);
+    const user = selectUser(global, chatId);
     const userFullInfo = selectUserFullInfo(global, chatId);
+    const readState = selectThreadReadState(global, chatId, threadId);
     if (!chat) {
       return { currentUserId } as Complete<StateProps>;
     }
@@ -931,7 +940,7 @@ export default memo(withGlobal<OwnProps>(
 
     const withLastMessageWhenPreloading = (
       threadId === MAIN_THREAD_ID
-      && !messageIds && !chat.unreadCount && !focusingId && lastMessage && !lastMessage.groupedId
+      && !messageIds && readState && !readState.unreadCount && !focusingId && lastMessage && !lastMessage.groupedId
     );
 
     const chatBot = selectBot(global, chatId);
@@ -1008,7 +1017,7 @@ export default memo(withGlobal<OwnProps>(
       canTranslate,
       translationLanguage,
       shouldAutoTranslate,
-      isBotForum: chat.isBotForum,
+      canManageBotForumTopics: chat.isBotForum && user?.canManageBotForumTopics,
       shouldScrollToBottom,
     };
   },

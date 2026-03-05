@@ -1,4 +1,3 @@
-import type { FC } from '../../lib/teact/teact';
 import { useState } from '../../lib/teact/teact';
 import { withGlobal } from '../../global';
 
@@ -7,13 +6,14 @@ import type { GlobalState } from '../../global/types';
 import ErrorTest from './ErrorTest';
 import SubTest from './SubTest';
 
-type StateProps = Pick<GlobalState, 'authState'> & {
+type StateProps = {
+  authState: GlobalState['auth']['state'];
   globalRand: number;
 };
 
 let lastTimeout: number | undefined;
 
-const Test: FC<StateProps> = ({ authState, globalRand }) => {
+const Test = ({ authState, globalRand }: StateProps) => {
   // eslint-disable-next-line no-console
   console.log('rendering `Test`', authState, globalRand);
 
@@ -40,7 +40,7 @@ const Test: FC<StateProps> = ({ authState, globalRand }) => {
 export default withGlobal(
   (global): Complete<StateProps> => {
     return {
-      authState: global.authState,
+      authState: global.auth.state,
       globalRand: Math.random(),
     };
   },

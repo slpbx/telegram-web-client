@@ -80,6 +80,11 @@ export function selectThemeValues<T extends GlobalState>(global: T, themeKey: Th
   return global.settings.themes[themeKey];
 }
 
+export function selectActionMessageBg<T extends GlobalState>(global: T) {
+  const theme = selectTheme(global);
+  return global.settings.themes[theme]?.patternColor;
+}
+
 export function selectIsForumPanelOpen<T extends GlobalState>(
   global: T,
   ...[tabId = getCurrentTabId()]: TabArgs<T>
@@ -196,4 +201,37 @@ export function selectPeerProfileColor<T extends GlobalState>(global: T, peer: A
   const key = profileColor?.color ?? peerColorId;
   if (key === undefined) return undefined;
   return global.peerColors?.profile?.[key];
+}
+
+export function selectTabSelectedAuctionGiftId<T extends GlobalState>(
+  global: T, ...[tabId = getCurrentTabId()]: TabArgs<T>
+) {
+  const tabState = selectTabState(global, tabId);
+
+  const selectedGift = tabState.giftModal?.selectedGift;
+
+  const giftModalAuctionGiftId = selectedGift && 'id' in selectedGift &&
+    selectedGift.type === 'starGift' && selectedGift.isAuction ? selectedGift.id : undefined;
+
+  return tabState.giftAuctionModal?.auctionGiftId
+    || tabState.giftAuctionBidModal?.auctionGiftId
+    || tabState.giftAuctionInfoModal?.auctionGiftId
+    || giftModalAuctionGiftId;
+}
+
+export function selectTabSelectedGiftAuction<T extends GlobalState>(
+  global: T, ...[tabId = getCurrentTabId()]: TabArgs<T>
+) {
+  const giftId = selectTabSelectedAuctionGiftId(global, tabId);
+  return giftId ? global.giftAuctionByGiftId?.[giftId] : undefined;
+}
+
+export function selectHasAnySelectedAuction<T extends GlobalState>(global: T, giftId: string) {
+  return Object.keys(global.byTabId).some((tabId) => {
+    return selectTabSelectedAuctionGiftId(global, Number(tabId)) === giftId;
+  });
+}
+
+export function selectShouldRemoveGiftAuction<T extends GlobalState>(global: T, giftId: string) {
+  return !selectHasAnySelectedAuction(global, giftId);
 }

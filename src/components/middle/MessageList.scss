@@ -1,6 +1,6 @@
-.MessageList {
-  --action-message-bg: var(--pattern-color);
+@use "../../styles/mixins";
 
+.MessageList {
   overflow-x: hidden;
   overflow-y: scroll;
   flex: 1;
@@ -191,7 +191,7 @@
     .Message,
     .ActionMessage {
       &::before {
-        background-color: var(--action-message-bg);
+        @include mixins.action-message-bg;
       }
 
       &.focused,
@@ -233,12 +233,10 @@
     > span {
       position: relative;
       z-index: 0;
-
       border-radius: var(--border-radius-messages);
-
       color: white;
 
-      background-color: var(--action-message-bg);
+      @include mixins.action-message-bg;
 
       body.is-ios &,
       body.is-macos & {

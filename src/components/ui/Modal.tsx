@@ -1,15 +1,16 @@
-import type { ElementRef, FC, TeactNode } from '../../lib/teact/teact';
+import type { ElementRef, TeactNode } from '../../lib/teact/teact';
 import type React from '../../lib/teact/teact';
-import { beginHeavyAnimation, useEffect } from '../../lib/teact/teact';
+import { beginHeavyAnimation, useEffect, useRef } from '../../lib/teact/teact';
 
 import type { TextPart } from '../../types';
 
 import buildClassName from '../../util/buildClassName';
 import captureKeyboardListeners from '../../util/captureKeyboardListeners';
 import { disableDirectTextInput, enableDirectTextInput } from '../../util/directInputManager';
-import freezeWhenClosed from '../../util/hoc/freezeWhenClosed';
 import trapFocus from '../../util/trapFocus';
 
+import useContextMenuHandlers from '../../hooks/useContextMenuHandlers';
+import useFrozenProps from '../../hooks/useFrozenProps';
 import useHistoryBack from '../../hooks/useHistoryBack';
 import useLastCallback from '../../hooks/useLastCallback';
 import useLayoutEffectWithPrevDeps from '../../hooks/useLayoutEffectWithPrevDeps';
@@ -17,6 +18,7 @@ import useOldLang from '../../hooks/useOldLang';
 import useShowTransition from '../../hooks/useShowTransition';
 
 import Button, { type OwnProps as ButtonProps } from './Button';
+import Menu from './Menu';
 import ModalStarBalanceBar from './ModalStarBalanceBar';
 import Portal from './Portal';
 
@@ -44,50 +46,80 @@ export type OwnProps = {
   dialogRef?: ElementRef<HTMLDivElement>;
   isLowStackPriority?: boolean;
   dialogContent?: React.ReactNode;
-  ignoreFreeze?: boolean;
-  onClose: () => void;
-  onCloseAnimationEnd?: () => void;
-  onEnter?: () => void;
+  moreMenuItems?: TeactNode;
+  headerRightToolBar?: TeactNode;
   withBalanceBar?: boolean;
   currencyInBalanceBar?: 'TON' | 'XTR';
   isCondensedHeader?: boolean;
+  noFreezeOnClose?: boolean;
+  onClose: NoneToVoidFunction;
+  onCloseAnimationEnd?: NoneToVoidFunction;
+  onEnter?: NoneToVoidFunction;
 };
 
-const Modal: FC<OwnProps> = ({
-  dialogRef,
-  title,
-  className,
-  contentClassName,
-  headerClassName,
-  isOpen,
-  isSlim,
-  header,
-  hasCloseButton,
-  hasAbsoluteCloseButton,
-  absoluteCloseButtonColor = 'translucent',
-  noBackdrop,
-  noBackdropClose,
-  children,
-  style,
-  dialogStyle,
-  isLowStackPriority,
-  dialogContent,
-  dialogClassName,
-  onClose,
-  onCloseAnimationEnd,
-  onEnter,
-  withBalanceBar,
-  isCondensedHeader,
-  currencyInBalanceBar = 'XTR',
-}) => {
+const Modal = (props: OwnProps) => {
+  const {
+    dialogRef,
+    isOpen,
+    noBackdropClose,
+    noFreezeOnClose,
+    onClose,
+    onCloseAnimationEnd,
+    onEnter,
+  } = props;
+
   const {
     ref: modalRef,
     shouldRender,
   } = useShowTransition({
     isOpen,
-    onCloseAnimationEnd,
     withShouldRender: true,
+    onCloseAnimationEnd,
   });
+
+  const shouldFreeze = !noFreezeOnClose && !isOpen;
+  const {
+    title,
+    isLowStackPriority,
+    header,
+    children,
+    className,
+    contentClassName,
+    headerClassName,
+    dialogClassName,
+    isSlim,
+    hasCloseButton,
+    hasAbsoluteCloseButton,
+    absoluteCloseButtonColor = 'translucent',
+    noBackdrop,
+    style,
+    dialogStyle,
+    dialogContent,
+    moreMenuItems,
+    headerRightToolBar: headerToolBar,
+    withBalanceBar,
+    isCondensedHeader,
+    currencyInBalanceBar = 'XTR',
+  } = useFrozenProps(props, shouldFreeze);
+
+  const localDialogRef = useRef<HTMLDivElement>();
+  const moreButtonRef = useRef<HTMLButtonElement>();
+  const menuRef = useRef<HTMLDivElement>();
+
+  const {
+    isContextMenuOpen,
+    contextMenuAnchor,
+    handleContextMenu,
+    handleContextMenuClose,
+    handleContextMenuHide,
+  } = useContextMenuHandlers(moreButtonRef);
+
+  const actualDialogRef = dialogRef || localDialogRef;
+
+  const getRootElement = useLastCallback(() => actualDialogRef.current);
+  const getTriggerElement = useLastCallback(() => moreButtonRef.current);
+  const getMenuElement = useLastCallback(() => menuRef.current);
+  const getLayout = useLastCallback(() => ({ withPortal: true }));
 
   const withCloseButton = hasCloseButton || hasAbsoluteCloseButton;
 
@@ -149,7 +181,7 @@ const Modal: FC<OwnProps> = ({
         className={buildClassName(hasAbsoluteCloseButton && 'modal-absolute-close-button')}
         round
         color={absoluteCloseButtonColor}
-        size="smaller"
+        size="tiny"
         iconName="close"
         ariaLabel={lang('Close')}
         onClick={onClose}
@@ -186,16 +218,48 @@ const Modal: FC<OwnProps> = ({
         tabIndex={-1}
         role="dialog"
       >
-        {withBalanceBar && (
-          <ModalStarBalanceBar
-            isModalOpen={isOpen}
-            currency={currencyInBalanceBar}
-          />
-        )}
         <div className="modal-container">
           <div className="modal-backdrop" onClick={!noBackdropClose ? onClose : undefined} />
-          <div className={modalDialogClassName} ref={dialogRef} style={dialogStyle}>
+          {withBalanceBar && (
+            <ModalStarBalanceBar
+              isModalOpen={isOpen}
+              currency={currencyInBalanceBar}
+            />
+          )}
+          <div className={modalDialogClassName} ref={actualDialogRef} style={dialogStyle}>
             {renderHeader()}
+            {headerToolBar}
+            {Boolean(moreMenuItems) && (
+              <>
+                <Button
+                  ref={moreButtonRef}
+                  className="modal-more-button"
+                  round
+                  color={absoluteCloseButtonColor}
+                  size="tiny"
+                  iconName="more"
+                  ariaLabel={lang('AriaMoreButton')}
+                  onClick={handleContextMenu}
+                  onContextMenu={handleContextMenu}
+                />
+                <Menu
+                  ref={menuRef}
+                  isOpen={isContextMenuOpen}
+                  anchor={contextMenuAnchor}
+                  autoClose
+                  withPortal
+                  positionX="right"
+                  onClose={handleContextMenuClose}
+                  onCloseAnimationEnd={handleContextMenuHide}
+                  getRootElement={getRootElement}
+                  getTriggerElement={getTriggerElement}
+                  getMenuElement={getMenuElement}
+                  getLayout={getLayout}
+                >
+                  {moreMenuItems}
+                </Menu>
+              </>
+            )}
             {dialogContent}
             <div className={buildClassName('modal-content custom-scroll', contentClassName)} style={style}>
               {children}
@@ -207,4 +271,4 @@ const Modal: FC<OwnProps> = ({
   );
 };
 
-export default freezeWhenClosed(Modal);
+export default Modal;

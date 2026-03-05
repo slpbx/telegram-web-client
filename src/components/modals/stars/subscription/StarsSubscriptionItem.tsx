@@ -21,6 +21,8 @@ import StarIcon from '../../../common/icons/StarIcon';
 
 import styles from './StarsSubscriptionItem.module.scss';
 
+const AVATAR_SIZE = 42;
+
 type OwnProps = {
   subscription: ApiStarsSubscription;
 };
@@ -54,7 +56,7 @@ const StarsSubscriptionItem = ({ subscription }: OwnProps) => {
   return (
     <div className={styles.root} onClick={handleClick}>
       <div className={styles.preview}>
-        <Avatar size="medium" peer={peer} />
+        <Avatar size={AVATAR_SIZE} peer={peer} />
         <StarIcon className={styles.subscriptionStar} type="gold" size="small" />
       </div>
       <div className={styles.info}>

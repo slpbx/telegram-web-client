@@ -5,9 +5,10 @@ import { SERVICE_NOTIFICATIONS_USER_ID } from '../../config';
 import { isUserId } from '../../util/entities/ids';
 import { getCurrentTabId } from '../../util/establishMultitabRole';
 import { getHasAdminRight, isChatAdmin, isChatChannel, isDeletedUser } from '../helpers';
-import { selectChat, selectChatFullInfo } from './chats';
+import { selectChat, selectChatFullInfo, selectIsMonoforumAdmin } from './chats';
 import { type ProfileCollectionKey } from './payments';
 import { selectTabState } from './tabs';
+import { selectPeerProfileColor } from './ui';
 import { selectBot, selectUser, selectUserFullInfo } from './users';
 
 export function selectPeer<T extends GlobalState>(global: T, peerId: string): ApiPeer | undefined {
@@ -66,16 +67,18 @@ export function selectPeerPaidMessagesStars<T extends GlobalState>(
 
   const chat = selectChat(global, peerId);
   if (!chat) return undefined;
-  if (isChatAdmin(chat)) return undefined;
+  if (isChatAdmin(chat) || selectIsMonoforumAdmin(global, chat.id)) return undefined;
   return chat.paidMessagesStars;
 }
 
 export function selectPeerHasProfileBackground<T extends GlobalState>(global: T, peerId: string) {
   const peer = selectPeer(global, peerId);
-  const profileColor = peer?.profileColor;
-  if (profileColor?.type === 'collectible') return true;
-  if (profileColor?.type === 'regular') return profileColor.color !== undefined;
-  return peer?.emojiStatus?.type === 'collectible';
+  if (!peer) return false;
+  const profileColor = selectPeerProfileColor(global, peer);
+
+  if (peer.profileColor?.type === 'collectible') return true;
+  if (peer.emojiStatus?.type === 'collectible') return true;
+  return Boolean(profileColor);
 }
 
 export function selectCanUpdateMainTab<T extends GlobalState>(global: T, peerId: string) {

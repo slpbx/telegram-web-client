@@ -2,8 +2,11 @@ import { Api as GramJs } from '../../../lib/gramjs';
 
 import type {
   ApiAttachment,
+  ApiBaseThreadInfo,
   ApiChat,
+  ApiCommentsInfo,
   ApiContact,
+  ApiDice,
   ApiDraft,
   ApiFactCheck,
   ApiInputMessageReplyInfo,
@@ -14,6 +17,7 @@ import type {
   ApiMessageEntity,
   ApiMessageForwardInfo,
   ApiMessageReportResult,
+  ApiMessageThreadInfo,
   ApiNewMediaTodo,
   ApiNewPoll,
   ApiPeer,
@@ -292,6 +296,7 @@ export function buildApiMessageWithChatId(
     reportDeliveryUntilDate: mtpMessage.reportDeliveryUntilDate,
     paidMessageStars: toJSNumber(mtpMessage.paidMessageStars),
     restrictionReasons,
+    summaryLanguageCode: mtpMessage.summaryFromLanguage,
   };
 }
 
@@ -428,29 +433,53 @@ function buildNewTodo(todo: ApiNewMediaTodo): ApiMediaTodo {
   };
 }
 
-export function buildLocalMessage(
-  chat: ApiChat,
-  lastMessageId?: number,
-  text?: string,
-  entities?: ApiMessageEntity[],
-  replyInfo?: ApiInputReplyInfo,
-  suggestedPostInfo?: ApiInputSuggestedPostInfo,
-  attachment?: ApiAttachment,
-  sticker?: ApiSticker,
-  gif?: ApiVideo,
-  poll?: ApiNewPoll,
-  todo?: ApiNewMediaTodo,
-  contact?: ApiContact,
-  groupedId?: string,
-  scheduledAt?: number,
-  scheduleRepeatPeriod?: number,
-  sendAs?: ApiPeer,
-  story?: ApiStory | ApiStorySkipped,
-  isInvertedMedia?: true,
-  effectId?: string,
-  isPending?: true,
-  messagePriceInStars?: number,
-) {
+export function buildLocalMessage({
+  chat,
+  lastMessageId,
+  text,
+  entities,
+  replyInfo,
+  suggestedPostInfo,
+  attachment,
+  sticker,
+  gif,
+  poll,
+  todo,
+  contact,
+  groupedId,
+  scheduledAt,
+  scheduleRepeatPeriod,
+  sendAs,
+  story,
+  isInvertedMedia,
+  effectId,
+  isPending,
+  messagePriceInStars,
+  dice,
+}: {
+  chat: ApiChat;
+  lastMessageId?: number;
+  text?: string;
+  entities?: ApiMessageEntity[];
+  replyInfo?: ApiInputReplyInfo;
+  suggestedPostInfo?: ApiInputSuggestedPostInfo;
+  attachment?: ApiAttachment;
+  sticker?: ApiSticker;
+  gif?: ApiVideo;
+  poll?: ApiNewPoll;
+  todo?: ApiNewMediaTodo;
+  contact?: ApiContact;
+  groupedId?: string;
+  scheduledAt?: number;
+  scheduleRepeatPeriod?: number;
+  sendAs?: ApiPeer;
+  story?: ApiStory | ApiStorySkipped;
+  isInvertedMedia?: true;
+  effectId?: string;
+  isPending?: true;
+  messagePriceInStars?: number;
+  dice?: string;
+}) {
   const localId = getNextLocalMessageId(lastMessageId);
   const media = attachment && buildUploadingMedia(attachment);
   const isChannel = chat.type === 'chatTypeChannel';
@@ -460,7 +489,13 @@ export function buildLocalMessage(
   const localPoll = poll && buildNewPoll(poll, localId);
   const localTodo = todo && buildNewTodo(todo);
 
-  const formattedText = text ? addTimestampEntities(
+  const localDice = dice ? {
+    mediaType: 'dice',
+    value: -1,
+    emoticon: dice,
+  } satisfies ApiDice : undefined;
+
+  const formattedText = text && !dice ? addTimestampEntities(
     { text, entities, emojiOnlyCount: undefined },
   ) : undefined;
 
@@ -476,6 +511,7 @@ export function buildLocalMessage(
       storyData: story && { mediaType: 'storyData', ...story },
       pollId: localPoll?.id,
       todo: localTodo,
+      dice: localDice,
     }),
     date: scheduledAt || getServerTime(),
     isOutgoing: !isChannel,
@@ -515,6 +551,7 @@ export function buildLocalForwardedMessage({
   isCurrentUserPremium,
   lastMessageId,
   sendAs,
+  effectId,
 }: {
   toChat: ApiChat;
   toThreadId?: number;
@@ -526,6 +563,7 @@ export function buildLocalForwardedMessage({
   isCurrentUserPremium?: boolean;
   lastMessageId?: number;
   sendAs?: ApiPeer;
+  effectId?: string;
 }): ApiMessage {
   const localId = getNextLocalMessageId(lastMessageId);
   const {
@@ -580,6 +618,7 @@ export function buildLocalForwardedMessage({
     isForwardingAllowed: true,
     replyInfo,
     isInvertedMedia,
+    effectId,
     ...(toThreadId && toChat?.isForum && { isTopicReply: true }),
 
     // Forward info doesn't get added when user forwards own messages and when forwarding audio
@@ -723,44 +762,51 @@ export function buildApiThreadInfoFromMessage(
     return undefined;
   }
 
-  return buildApiThreadInfo(mtpMessage.replies, mtpMessage.id, chatId);
+  return buildApiThreadInfo(chatId, mtpMessage.id, mtpMessage.replies, mtpMessage.fwdFrom);
 }
 
 export function buildApiThreadInfo(
-  messageReplies: GramJs.TypeMessageReplies, messageId: number, chatId: string,
+  chatId: string,
+  messageId: number,
+  messageReplies: GramJs.TypeMessageReplies,
+  messageForwardInfo?: GramJs.MessageFwdHeader,
 ): ApiThreadInfo | undefined {
   const {
-    channelId, replies, maxId, readMaxId, recentRepliers, comments,
+    channelId, replies, maxId = messageId, recentRepliers, comments, readMaxId,
   } = messageReplies;
+
+  const { fromId, channelPost } = messageForwardInfo || {};
 
   const apiChannelId = channelId ? buildApiPeerId(channelId, 'channel') : undefined;
   if (apiChannelId === DELETED_COMMENTS_CHANNEL_ID) {
     return undefined;
   }
 
-  const baseThreadInfo = {
+  const baseThreadInfo: Partial<ApiBaseThreadInfo> = {
     messagesCount: replies,
-    ...(maxId && { lastMessageId: maxId }),
-    ...(readMaxId && { lastReadMessageId: readMaxId }),
-    ...(recentRepliers && { recentReplierIds: recentRepliers.map(getApiChatIdFromMtpPeer) }),
+    lastMessageId: maxId,
+    recentReplierIds: recentRepliers?.map(getApiChatIdFromMtpPeer),
   };
 
   if (comments) {
-    return {
+    return omitUndefined<ApiCommentsInfo>({
       ...baseThreadInfo,
       isCommentsInfo: true,
       chatId: apiChannelId!,
       originChannelId: chatId,
       originMessageId: messageId,
-    };
+      hasUnread: Boolean(readMaxId && maxId && readMaxId < maxId),
+    });
   }
 
-  return {
+  return omitUndefined<ApiMessageThreadInfo>({
     ...baseThreadInfo,
     isCommentsInfo: false,
     chatId,
     threadId: messageId,
-  };
+    fromChannelId: fromId && channelPost ? getApiChatIdFromMtpPeer(fromId) : undefined,
+    fromMessageId: channelPost,
+  });
 }
 
 export function buildApiQuickReply(reply: GramJs.TypeQuickReply): ApiQuickReply {

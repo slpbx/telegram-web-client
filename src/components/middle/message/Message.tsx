@@ -36,17 +36,18 @@ import type {
   IAlbum,
   MessageListType,
   ScrollTargetPosition,
+  TextSummary,
   ThemeKey,
   ThreadId,
 } from '../../../types';
 import type { Signal } from '../../../util/signals';
-import type { OnIntersectPinnedMessage } from '../hooks/usePinnedMessage';
 import { MAIN_THREAD_ID } from '../../../api/types';
 import { AudioOrigin } from '../../../types';
 
 import { EMOJI_STATUS_LOOP_LIMIT, MESSAGE_APPEARANCE_DELAY } from '../../../config';
 import {
   areReactionsEmpty,
+  getAllowedAttachmentOptions,
   getIsDownloading,
   getMainUsername,
   getMessageContent,
@@ -87,6 +88,7 @@ import {
   selectFullWebPageFromMessage,
   selectIsChatProtected,
   selectIsChatRestricted,
+  selectIsChatWithBot,
   selectIsChatWithSelf,
   selectIsCurrentUserFrozen,
   selectIsCurrentUserPremium,
@@ -96,6 +98,7 @@ import {
   selectIsMessageProtected,
   selectIsMessageSelected,
   selectMessageIdsByGroupId,
+  selectMessageSummary,
   selectOutgoingStatus,
   selectPeer,
   selectPeerStory,
@@ -110,7 +113,6 @@ import {
   selectShouldLoopStickers,
   selectTabState,
   selectTheme,
-  selectThreadInfo,
   selectTopicFromMessage,
   selectUploadProgress,
   selectUser,
@@ -122,6 +124,7 @@ import {
   selectMessageTimestampableDuration,
 } from '../../../global/selectors/media';
 import { selectSharedSettings } from '../../../global/selectors/sharedState';
+import { selectThreadInfo, selectThreadReadState } from '../../../global/selectors/threads';
 import { IS_TAURI } from '../../../util/browser/globalEnvironment';
 import { IS_ANDROID, IS_TRANSLATION_SUPPORTED } from '../../../util/browser/windowEnvironment';
 import buildClassName from '../../../util/buildClassName';
@@ -141,6 +144,7 @@ import { calculateMediaDimensions, getMinMediaWidth, getMinMediaWidthWithText } 
 
 import useAppLayout from '../../../hooks/useAppLayout';
 import useContextMenuHandlers from '../../../hooks/useContextMenuHandlers';
+import useEffectWithPrevDeps from '../../../hooks/useEffectWithPrevDeps';
 import useEnsureMessage from '../../../hooks/useEnsureMessage';
 import useEnsureStory from '../../../hooks/useEnsureStory';
 import useFlag from '../../../hooks/useFlag';
@@ -169,7 +173,9 @@ import FakeIcon from '../../common/FakeIcon';
 import Icon from '../../common/icons/Icon';
 import StarIcon from '../../common/icons/StarIcon';
 import MessageText from '../../common/MessageText';
+import PeerColorWrapper from '../../common/PeerColorWrapper';
 import ReactionStaticEmoji from '../../common/reactions/ReactionStaticEmoji';
+import Sparkles from '../../common/Sparkles';
 import TopicChip from '../../common/TopicChip';
 import { animateSnap } from '../../main/visualEffects/SnapEffectContainer';
 import Button from '../../ui/Button';
@@ -181,6 +187,7 @@ import AnimatedEmoji from './AnimatedEmoji';
 import CommentButton from './CommentButton';
 import Contact from './Contact';
 import ContextMenuContainer from './ContextMenuContainer.async';
+import DiceWrapper from './dice/DiceWrapper';
 import FactCheck from './FactCheck';
 import Game from './Game';
 import Giveaway from './Giveaway';
@@ -231,7 +238,7 @@ type OwnProps = {
   observeIntersectionForBottom?: ObserveFn;
   observeIntersectionForLoading?: ObserveFn;
   observeIntersectionForPlaying?: ObserveFn;
-  onIntersectPinnedMessage?: OnIntersectPinnedMessage;
+  onMessageUnmount?: (messageId: number) => void;
 } & MessagePositionProperties;
 
 type StateProps = {
@@ -323,6 +330,8 @@ type StateProps = {
   minFutureTime?: number;
   isMediaNsfw?: boolean;
   isReplyMediaNsfw?: boolean;
+  summary?: TextSummary;
+  canSendStickers?: boolean;
 };
 
 type MetaPosition =
@@ -344,9 +353,6 @@ const MAX_REASON_LENGTH = 200;
 
 const Message = ({
   message,
-  observeIntersectionForBottom,
-  observeIntersectionForLoading,
-  observeIntersectionForPlaying,
   album,
   noAvatars,
   withAvatar,
@@ -451,7 +457,12 @@ const Message = ({
   isAccountFrozen,
   minFutureTime,
   webPage,
-  onIntersectPinnedMessage,
+  summary,
+  canSendStickers,
+  observeIntersectionForBottom,
+  observeIntersectionForLoading,
+  observeIntersectionForPlaying,
+  onMessageUnmount,
 }: OwnProps & StateProps) => {
   const {
     toggleMessageSelection,
@@ -464,6 +475,7 @@ const Message = ({
     focusMessage,
     markMentionsRead,
     openThread,
+    summarizeMessage,
   } = getActions();
 
   const ref = useRef<HTMLDivElement>();
@@ -477,7 +489,9 @@ const Message = ({
   const [isPlayingSnapAnimation, setIsPlayingSnapAnimation] = useState(false);
   const [isPlayingDeleteAnimation, setIsPlayingDeleteAnimation] = useState(false);
   const [shouldPlayEffect, requestEffect, hideEffect] = useFlag();
+  const [shouldPlayDiceEffect, requestDiceEffect, hideDiceEffect] = useFlag();
   const [isDeclineDialogOpen, openDeclineDialog, closeDeclineDialog] = useFlag();
+  const [isShowingSummary, showSummary, hideSummary] = useFlag();
   const [declineReason, setDeclineReason] = useState('');
   const { isMobile, isTouchScreen } = useAppLayout();
 
@@ -522,17 +536,15 @@ const Message = ({
     className: false,
   });
 
+  useUnmountCleanup(() => {
+    onMessageUnmount?.(messageId);
+  });
+
   const {
     id: messageId, chatId, forwardInfo, viaBotId, isTranscriptionError, factCheck,
     isTypingDraft,
   } = message;
-
-  useUnmountCleanup(() => {
-    if (message.isPinned) {
-      const id = album ? album.mainMessage.id : messageId;
-      onIntersectPinnedMessage?.({ viewportPinnedIdsToRemove: [id] });
-    }
-  });
+  const hasSummary = Boolean(message.summaryLanguageCode);
 
   const isLocal = isMessageLocal(message);
   const isOwn = isOwnMessage(message);
@@ -547,7 +559,7 @@ const Message = ({
     voice, document, sticker, contact,
     invoice, location,
     action, game, storyData, giveaway,
-    giveawayResults, todo,
+    giveawayResults, todo, dice,
   } = getMessageContent(message);
 
   const messageReplyInfo = getMessageReplyInfo(message);
@@ -595,7 +607,8 @@ const Message = ({
   const hasFactCheck = Boolean(factCheck?.text);
 
   const hasForwardedCustomShape = asForwarded && isCustomShape;
-  const hasSubheader = hasTopicChip || hasMessageReply || hasStoryReply || hasForwardedCustomShape;
+  const hasSubheader = hasTopicChip || hasMessageReply || hasStoryReply || hasForwardedCustomShape
+    || Boolean(isShowingSummary && summary?.text);
 
   const selectMessage = useLastCallback((e?: React.MouseEvent<HTMLDivElement, MouseEvent>, groupedId?: string) => {
     if (isAccountFrozen) return;
@@ -693,6 +706,16 @@ const Message = ({
     lastPlaybackTimestamp,
   });
 
+  useEffect(() => {
+    if (hasSummary && isShowingSummary && !summary) {
+      summarizeMessage({
+        chatId,
+        id: message.id,
+        toLanguageCode: requestedTranslationLanguage,
+      });
+    }
+  }, [hasSummary, chatId, message.id, requestedTranslationLanguage, isShowingSummary, summary]);
+
   const handleEffectClick = useLastCallback((e: React.MouseEvent<HTMLDivElement>) => {
     e.stopPropagation();
 
@@ -704,6 +727,7 @@ const Message = ({
       chatId,
       threadId,
       messageId,
+      scrollTargetPosition: 'start',
       noHighlight: true,
     });
   });
@@ -780,9 +804,17 @@ const Message = ({
     }
   }, [effect, isLocal, memoFirstUnreadIdRef, messageId, sticker?.hasEffect]);
 
+  useEffect(() => {
+    if (dice && ((
+      memoFirstUnreadIdRef?.current && messageId >= memoFirstUnreadIdRef.current
+    ) || isLocal)) {
+      requestDiceEffect();
+    }
+  }, [dice, memoFirstUnreadIdRef, messageId, isLocal]);
+
   const detectedLanguage = useTextLanguage(
     text?.text,
-    !(areTranslationsEnabled && shouldDetectChatLanguage),
+    !(areTranslationsEnabled && shouldDetectChatLanguage) || isTypingDraft,
     getIsMessageListReady,
   );
   useDetectChatLanguage(message, detectedLanguage, !shouldDetectChatLanguage, getIsMessageListReady);
@@ -791,8 +823,16 @@ const Message = ({
   const { isPending: isTranslationPending, translatedText } = useMessageTranslation(
     chatTranslations, chatId, shouldTranslate ? messageId : undefined, requestedTranslationLanguage,
   );
+  const isSummaryPending = Boolean(summary?.isPending);
+  const isNewTextPending = isTranslationPending || isSummaryPending;
   // Used to display previous result while new one is loading
   const previousTranslatedText = usePreviousDeprecated(translatedText, Boolean(shouldTranslate));
+
+  useEffectWithPrevDeps(([prevIsShowingSummary]) => {
+    if (summary?.text || (prevIsShowingSummary && !isShowingSummary)) {
+      handleFocusSelf();
+    }
+  }, [isShowingSummary, summary?.text]);
 
   const currentTranslatedText = translatedText || previousTranslatedText;
 
@@ -832,7 +872,8 @@ const Message = ({
     asForwarded,
     hasThread: hasThread && !noComments,
     forceSenderName,
-    hasCommentCounter: hasThread && repliesThreadInfo.messagesCount > 0,
+    hasCommentCounter: hasThread && repliesThreadInfo.messagesCount !== undefined
+      && repliesThreadInfo.messagesCount > 0,
     hasBottomCommentButton: withCommentButton && !isCustomShape,
     hasActionButton: canForward || canFocus || (withCommentButton && isCustomShape),
     hasReactions,
@@ -915,7 +956,7 @@ const Message = ({
     if (!bottomMarker || !isElementInViewport(bottomMarker)) return;
 
     if (hasUnreadReaction) {
-      animateUnreadReaction({ messageIds: [messageId] });
+      animateUnreadReaction({ chatId, messageIds: [messageId] });
     }
 
     let unreadMentionIds: number[] = [];
@@ -1009,10 +1050,13 @@ const Message = ({
 
   function renderMessageText(isForAnimation?: boolean) {
     if (!textMessage) return undefined;
+
+    const forcedText = (isShowingSummary && summary?.text)
+      || (requestedTranslationLanguage ? currentTranslatedText : undefined);
     return (
       <MessageText
         messageOrStory={textMessage}
-        translatedText={requestedTranslationLanguage ? currentTranslatedText : undefined}
+        forcedText={forcedText}
         isForAnimation={isForAnimation}
         focusedQuote={focusedQuote}
         focusedQuoteOffset={focusedQuoteOffset}
@@ -1028,6 +1072,16 @@ const Message = ({
         threadId={threadId}
         shouldAnimateTyping={isTypingDraft}
       />
+    );
+  }
+
+  function renderMessageTextAnimation() {
+    return (
+      <div className="translation-animation">
+        <div className="text-loading">
+          {renderMessageText(true)}
+        </div>
+      </div>
     );
   }
 
@@ -1164,6 +1218,20 @@ const Message = ({
                 onClick={handleStoryClick}
               />
             )}
+            {hasSummary && isShowingSummary && !summary?.isPending && (
+              <PeerColorWrapper
+                className="message-summary"
+                onClick={hideSummary}
+              >
+                <Sparkles preset="button" className="message-summary-sparkles" />
+                <span className="message-summary-title">
+                  {lang('MessageSummaryTitle')}
+                </span>
+                <span className="message-summary-description">
+                  {lang('MessageSummaryDescription')}
+                </span>
+              </PeerColorWrapper>
+            )}
           </div>
         )}
         {sticker && observeIntersectionForLoading && observeIntersectionForPlaying && (
@@ -1299,6 +1367,16 @@ const Message = ({
             canAutoLoadMedia={canAutoLoadMedia}
           />
         )}
+        {dice && (
+          <DiceWrapper
+            canSendDice={canSendStickers}
+            isLocal={isLocal}
+            dice={dice}
+            isOutgoing={isOwn}
+            canPlayWinEffect={shouldPlayDiceEffect}
+            onEffectPlayed={hideDiceEffect}
+          />
+        )}
         {invoice?.extendedMedia && (
           <InvoiceMediaPreview
             message={message}
@@ -1328,13 +1406,7 @@ const Message = ({
             {hasText && !hasAnimatedEmoji && (
               <div className={textContentClass} dir="auto">
                 {renderMessageText()}
-                {isTranslationPending && (
-                  <div className="translation-animation">
-                    <div className="text-loading">
-                      {renderMessageText(true)}
-                    </div>
-                  </div>
-                )}
+                {isNewTextPending && renderMessageTextAnimation()}
                 {hasFactCheck && (
                   <FactCheck factCheck={factCheck} isToggleDisabled={isInSelectMode} />
                 )}
@@ -1390,13 +1462,7 @@ const Message = ({
         {hasText && !hasAnimatedEmoji && (
           <div className={textContentClass} dir="auto">
             {renderMessageText()}
-            {isTranslationPending && (
-              <div className="translation-animation">
-                <div className="text-loading">
-                  {renderMessageText(true)}
-                </div>
-              </div>
-            )}
+            {isNewTextPending && renderMessageTextAnimation()}
             {!hasContentAfterText && isMetaInText && renderReactionsAndMeta()}
           </div>
         )}
@@ -1801,42 +1867,56 @@ const Message = ({
           {renderContent()}
           {!isInDocumentGroupNotLast && metaPosition === 'standalone' && !isStoryMention && renderReactionsAndMeta()}
           {canShowActionButton && (
-            <div className={buildClassName(
-              'message-action-buttons',
-              isLoadingComments && 'message-action-buttons-shown',
-            )}
-            >
-              {withCommentButton && isCustomShape && (
-                <CommentButton
-                  threadInfo={commentsThreadInfo}
-                  disabled={noComments || !commentsThreadInfo}
-                  isLoading={isLoadingComments}
-                  isCustomShape
-                  asActionButton
-                />
+            <div className="message-action-buttons-container">
+              <div className="message-action-buttons-sticky-zone">
+                <div className="message-action-buttons message-action-button-sticky">
+                  {hasSummary && (
+                    <Button
+                      className="message-action-button action-summary"
+                      color="translucent-white"
+                      round
+                      withSparkleEffect
+                      ariaLabel={isShowingSummary ? lang('AriaHideSummary') : lang('AriaShowSummary')}
+                      onClick={isShowingSummary ? hideSummary : showSummary}
+                      iconName={isShowingSummary ? 'expand' : 'collapse'}
+                    />
+                  )}
+                </div>
+              </div>
+              <div className={buildClassName(
+                'message-action-buttons',
+                isLoadingComments && 'message-action-buttons-shown',
               )}
-              {canForward && (
-                <Button
-                  className="message-action-button"
-                  color="translucent-white"
-                  round
-                  size="tiny"
-                  ariaLabel={oldLang('lng_context_forward_msg')}
-                  onClick={isLastInDocumentGroup ? handleGroupForward : handleForward}
-                  iconName="share-filled"
-                />
-              )}
-              {canFocus && (
-                <Button
-                  className="message-action-button"
-                  color="translucent-white"
-                  round
-                  size="tiny"
-                  ariaLabel={lang('FocusMessage')}
-                  onClick={isPinnedList ? handleFocus : handleFocusForwarded}
-                  iconName="arrow-right"
-                />
-              )}
+              >
+                {withCommentButton && isCustomShape && (
+                  <CommentButton
+                    threadInfo={commentsThreadInfo}
+                    disabled={noComments || !commentsThreadInfo}
+                    isLoading={isLoadingComments}
+                    isCustomShape
+                  />
+                )}
+                {canForward && (
+                  <Button
+                    className="message-action-button"
+                    color="translucent-white"
+                    round
+                    ariaLabel={oldLang('lng_context_forward_msg')}
+                    onClick={isLastInDocumentGroup ? handleGroupForward : handleForward}
+                    iconName="share-filled"
+                  />
+                )}
+                {canFocus && (
+                  <Button
+                    className="message-action-button"
+                    color="translucent-white"
+                    round
+                    ariaLabel={lang('FocusMessage')}
+                    onClick={isPinnedList ? handleFocus : handleFocusForwarded}
+                    iconName="arrow-right"
+                  />
+                )}
+              </div>
             </div>
           )}
           {withCommentButton && !isCustomShape && (
@@ -1934,6 +2014,7 @@ export default memo(withGlobal<OwnProps>(
 
     const chat = selectChat(global, chatId);
     const isChatWithSelf = selectIsChatWithSelf(global, chatId);
+    const isChatWithBot = selectIsChatWithBot(global, chatId);
     const isSystemBotChat = isSystemBot(chatId);
     const isAnonymousForwards = isAnonymousForwardsChat(chatId);
     const isChannel = chat && isChatChannel(chat);
@@ -2018,7 +2099,8 @@ export default memo(withGlobal<OwnProps>(
       isLastInDocumentGroup ? selectChatMessage(global, chatId, documentGroupFirstMessageId!) : undefined
     ) : message;
 
-    const hasUnreadReaction = chat?.unreadReactions?.includes(message.id);
+    const readState = selectThreadReadState(global, chatId, threadId);
+    const hasUnreadReaction = readState?.unreadReactions?.includes(message.id);
 
     const hasTopicChip = threadId === MAIN_THREAD_ID && chat?.isForum && !chat.isBotForum && isFirstInGroup;
     const messageTopic = selectTopicFromMessage(global, message);
@@ -2058,6 +2140,10 @@ export default memo(withGlobal<OwnProps>(
 
     const isMediaNsfw = selectIsMediaNsfw(global, message);
     const isReplyMediaNsfw = replyMessage && selectIsMediaNsfw(global, replyMessage);
+
+    const summary = selectMessageSummary(global, chatId, message.id, requestedTranslationLanguage);
+
+    const allowedAttachmentOptions = getAllowedAttachmentOptions(chat, chatFullInfo, isChatWithBot);
 
     return {
       theme: selectTheme(global),
@@ -2132,7 +2218,9 @@ export default memo(withGlobal<OwnProps>(
         && loadingThread?.loadingChatId === repliesThreadInfo?.originChannelId
         && loadingThread?.loadingMessageId === repliesThreadInfo?.originMessageId,
       shouldWarnAboutFiles,
-      outgoingStatus: isOutgoing ? selectOutgoingStatus(global, message, messageListType === 'scheduled') : undefined,
+      outgoingStatus: isOutgoing
+        ? selectOutgoingStatus(global, chatId, threadId, message.id, messageListType)
+        : undefined,
       uploadProgress: typeof uploadProgress === 'number' ? uploadProgress : undefined,
       focusDirection: isFocused ? focusDirection : undefined,
       noFocusHighlight: isFocused ? noFocusHighlight : undefined,
@@ -2155,6 +2243,8 @@ export default memo(withGlobal<OwnProps>(
       isMediaNsfw,
       isReplyMediaNsfw,
       webPage,
+      summary,
+      canSendStickers: allowedAttachmentOptions.canSendStickers,
     };
   },
 )(Message));

@@ -1,5 +1,7 @@
 /* stylelint-disable plugin/no-low-performance-animation-properties */
 
+$progress-color: #7e85ff;
+
 .root {
   --percent: calc(var(--progress, 0.5) * 100%);
 
@@ -27,8 +29,8 @@
   display: flex;
   justify-content: center;
 
-  transition: transform 0.2s ease-in-out;
-  animation: slide-in 0.5s ease-in-out;
+  transition: transform 0.2s ease;
+  animation: slide-in 0.5s ease;
 }
 
 @keyframes slide-in {
@@ -81,9 +83,9 @@
 
   color: #ffffff;
 
-  background-color: #7E85FF;
+  background-color: $progress-color;
 
-  transition: width 0.25s ease-in-out;
+  transition: width 0.25s ease;
 
   &.noTransition {
     transition: none;
@@ -110,7 +112,7 @@
 
   display: inline-block;
 
-  color: #7E85FF;
+  color: $progress-color;
 
   transition: left 0.3s ease;
 }
@@ -251,6 +253,34 @@
   }
 }
 
+.inverted {
+  .positiveLayer,
+  .positiveProgress {
+    --multiplier: calc(1 / var(--positive-progress) - 1);
+
+    right: 0;
+    left: auto;
+    background-position: 100% 0;
+    background-size: calc(100% / var(--positive-progress)) 100%;
+
+    .left {
+      left: calc(-100% * var(--multiplier) + 0.75rem);
+    }
+
+    .right {
+      right: 0.75rem;
+    }
+  }
+}
+
+.noGradient {
+  .positiveLayer,
+  .positiveProgress {
+    background-color: $progress-color;
+    background-image: none;
+  }
+}
+
 .transitioning {
   .left,
   .right {
@@ -276,7 +306,7 @@
 
   .positiveProgress,
   .negativeProgress {
-    transition: opacity 0.15s, width var(--cycling-animation-progress), background-size 0.3s;
+    transition: opacity 0.15s ease, width var(--cycling-animation-progress) ease, background-size 0.3s ease;
   }
 }
 

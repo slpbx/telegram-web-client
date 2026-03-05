@@ -21,6 +21,7 @@ export interface PaneState {
   element?: HTMLElement;
   height: number;
   isOpen?: boolean;
+  isSpacer?: boolean;
 }
 
 // Max slide transition duration
@@ -126,12 +127,21 @@ export default function useHeaderPane<RefType extends HTMLElement = HTMLDivEleme
   };
 }
 
-export function applyAnimationState(list: PaneState[], noTransition = false) {
+export function applyAnimationState({
+  list,
+  noTransition = false,
+  zIndexIncrease,
+}: {
+  list: PaneState[];
+  noTransition?: boolean;
+  zIndexIncrease?: boolean;
+}) {
   let cumulativeHeight = 0;
   for (let i = 0; i < list.length; i++) {
     const state = list[i];
     const element = state.element;
     if (!element) {
+      if (state.isSpacer) cumulativeHeight += state.height;
       continue;
     }
 
@@ -139,7 +149,7 @@ export function applyAnimationState(list: PaneState[], noTransition = false) {
 
     const apply = () => {
       setExtraStyles(element, {
-        transform: `translateY(${state.isOpen ? shiftPx : `calc(${shiftPx} - 100%)`})`,
+        transform: `translateY(${state.isOpen ? shiftPx : `calc(${shiftPx} - 100% - 0.5rem)`})`,
         zIndex: String(-i),
         transition: noTransition ? 'none' : '',
       });
@@ -149,7 +159,7 @@ export function applyAnimationState(list: PaneState[], noTransition = false) {
       // Start animation right above its final position
       setExtraStyles(element, {
         transform: `translateY(calc(${shiftPx} - 100%))`,
-        zIndex: String(-i),
+        zIndex: String(zIndexIncrease ? i : -i),
         transition: 'none',
       });
       element.dataset.isPanelOpen = 'true';

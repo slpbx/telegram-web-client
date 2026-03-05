@@ -86,31 +86,7 @@
   background-position: center;
   background-size: 100% 100%;
 
-  &::before {
-    content: "";
-
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    left: 0;
-
-    background-image: url('../../../assets/chat-bg-pattern-light.png');
-    background-repeat: repeat;
-    background-position: top right;
-    background-size: 510px auto;
-    mix-blend-mode: overlay;
-
-    :global(html.theme-dark) & {
-      background-image: url('../../../assets/chat-bg-pattern-dark.png');
-      mix-blend-mode: unset;
-    }
-
-    @media (max-width: 600px) {
-      bottom: auto;
-      height: calc(var(--vh, 1vh) * 100);
-    }
-  }
+  @include mixins.chat-pattern-background("../../../assets/pattern.svg");
 
   :global(html.theme-light) & {
     background-image: url('../../../assets/chat-bg-br.png');
@@ -144,6 +120,7 @@
   margin-inline-end: 0.125rem !important;
 }
 
+.bottomDescription,
 .description {
   margin-bottom: 0.5rem;
   margin-left: 1rem;
@@ -151,10 +128,21 @@
   color: var(--color-text-secondary);
 }
 
+.bottomDescription {
+  margin-bottom: 1rem;
+}
+
 .main-button {
   display: flex;
   font-size: 1rem;
   font-weight: var(--font-weight-semibold);
+}
+
+.buttonSubtitle {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: var(--font-weight-normal);
+  opacity: 0.7;
 }
 
 .star {
@@ -236,24 +224,7 @@
   }
 
   &:not(.customBgImage):not(.customBgColor)::after {
-    content: "";
-
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    left: 0;
-
-    background-image: url('../../../assets/chat-bg-pattern-light.png');
-    background-repeat: repeat;
-    background-position: top right;
-    background-size: 510px auto;
-    mix-blend-mode: overlay;
-
-    :global(html.theme-dark) & {
-      background-image: url('../../../assets/chat-bg-pattern-dark.png');
-      mix-blend-mode: unset;
-    }
+    @include mixins.chat-pattern-styles("../../../assets/pattern.svg");
   }
 
   @media screen and (min-width: 1276px) {

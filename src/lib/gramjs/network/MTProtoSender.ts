@@ -444,7 +444,7 @@ export default class MTProtoSender {
       throw new Error('Cannot send requests while disconnected');
     }
     const state = new RequestState(request, undefined);
-    const data = await this._sendQueue.getBeacon(state);
+    const data = this._sendQueue.getBeacon(state);
     if (!data) return;
     const encryptedData = await this._state.encryptMessageData(data);
 
@@ -542,7 +542,7 @@ export default class MTProtoSender {
       && this.getConnection()!.shouldLongPoll) {
       await this._sendQueueLongPoll.wait();
 
-      const res = await this._sendQueueLongPoll.get();
+      const res = this._sendQueueLongPoll.get();
 
       if (this.isReconnecting || !this._isFallback) {
         this._longPollLoopHandle = undefined;
@@ -561,8 +561,9 @@ export default class MTProtoSender {
       try {
         await this._fallbackConnection?.send(data);
       } catch (e: any) {
-        this._log.error(e);
         this._log.info('Connection closed while sending data');
+        // eslint-disable-next-line no-console
+        console.error(e);
         this._longPollLoopHandle = undefined;
         this.isSendingLongPoll = false;
         if (!this.userDisconnected) {
@@ -624,7 +625,7 @@ export default class MTProtoSender {
       // If we've had new ACKs appended while waiting for messages to send, add them to queue
       appendAcks();
 
-      const res = await this._sendQueue.get();
+      const res = this._sendQueue.get();
 
       this.logWithIndex.debug(`Got ${res?.batch.length} message(s) to send`);
 
@@ -664,8 +665,9 @@ export default class MTProtoSender {
         await this.getConnection()!.send(data);
       } catch (e: any) {
         this.logWithIndex.debug(`Connection closed while sending data ${e}`);
-        this._log.error(e);
         this._log.info('Connection closed while sending data');
+        // eslint-disable-next-line no-console
+        console.error(e);
         this._sendLoopHandle = undefined;
         if (!this.userDisconnected) {
           this.reconnect();
@@ -707,8 +709,9 @@ export default class MTProtoSender {
         // this._log.info('Connection closed while receiving data');
         /** when the server disconnects us we want to reconnect */
         if (!this.userDisconnected) {
-          this._log.error(e);
           this._log.warn('Connection closed while receiving data');
+          // eslint-disable-next-line no-console
+          console.error(e);
           this.reconnect();
         }
         this._recvLoopHandle = undefined;
@@ -744,7 +747,8 @@ export default class MTProtoSender {
           return;
         } else {
           this._log.error('Unhandled error while receiving data');
-          this._log.error(e);
+          // eslint-disable-next-line no-console
+          console.error(e);
           this.reconnect();
           this._recvLoopHandle = undefined;
           return;
@@ -763,7 +767,8 @@ export default class MTProtoSender {
           }
         } else {
           this._log.error('Unhandled error while receiving data');
-          this._log.error(e);
+          // eslint-disable-next-line no-console
+          console.error(e);
         }
       }
 

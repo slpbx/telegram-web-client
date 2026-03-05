@@ -1,5 +1,6 @@
 import { addCallback } from '../../../lib/teact/teactn';
 
+import type { ApiNotification } from '../../../api/types';
 import type { LangCode } from '../../../types';
 import type { ActionReturnType, GlobalState } from '../../types';
 
@@ -10,6 +11,7 @@ import {
   IS_MAC_OS, IS_SAFARI, IS_TOUCH_ENV, IS_WINDOWS,
 } from '../../../util/browser/windowEnvironment';
 import { getCurrentTabId } from '../../../util/establishMultitabRole';
+import generateUniqueId from '../../../util/generateUniqueId';
 import { subscribe, unsubscribe } from '../../../util/notifications';
 import { oldSetLanguage } from '../../../util/oldLangProvider';
 import { decryptSessionByCurrentHash } from '../../../util/passcode';
@@ -22,6 +24,7 @@ import { callApi } from '../../../api/gramjs';
 import { clearCaching, setupCaching } from '../../cache';
 import { addActionHandler, getGlobal, setGlobal } from '../../index';
 import { updateSharedSettings } from '../../reducers';
+import { updateAuth } from '../../reducers/auth';
 import { updateTabState } from '../../reducers/tabs';
 import {
   selectCanAnimateInterface,
@@ -145,7 +148,7 @@ addCallback((global: GlobalState) => {
 
   const performanceType = selectPerformanceSettings(global);
 
-  void oldSetLanguage(language as LangCode, undefined, true);
+  void oldSetLanguage(language as LangCode, undefined);
 
   requestMutation(() => {
     document.documentElement.style.setProperty(
@@ -217,24 +220,21 @@ addActionHandler('setIsUiReady', (global, actions, payload): ActionReturnType =>
 addActionHandler('setAuthPhoneNumber', (global, actions, payload): ActionReturnType => {
   const { phoneNumber } = payload;
 
-  return {
-    ...global,
-    authPhoneNumber: phoneNumber,
-  };
+  return updateAuth(global, {
+    phoneNumber,
+  });
 });
 
 addActionHandler('setAuthRememberMe', (global, actions, payload): ActionReturnType => {
-  return {
-    ...global,
-    authRememberMe: Boolean(payload.value),
-  };
+  return updateAuth(global, {
+    rememberMe: Boolean(payload.value),
+  });
 });
 
 addActionHandler('clearAuthErrorKey', (global): ActionReturnType => {
-  return {
-    ...global,
-    authErrorKey: undefined,
-  };
+  return updateAuth(global, {
+    errorKey: undefined,
+  });
 });
 
 addActionHandler('disableHistoryAnimations', (global, actions, payload): ActionReturnType => {
@@ -256,4 +256,34 @@ addActionHandler('disableHistoryAnimations', (global, actions, payload): ActionR
     shouldSkipHistoryAnimations: true,
   }, tabId);
   setGlobal(global, { forceSyncOnIOs: true });
+});
+
+addActionHandler('showNotification', (global, actions, payload): ActionReturnType => {
+  const { tabId = getCurrentTabId(), ...notification } = payload;
+  const hasLocalId = notification.localId;
+  notification.localId ||= generateUniqueId();
+
+  const newNotifications = [...selectTabState(global, tabId).notifications];
+  const existingNotificationIndex = newNotifications.findIndex((n) => (
+    hasLocalId ? n.localId === notification.localId : n.message === notification.message
+  ));
+  if (existingNotificationIndex !== -1) {
+    newNotifications.splice(existingNotificationIndex, 1);
+  }
+
+  newNotifications.push(notification as ApiNotification);
+
+  return updateTabState(global, {
+    notifications: newNotifications,
+  }, tabId);
+});
+
+addActionHandler('dismissNotification', (global, actions, payload): ActionReturnType => {
+  const { tabId = getCurrentTabId() } = payload;
+  const newNotifications = selectTabState(global, tabId)
+    .notifications.filter(({ localId }) => localId !== payload.localId);
+
+  return updateTabState(global, {
+    notifications: newNotifications,
+  }, tabId);
 });

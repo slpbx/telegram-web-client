@@ -3,30 +3,28 @@ import {
 } from '../../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../../global';
 
-import type {
-  ApiPeer,
-  ApiStarGiftAttribute,
-  ApiStarGiftAttributeBackdrop,
-  ApiStarGiftAttributeModel,
-  ApiStarGiftAttributePattern,
-  ApiStarGiftRegular,
-} from '../../../../api/types';
+import type { ApiPeer, ApiStarGiftAttributeModel } from '../../../../api/types';
 import type { TabState } from '../../../../global/types';
-import { ApiMediaFormat } from '../../../../api/types';
 
-import { getStickerMediaHash } from '../../../../global/helpers';
 import { getPeerTitle } from '../../../../global/helpers/peers';
 import { selectPeer } from '../../../../global/selectors';
-import { formatStarsAsIcon } from '../../../../util/localization/format';
-import { fetch } from '../../../../util/mediaLoader';
+import { getNextArrowReplacement } from '../../../../util/localization/format';
+import {
+  getRandomGiftPreviewAttributes, type GiftPreviewAttributes,
+  preloadGiftAttributeStickers } from '../../../common/helpers/gifts';
 
 import useInterval from '../../../../hooks/schedulers/useInterval';
 import useCurrentOrPrev from '../../../../hooks/useCurrentOrPrev';
 import useLang from '../../../../hooks/useLang';
 import useLastCallback from '../../../../hooks/useLastCallback';
 
+import AnimatedCounter from '../../../common/AnimatedCounter';
+import CustomEmoji from '../../../common/CustomEmoji';
+import Icon from '../../../common/icons/Icon';
 import Button from '../../../ui/Button';
 import Checkbox from '../../../ui/Checkbox';
+import Link from '../../../ui/Link';
+import TextTimer from '../../../ui/TextTimer';
 import TableAboutModal, { type TableAboutData } from '../../common/TableAboutModal';
 import UniqueGiftHeader from '../UniqueGiftHeader';
 
@@ -40,16 +38,19 @@ type StateProps = {
   recipient?: ApiPeer;
 };
 
-type Attributes = {
-  model: ApiStarGiftAttributeModel;
-  pattern: ApiStarGiftAttributePattern;
-  backdrop: ApiStarGiftAttributeBackdrop;
-};
-
 const PREVIEW_UPDATE_INTERVAL = 3000;
+const BUTTON_MODELS_COUNT = 3;
 
 const GiftUpgradeModal = ({ modal, recipient }: OwnProps & StateProps) => {
-  const { closeGiftUpgradeModal, closeGiftInfoModal, upgradeGift, upgradePrepaidGift } = getActions();
+  const {
+    closeGiftUpgradeModal,
+    closeGiftInfoModal,
+    upgradeGift,
+    upgradePrepaidGift,
+    openStarGiftPriceDecreaseInfoModal,
+    shiftGiftUpgradeNextPrice,
+    openGiftPreviewModal,
+  } = getActions();
   const isOpen = Boolean(modal);
 
   const renderingModal = useCurrentOrPrev(modal);
@@ -58,21 +59,32 @@ const GiftUpgradeModal = ({ modal, recipient }: OwnProps & StateProps) => {
 
   const isPrepaid = Boolean(renderingModal?.gift?.prepaidUpgradeHash);
 
-  const [previewAttributes, setPreviewAttributes] = useState<Attributes | undefined>();
+  const [previewAttributes, setPreviewAttributes] = useState<GiftPreviewAttributes | undefined>();
 
   const lang = useLang();
 
   const handleClose = useLastCallback(() => closeGiftUpgradeModal());
+
+  const handleTimerEnd = useLastCallback(() => {
+    shiftGiftUpgradeNextPrice();
+  });
+
+  const nextPrice = renderingModal?.nextPrices?.[0];
+  const nextPriceDate = nextPrice?.date;
+  const upgradeStars = renderingModal?.currentUpgradeStars;
+
+  const previewModels = useMemo(() => {
+    return renderingModal?.sampleAttributes
+      ?.filter((attr): attr is ApiStarGiftAttributeModel => attr.type === 'model')
+      .slice(0, BUTTON_MODELS_COUNT);
+  }, [renderingModal?.sampleAttributes]);
 
   const handleUpgrade = useLastCallback(() => {
     const gift = renderingModal?.gift;
 
     if (!gift) return;
 
-    const regularGift = gift.gift.type === 'starGift' ? gift.gift : undefined;
-
     if (isPrepaid && gift.prepaidUpgradeHash && renderingRecipient) {
-      const upgradeStars = regularGift?.upgradeStars;
       if (!upgradeStars) return;
 
       upgradePrepaidGift({
@@ -90,14 +102,30 @@ const GiftUpgradeModal = ({ modal, recipient }: OwnProps & StateProps) => {
     upgradeGift({
       gift: gift.inputGift,
       shouldKeepOriginalDetails,
-      upgradeStars: !gift.alreadyPaidUpgradeStars ? regularGift?.upgradeStars : undefined,
+      upgradeStars: !gift.alreadyPaidUpgradeStars ? upgradeStars : undefined,
     });
     handleClose();
   });
 
   const updatePreviewAttributes = useLastCallback(() => {
     if (!renderingModal?.sampleAttributes) return;
-    setPreviewAttributes(getRandomAttributes(renderingModal.sampleAttributes, previewAttributes));
+    setPreviewAttributes(getRandomGiftPreviewAttributes(renderingModal.sampleAttributes, previewAttributes));
+  });
+
+  const handleViewAllVariants = useLastCallback(() => {
+    if (!renderingModal?.gift) return;
+    openGiftPreviewModal({ originGift: renderingModal.gift.gift });
+  });
+
+  const handleOpenPriceInfo = useLastCallback(() => {
+    if (!renderingModal?.prices) return;
+
+    openStarGiftPriceDecreaseInfoModal({
+      prices: renderingModal.prices,
+      currentPrice: upgradeStars || 0,
+      minPrice: renderingModal.minPrice || 0,
+      maxPrice: renderingModal.maxPrice || 0,
+    });
   });
 
   useInterval(updatePreviewAttributes, isOpen ? PREVIEW_UPDATE_INTERVAL : undefined, true);
@@ -108,20 +136,18 @@ const GiftUpgradeModal = ({ modal, recipient }: OwnProps & StateProps) => {
     }
   }, [isOpen, renderingModal?.sampleAttributes]);
 
-  // Preload stickers and patterns
   useEffect(() => {
     const attributes = renderingModal?.sampleAttributes;
     if (!attributes) return;
-    const patternStickers = attributes.filter((attr): attr is ApiStarGiftAttributeModel => attr.type === 'pattern')
-      .map((attr) => attr.sticker);
-    const modelStickers = attributes.filter((attr): attr is ApiStarGiftAttributeModel => attr.type === 'model')
-      .map((attr) => attr.sticker);
-
-    const mediaHashes = [...patternStickers, ...modelStickers].map((sticker) => getStickerMediaHash(sticker, 'full'));
-    mediaHashes.forEach((hash) => {
-      fetch(hash, ApiMediaFormat.BlobUrl);
-    });
+    preloadGiftAttributeStickers(attributes);
   }, [renderingModal?.sampleAttributes]);
+
+  const formattedPriceElement = useMemo(() => (upgradeStars ? (
+    <span>
+      <Icon name="star" className="star-amount-icon" />
+      <AnimatedCounter text={lang.number(upgradeStars)} />
+    </span>
+  ) : undefined), [lang, upgradeStars]);
 
   const modalData = useMemo(() => {
     if (!previewAttributes || !isOpen) {
@@ -143,16 +169,43 @@ const GiftUpgradeModal = ({ modal, recipient }: OwnProps & StateProps) => {
       ['auction', lang('GiftUpgradeTradeableTitle'), lang('GiftUpgradeTradeableDescription')],
     ]) satisfies TableAboutData;
 
-    const subtitle = renderingRecipient
+    const subtitleText = renderingRecipient
       ? lang('GiftPeerUpgradeText', { peer: getPeerTitle(lang, renderingRecipient) })
       : lang('GiftUpgradeTextOwn');
 
-    const formattedPrice = gift
-      ? formatStarsAsIcon(lang, (gift.gift as ApiStarGiftRegular).upgradeStars!, { asFont: true })
-      : undefined;
+    const subtitle = (
+      <div className={styles.subtitle}>
+        <span className={styles.subtitleText}>
+          {subtitleText}
+        </span>
+        <Button
+          size="tiny"
+          color="transparentBlured"
+          pill
+          fluid
+          className={styles.viewAllButton}
+          onClick={handleViewAllVariants}
+        >
+          {previewModels?.map((model) => (
+            <CustomEmoji
+              sticker={model.sticker}
+              noPlay
+            />
+          ))}
+          <span className={styles.viewAllText}>
+            {lang('GiftUpgradeViewAll', undefined, { withNodes: true, specialReplacement: getNextArrowReplacement() })}
+          </span>
+        </Button>
+      </div>
+    );
+
+    const hasPriceDecreaseInfo = Boolean(nextPriceDate)
+      && Boolean(renderingModal?.prices?.length)
+      && !gift?.alreadyPaidUpgradeStars;
 
     const header = (
       <UniqueGiftHeader
+        className={styles.header}
         modelAttribute={previewAttributes.model}
         backdropAttribute={previewAttributes.backdrop}
         patternAttribute={previewAttributes.pattern}
@@ -178,12 +231,33 @@ const GiftUpgradeModal = ({ modal, recipient }: OwnProps & StateProps) => {
               />
             )}
             <Button className={styles.footerButton} isShiny onClick={handleUpgrade}>
-              {gift.alreadyPaidUpgradeStars
-                ? lang('GeneralConfirm')
-                : isPrepaid
-                  ? lang('GiftPayForUpgradeButton', { amount: formattedPrice }, { withNodes: true })
-                  : lang('GiftUpgradeButton', { amount: formattedPrice }, { withNodes: true })}
+              <div className={styles.buttonContent}>
+                <div>
+                  {gift.alreadyPaidUpgradeStars
+                    ? lang('GeneralConfirm')
+                    : isPrepaid
+                      ? lang('GiftPayForUpgradeButton', { amount: formattedPriceElement }, { withNodes: true })
+                      : lang('GiftUpgradeButton', { amount: formattedPriceElement }, { withNodes: true })}
+                </div>
+                {hasPriceDecreaseInfo && (
+                  <div className={styles.priceDecreaseTimer}>
+                    {lang('StarGiftPriceDecreaseTimer', {
+                      timer: <TextTimer endsAt={nextPriceDate} onEnd={handleTimerEnd} />,
+                    }, { withNodes: true })}
+                  </div>
+                )}
+              </div>
             </Button>
+            {hasPriceDecreaseInfo && (
+              <Link
+                className={styles.link}
+                isPrimary
+                onClick={handleOpenPriceInfo}
+              >
+                {lang('StarGiftPriceDecreaseInfoLink', undefined,
+                  { withNodes: true, specialReplacement: getNextArrowReplacement() })}
+              </Link>
+            )}
           </>
         )}
       </div>
@@ -194,9 +268,10 @@ const GiftUpgradeModal = ({ modal, recipient }: OwnProps & StateProps) => {
       header,
       footer,
     };
-  }, [previewAttributes, isOpen, lang,
-    renderingRecipient, renderingModal?.gift,
-    shouldKeepOriginalDetails, isPrepaid]);
+  }, [
+    previewAttributes, isOpen, lang, renderingRecipient, renderingModal?.gift, shouldKeepOriginalDetails, isPrepaid,
+    renderingModal?.prices?.length, nextPriceDate, formattedPriceElement, previewModels,
+  ]);
 
   return (
     <TableAboutModal
@@ -220,25 +295,3 @@ export default memo(withGlobal<OwnProps>(
     };
   },
 )(GiftUpgradeModal));
-
-function getRandomAttributes(list: ApiStarGiftAttribute[], previousSelection?: Attributes): Attributes {
-  const models = list.filter((attr): attr is ApiStarGiftAttributeModel => (
-    attr.type === 'model' && attr.name !== previousSelection?.model.name
-  ));
-  const patterns = list.filter((attr): attr is ApiStarGiftAttributePattern => (
-    attr.type === 'pattern' && attr.name !== previousSelection?.pattern.name
-  ));
-  const backdrops = list.filter((attr): attr is ApiStarGiftAttributeBackdrop => (
-    attr.type === 'backdrop' && attr.name !== previousSelection?.backdrop.name
-  ));
-
-  const randomModel = models[Math.floor(Math.random() * models.length)];
-  const randomPattern = patterns[Math.floor(Math.random() * patterns.length)];
-  const randomBackdrop = backdrops[Math.floor(Math.random() * backdrops.length)];
-
-  return {
-    model: randomModel,
-    pattern: randomPattern,
-    backdrop: randomBackdrop,
-  };
-}

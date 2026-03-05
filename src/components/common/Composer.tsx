@@ -77,10 +77,7 @@ import {
   selectChatType,
   selectCurrentMessageList,
   selectCustomEmoji,
-  selectDraft,
-  selectEditingDraft,
   selectEditingMessage,
-  selectEditingScheduledDraft,
   selectIsChatWithSelf,
   selectIsCurrentUserFrozen,
   selectIsCurrentUserPremium,
@@ -91,7 +88,6 @@ import {
   selectNewestMessageWithBotKeyboardButtons,
   selectNotifyDefaults,
   selectNotifyException,
-  selectNoWebPage,
   selectPeer,
   selectPeerPaidMessagesStars,
   selectPeerStory,
@@ -107,6 +103,12 @@ import {
 } from '../../global/selectors';
 import { selectCurrentLimit } from '../../global/selectors/limits';
 import { selectSharedSettings } from '../../global/selectors/sharedState';
+import {
+  selectDraft,
+  selectEditingDraft,
+  selectEditingScheduledDraft,
+  selectNoWebPage,
+} from '../../global/selectors/threads';
 import { IS_IOS, IS_VOICE_RECORDING_SUPPORTED } from '../../util/browser/windowEnvironment';
 import buildClassName from '../../util/buildClassName';
 import { formatMediaDuration, formatVoiceRecordDuration } from '../../util/dates/dateFormat';
@@ -220,96 +222,96 @@ type OwnProps = {
   onBlur?: NoneToVoidFunction;
 };
 
-type StateProps =
-  {
-    isOnActiveTab: boolean;
-    editingMessage?: ApiMessage;
-    chat?: ApiChat;
-    chatFullInfo?: ApiChatFullInfo;
-    draft?: ApiDraft;
-    replyToTopic?: ApiTopic;
-    currentMessageList?: MessageList;
-    isChatWithBot?: boolean;
-    isChatWithSelf?: boolean;
-    isChannel?: boolean;
-    isForCurrentMessageList: boolean;
-    isRightColumnShown?: boolean;
-    isSelectModeActive?: boolean;
-    isReactionPickerOpen?: boolean;
-    shouldDisplayGiftsButton?: boolean;
-    isForwarding?: boolean;
-    isReplying?: boolean;
-    hasSuggestedPost?: boolean;
-    forwardedMessagesCount?: number;
-    pollModal: TabState['pollModal'];
-    todoListModal: TabState['todoListModal'];
-    botKeyboardMessageId?: number;
-    botKeyboardPlaceholder?: string;
-    withScheduledButton?: boolean;
-    isInScheduledList?: boolean;
-    canScheduleUntilOnline?: boolean;
-    stickersForEmoji?: ApiSticker[];
-    customEmojiForEmoji?: ApiSticker[];
-    currentUserId?: string;
-    currentUser?: ApiUser;
-    recentEmojis: string[];
-    contentToBeScheduled?: TabState['contentToBeScheduled'];
-    shouldSuggestStickers?: boolean;
-    shouldSuggestCustomEmoji?: boolean;
-    baseEmojiKeywords?: Record<string, string[]>;
-    emojiKeywords?: Record<string, string[]>;
-    topInlineBotIds?: string[];
-    isInlineBotLoading: boolean;
-    inlineBots?: Record<string, false | InlineBotSettings>;
-    botCommands?: ApiBotCommand[] | false;
-    botMenuButton?: ApiBotMenuButton;
-    sendAsPeer?: ApiPeer;
-    sendAsId?: string;
-    editingDraft?: ApiFormattedText;
-    requestedDraft?: ApiFormattedText;
-    requestedDraftFiles?: File[];
-    attachBots: GlobalState['attachMenu']['bots'];
-    attachMenuPeerType?: ApiAttachMenuPeerType;
-    theme: ThemeKey;
-    fileSizeLimit: number;
-    captionLimit: number;
-    isCurrentUserPremium?: boolean;
-    canSendVoiceByPrivacy?: boolean;
-    attachmentSettings: GlobalState['attachmentSettings'];
-    slowMode?: ApiChatFullInfo['slowMode'];
-    shouldUpdateStickerSetOrder?: boolean;
-    availableReactions?: ApiAvailableReaction[];
-    topReactions?: ApiReaction[];
-    canPlayAnimatedEmojis?: boolean;
-    canBuyPremium?: boolean;
-    shouldCollectDebugLogs?: boolean;
-    sentStoryReaction?: ApiReaction;
-    stealthMode?: ApiStealthMode;
-    canSendOneTimeMedia?: boolean;
-    quickReplyMessages?: Record<number, ApiMessage>;
-    quickReplies?: Record<number, ApiQuickReply>;
-    canSendQuickReplies?: boolean;
-    webPagePreview?: ApiWebPage;
-    noWebPage?: boolean;
-    isContactRequirePremium?: boolean;
-    paidMessagesStars?: number;
-    effect?: ApiAvailableEffect;
-    effectReactions?: ApiReaction[];
-    areEffectsSupported?: boolean;
-    canPlayEffect?: boolean;
-    shouldPlayEffect?: boolean;
-    maxMessageLength: number;
-    shouldPaidMessageAutoApprove?: boolean;
-    isSilentPosting?: boolean;
-    isPaymentMessageConfirmDialogOpen: boolean;
-    starsBalance: number;
-    isStarsBalanceModalOpen: boolean;
-    disallowedGifts?: ApiDisallowedGifts;
-    isAccountFrozen?: boolean;
-    isAppConfigLoaded?: boolean;
-    insertingPeerIdMention?: string;
-    pollMaxAnswers?: number;
-  };
+type StateProps = {
+  isOnActiveTab: boolean;
+  editingMessage?: ApiMessage;
+  chat?: ApiChat;
+  user?: ApiUser;
+  chatFullInfo?: ApiChatFullInfo;
+  draft?: ApiDraft;
+  replyToTopic?: ApiTopic;
+  currentMessageList?: MessageList;
+  isChatWithBot?: boolean;
+  isChatWithSelf?: boolean;
+  isChannel?: boolean;
+  isForCurrentMessageList: boolean;
+  isRightColumnShown?: boolean;
+  isSelectModeActive?: boolean;
+  isReactionPickerOpen?: boolean;
+  shouldDisplayGiftsButton?: boolean;
+  isForwarding?: boolean;
+  isReplying?: boolean;
+  hasSuggestedPost?: boolean;
+  forwardedMessagesCount?: number;
+  pollModal: TabState['pollModal'];
+  todoListModal: TabState['todoListModal'];
+  botKeyboardMessageId?: number;
+  botKeyboardPlaceholder?: string;
+  withScheduledButton?: boolean;
+  isInScheduledList?: boolean;
+  canScheduleUntilOnline?: boolean;
+  stickersForEmoji?: ApiSticker[];
+  customEmojiForEmoji?: ApiSticker[];
+  currentUserId?: string;
+  currentUser?: ApiUser;
+  recentEmojis: string[];
+  contentToBeScheduled?: TabState['contentToBeScheduled'];
+  shouldSuggestStickers?: boolean;
+  shouldSuggestCustomEmoji?: boolean;
+  baseEmojiKeywords?: Record<string, string[]>;
+  emojiKeywords?: Record<string, string[]>;
+  topInlineBotIds?: string[];
+  isInlineBotLoading: boolean;
+  inlineBots?: Record<string, false | InlineBotSettings>;
+  botCommands?: ApiBotCommand[] | false;
+  botMenuButton?: ApiBotMenuButton;
+  sendAsPeer?: ApiPeer;
+  sendAsId?: string;
+  editingDraft?: ApiFormattedText;
+  requestedDraft?: ApiFormattedText;
+  requestedDraftFiles?: File[];
+  attachBots: GlobalState['attachMenu']['bots'];
+  attachMenuPeerType?: ApiAttachMenuPeerType;
+  theme: ThemeKey;
+  fileSizeLimit: number;
+  captionLimit: number;
+  isCurrentUserPremium?: boolean;
+  canSendVoiceByPrivacy?: boolean;
+  attachmentSettings: GlobalState['attachmentSettings'];
+  slowMode?: ApiChatFullInfo['slowMode'];
+  shouldUpdateStickerSetOrder?: boolean;
+  availableReactions?: ApiAvailableReaction[];
+  topReactions?: ApiReaction[];
+  canPlayAnimatedEmojis?: boolean;
+  canBuyPremium?: boolean;
+  shouldCollectDebugLogs?: boolean;
+  sentStoryReaction?: ApiReaction;
+  stealthMode?: ApiStealthMode;
+  canSendOneTimeMedia?: boolean;
+  quickReplyMessages?: Record<number, ApiMessage>;
+  quickReplies?: Record<number, ApiQuickReply>;
+  canSendQuickReplies?: boolean;
+  webPagePreview?: ApiWebPage;
+  noWebPage?: boolean;
+  isContactRequirePremium?: boolean;
+  paidMessagesStars?: number;
+  effect?: ApiAvailableEffect;
+  effectReactions?: ApiReaction[];
+  areEffectsSupported?: boolean;
+  canPlayEffect?: boolean;
+  shouldPlayEffect?: boolean;
+  maxMessageLength: number;
+  shouldPaidMessageAutoApprove?: boolean;
+  isSilentPosting?: boolean;
+  isPaymentMessageConfirmDialogOpen: boolean;
+  starsBalance: number;
+  isStarsBalanceModalOpen: boolean;
+  disallowedGifts?: ApiDisallowedGifts;
+  isAccountFrozen?: boolean;
+  isAppConfigLoaded?: boolean;
+  insertingPeerIdMention?: string;
+  pollMaxAnswers?: number;
+};
 
 enum MainButtonState {
   Send = 'send',
@@ -350,6 +352,7 @@ const Composer: FC<OwnProps & StateProps> = ({
   draft,
   chat,
   chatFullInfo,
+  user,
   replyToTopic,
   isForCurrentMessageList,
   isCurrentUserPremium,
@@ -597,7 +600,8 @@ const Composer: FC<OwnProps & StateProps> = ({
     handleWithConfirmation: handleActionWithPaymentConfirmation,
   } = usePaidMessageConfirmation(starsForAllMessages, isStarsBalanceModalOpen, starsBalance);
 
-  const hasWebPagePreview = !hasAttachments && canAttachEmbedLinks && !noWebPage && Boolean(webPagePreview);
+  const hasWebPagePreview = !hasAttachments && canAttachEmbedLinks && !noWebPage
+    && webPagePreview?.webpageType === 'full';
   const isComposerBlocked = isSendTextBlocked && !editingMessage;
 
   useEffect(() => {
@@ -1755,6 +1759,10 @@ const Composer: FC<OwnProps & StateProps> = ({
         return lang('ComposerPlaceholderAnonymous');
       }
 
+      if (chat?.isBotForum && !user?.canManageBotForumTopics && threadId === MAIN_THREAD_ID) {
+        return lang('ComposerPlaceholderBotTopicGeneral');
+      }
+
       if (chat?.isForum && !chat.isBotForum && chat.isForumAsMessages && threadId === MAIN_THREAD_ID) {
         return replyToTopic
           ? lang('ComposerPlaceholderTopic', { topic: replyToTopic.title })
@@ -1772,7 +1780,7 @@ const Composer: FC<OwnProps & StateProps> = ({
   }, [
     activeVoiceRecording, botKeyboardPlaceholder, chat, inputPlaceholder, isChannel, isComposerBlocked,
     isInStoryViewer, isSilentPosting, lang, replyToTopic, isReplying, threadId, windowWidth, paidMessagesStars,
-    hasSuggestedPost, slowModePlaceholder, stealthMode?.activeUntil,
+    hasSuggestedPost, slowModePlaceholder, stealthMode?.activeUntil, user?.canManageBotForumTopics,
   ]);
 
   useEffect(() => {
@@ -2632,6 +2640,7 @@ export default memo(withGlobal<OwnProps>(
       editingMessage: selectEditingMessage(global, chatId, threadId, messageListType),
       draft,
       chat,
+      user,
       isChatWithBot,
       isChatWithSelf,
       isForCurrentMessageList,

@@ -1,3 +1,5 @@
+@use "../../../styles/mixins";
+
 .MessageMeta {
   cursor: var(--custom-cursor, pointer);
   user-select: none;
@@ -137,7 +139,7 @@
   }
 
   .Message .custom-shape & {
-    background: var(--pattern-color);
+    @include mixins.action-message-bg;
   }
 
   .voice &[dir="rtl"] {

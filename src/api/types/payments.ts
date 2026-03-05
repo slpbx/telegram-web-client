@@ -119,8 +119,11 @@ export type ApiReceipt = ApiReceiptRegular | ApiReceiptStars;
 
 export type ApiPremiumSection = typeof PREMIUM_FEATURE_SECTIONS[number];
 
+// Video sections can include additional values like 'gifts' that are not premium features
+export type ApiPromoVideoSection = ApiPremiumSection | 'gifts';
+
 export interface ApiPremiumPromo {
-  videoSections: ApiPremiumSection[];
+  videoSections: ApiPromoVideoSection[];
   videos: ApiDocument[];
   statusText: string;
   statusEntities: ApiMessageEntity[];
@@ -163,6 +166,7 @@ export type ApiInputStorePaymentStarsTopup = {
   stars: number;
   currency: string;
   amount: number;
+  spendPurposePeer?: ApiPeer;
 };
 
 export type ApiInputStorePaymentStarsGift = {
@@ -341,6 +345,7 @@ export type ApiInputInvoiceStars = {
   stars: number;
   currency: string;
   amount: number;
+  spendPurposePeerId?: string;
 };
 
 export type ApiInputInvoiceStarsGift = {
@@ -410,11 +415,22 @@ export type ApiInputInvoiceStarGiftPrepaidUpgrade = {
   hash: string;
 };
 
+export type ApiInputInvoiceStarGiftAuctionBid = {
+  type: 'stargiftAuctionBid';
+  giftId: string;
+  bidAmount: number;
+  peerId?: string;
+  message?: ApiFormattedText;
+  shouldHideName?: boolean;
+  isUpdateBid?: boolean;
+};
+
 export type ApiInputInvoice = ApiInputInvoiceMessage | ApiInputInvoiceSlug | ApiInputInvoiceGiveaway
   | ApiInputInvoiceGiftCode | ApiInputInvoicePremiumGiftStars | ApiInputInvoiceStars | ApiInputInvoiceStarsGift
   | ApiInputInvoiceStarsGiveaway | ApiInputInvoiceStarGift | ApiInputInvoiceChatInviteSubscription
   | ApiInputInvoiceStarGiftUpgrade | ApiInputInvoiceStarGiftTransfer | ApiInputInvoiceStarGiftResale
-  | ApiInputInvoiceStarGiftDropOriginalDetails | ApiInputInvoiceStarGiftPrepaidUpgrade;
+  | ApiInputInvoiceStarGiftDropOriginalDetails | ApiInputInvoiceStarGiftPrepaidUpgrade
+  | ApiInputInvoiceStarGiftAuctionBid;
 
 /* Used for Invoice request */
 export type ApiRequestInputInvoiceMessage = {
@@ -495,12 +511,23 @@ export type ApiRequestInputInvoiceStarGiftPrepaidUpgrade = {
   hash: string;
 };
 
+export type ApiRequestInputInvoiceStarGiftAuctionBid = {
+  type: 'stargiftAuctionBid';
+  giftId: string;
+  bidAmount: number;
+  peer?: ApiPeer;
+  message?: ApiFormattedText;
+  shouldHideName?: boolean;
+  isUpdateBid?: boolean;
+};
+
 export type ApiRequestInputInvoice = ApiRequestInputInvoiceMessage | ApiRequestInputInvoiceSlug
   | ApiRequestInputInvoiceGiveaway | ApiRequestInputInvoiceStars | ApiRequestInputInvoiceStarsGiveaway
   | ApiRequestInputInvoiceChatInviteSubscription | ApiRequestInputInvoiceStarGift
   | ApiRequestInputInvoiceStarGiftUpgrade | ApiRequestInputInvoiceStarGiftTransfer
   | ApiRequestInputInvoicePremiumGiftStars | ApiRequestInputInvoiceStarGiftResale
-  | ApiRequestInputInvoiceStarGiftDropOriginalDetails | ApiRequestInputInvoiceStarGiftPrepaidUpgrade;
+  | ApiRequestInputInvoiceStarGiftDropOriginalDetails | ApiRequestInputInvoiceStarGiftPrepaidUpgrade
+  | ApiRequestInputInvoiceStarGiftAuctionBid;
 
 export interface ApiUniqueStarGiftValueInfo {
   isLastSaleOnFragment?: true;

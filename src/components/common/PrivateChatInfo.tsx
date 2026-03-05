@@ -13,11 +13,11 @@ import {
 } from '../../global/helpers';
 import {
   selectChatMessages,
-  selectThreadMessagesCount,
   selectTopic,
   selectUser,
   selectUserStatus,
 } from '../../global/selectors';
+import { selectThreadMessagesCount } from '../../global/selectors/threads';
 import buildClassName from '../../util/buildClassName';
 import { REM } from './helpers/mediaDimensions';
 import renderText from './helpers/renderText';
@@ -184,7 +184,7 @@ const PrivateChatInfo = ({
 
     if (withUpdatingStatus && !areMessagesLoaded) {
       return (
-        <DotAnimation className="status" content={oldLang('Updating')} />
+        <DotAnimation className="status" content={lang('Updating')} />
       );
     }
 
@@ -213,7 +213,11 @@ const PrivateChatInfo = ({
             activeKey={messagesCount !== undefined ? 1 : 2}
             className="message-count-transition"
           >
-            {messagesCount !== undefined ? oldLang('messages', messagesCount, 'i') : oldLang('lng_forum_no_messages')}
+            {messagesCount !== undefined
+              ? (messagesCount > 0
+                ? lang('Messages', { count: messagesCount }, { pluralValue: messagesCount })
+                : lang('ChatInfoNoMessages')
+              ) : lang('ChatInfoForumTopic')}
           </Transition>
         </span>
       );

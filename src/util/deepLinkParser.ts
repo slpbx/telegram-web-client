@@ -10,7 +10,7 @@ import { isUsernameValid } from './entities/username';
 export type DeepLinkMethod = 'resolve' | 'login' | 'passport' | 'settings' | 'join' | 'addstickers' | 'addemoji' |
   'setlanguage' | 'addtheme' | 'confirmphone' | 'socks' | 'proxy' | 'privatepost' | 'bg' | 'share' | 'msg' | 'msg_url' |
   'invoice' | 'addlist' | 'boost' | 'giftcode' | 'message' | 'premium_offer' | 'premium_multigift' | 'stars_topup'
-  | 'nft' | 'stars' | 'ton';
+  | 'nft' | 'stars' | 'ton' | 'stargift_auction' | 'premium';
 
 interface PublicMessageLink {
   type: 'publicMessageLink';
@@ -91,7 +91,7 @@ interface BusinessChatLink {
 
 interface PremiumReferrerLink {
   type: 'premiumReferrerLink';
-  referrer: string;
+  ref?: string;
 }
 
 interface PremiumMultigiftLink {
@@ -101,6 +101,11 @@ interface PremiumMultigiftLink {
 
 interface GiftUniqueLink {
   type: 'giftUniqueLink';
+  slug: string;
+}
+
+interface GiftAuctionLink {
+  type: 'giftAuctionLink';
   slug: string;
 }
 
@@ -131,6 +136,7 @@ type DeepLink =
   PremiumMultigiftLink |
   ChatBoostLink |
   GiftUniqueLink |
+  GiftAuctionLink |
   StarsModalLink |
   TonModalLink |
   SettingsScreenLink;
@@ -262,13 +268,15 @@ function parseTgLink(url: URL) {
     case 'businessChatLink':
       return buildBusinessChatLink({ slug: queryParams.slug });
     case 'premiumReferrerLink':
-      return buildPremiumReferrerLink({ referrer: queryParams.ref });
+      return buildPremiumReferrerLink({ ref: queryParams.ref });
     case 'premiumMultigiftLink':
       return buildPremiumMultigiftLink({ referrer: queryParams.ref });
     case 'chatBoostLink':
       return buildChatBoostLink({ username: queryParams.domain, id: queryParams.channel });
     case 'giftUniqueLink':
       return buildGiftUniqueLink({ slug: queryParams.slug });
+    case 'giftAuctionLink':
+      return buildGiftAuctionLink({ slug: queryParams.slug });
     case 'stars':
       return { type: 'stars' } satisfies StarsModalLink;
     case 'ton':
@@ -384,6 +392,11 @@ function parseHttpLink(url: URL) {
         slug,
       });
     }
+    case 'giftAuctionLink': {
+      return buildGiftAuctionLink({
+        slug: pathParams[1],
+      });
+    }
     default:
       break;
   }
@@ -409,6 +422,7 @@ function getHttpDeepLinkType(
     if (method === 'm') return 'businessChatLink';
     if (method === 'boost') return 'chatBoostLink';
     if (method === 'nft') return 'giftUniqueLink';
+    if (method === 'auction') return 'giftAuctionLink';
     if (method === 'c') {
       if (queryParams.boost !== undefined) return 'chatBoostLink';
       return 'privateChannelLink';
@@ -474,6 +488,7 @@ function getTgDeepLinkType(
     case 'message':
       return 'businessChatLink';
     case 'premium_offer':
+    case 'premium':
       return 'premiumReferrerLink';
     case 'premium_multigift':
       return 'premiumMultigiftLink';
@@ -481,6 +496,8 @@ function getTgDeepLinkType(
       return 'chatBoostLink';
     case 'nft':
       return 'giftUniqueLink';
+    case 'stargift_auction':
+      return 'giftAuctionLink';
     case 'stars':
       return 'stars';
     case 'ton':
@@ -710,6 +727,21 @@ function buildGiftUniqueLink(params: BuilderParams<GiftUniqueLink>): BuilderRetu
   };
 }
 
+function buildGiftAuctionLink(params: BuilderParams<GiftAuctionLink>): BuilderReturnType<GiftAuctionLink> {
+  const {
+    slug,
+  } = params;
+
+  if (!slug) {
+    return undefined;
+  }
+
+  return {
+    type: 'giftAuctionLink',
+    slug,
+  };
+}
+
 function buildSettingsScreen(screenParam: string) {
   switch (screenParam) {
     case 'devices':
@@ -743,16 +775,12 @@ function buildSettingsScreenLink(params: BuilderParams<SettingsScreenLink>): Bui
 
 function buildPremiumReferrerLink(params: BuilderParams<PremiumReferrerLink>): BuilderReturnType<PremiumReferrerLink> {
   const {
-    referrer,
+    ref,
   } = params;
-
-  if (!referrer) {
-    return undefined;
-  }
 
   return {
     type: 'premiumReferrerLink',
-    referrer,
+    ref,
   };
 }
 

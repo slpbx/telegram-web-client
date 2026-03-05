@@ -362,7 +362,7 @@ export function buildInputStory(story: ApiStory | ApiStorySkipped) {
 export function generateRandomTimestampedBigInt() {
   // 32 bits for timestamp, 32 bits are random
   const buffer = generateRandomBytes(8);
-  const timestampBuffer = Buffer.alloc(4);
+  const timestampBuffer = Buffer.allocUnsafe(4);
   timestampBuffer.writeUInt32LE(Math.floor(Date.now() / 1000), 0);
   buffer.set(timestampBuffer, 4);
   return readBigIntFromBuffer(buffer, true, true);
@@ -615,13 +615,17 @@ export function buildInputPhoneCall({ id, accessHash }: ApiPhoneCall) {
   });
 }
 
-export function buildInputStorePaymentPurpose(purpose: ApiInputStorePaymentPurpose):
-GramJs.TypeInputStorePaymentPurpose {
+export function buildInputStorePaymentPurpose(
+  purpose: ApiInputStorePaymentPurpose,
+): GramJs.TypeInputStorePaymentPurpose {
   if (purpose.type === 'stars') {
     return new GramJs.InputStorePaymentStarsTopup({
       stars: BigInt(purpose.stars),
       currency: purpose.currency,
       amount: BigInt(purpose.amount),
+      spendPurposePeer: purpose.spendPurposePeer
+        ? buildInputPeer(purpose.spendPurposePeer.id, purpose.spendPurposePeer.accessHash)
+        : undefined,
     });
   }
 
@@ -791,6 +795,20 @@ export function buildInputInvoice(invoice: ApiRequestInputInvoice) {
       return new GramJs.InputInvoiceStarGiftPrepaidUpgrade({
         peer: buildInputPeer(invoice.peer.id, invoice.peer.accessHash),
         hash: invoice.hash,
+      });
+    }
+
+    case 'stargiftAuctionBid': {
+      const {
+        giftId, bidAmount, peer, message, shouldHideName, isUpdateBid,
+      } = invoice;
+      return new GramJs.InputInvoiceStarGiftAuctionBid({
+        giftId: BigInt(giftId),
+        bidAmount: BigInt(bidAmount),
+        peer: peer && buildInputPeer(peer.id, peer.accessHash || ''),
+        message: message && buildInputTextWithEntities(message),
+        hideName: shouldHideName || undefined,
+        updateBid: isUpdateBid || undefined,
       });
     }
 

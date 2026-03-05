@@ -27,6 +27,16 @@ export interface ApiStarGiftRegular {
   perUserTotal?: number;
   perUserRemains?: number;
   lockedUntilDate?: number;
+  isAuction?: true;
+  auctionSlug?: string;
+  giftsPerRound?: number;
+  background?: ApiStarGiftBackground;
+}
+
+export interface ApiStarGiftBackground {
+  centerColor: string;
+  edgeColor: string;
+  textColor: string;
 }
 
 export interface ApiStarGiftUnique {
@@ -49,22 +59,38 @@ export interface ApiStarGiftUnique {
   resaleTonOnly?: true;
   valueCurrency?: string;
   valueAmount?: number;
+  valueUsdAmount?: number;
+  offerMinStars?: number;
+  isBurned?: true;
+  isCrafted?: true;
+  craftChancePermille?: number;
 }
 
 export type ApiStarGift = ApiStarGiftRegular | ApiStarGiftUnique;
 
+interface ApiStarGiftAttributeRarityUncommon {
+  type: 'uncommon' | 'rare' | 'epic' | 'legendary';
+}
+
+interface ApiStarGiftAttributeRarityRegular {
+  type: 'regular';
+  rarityPercent: number;
+}
+
+export type ApiStarGiftAttributeRarity = ApiStarGiftAttributeRarityRegular | ApiStarGiftAttributeRarityUncommon;
+
 export interface ApiStarGiftAttributeModel {
   type: 'model';
   name: string;
-  rarityPercent: number;
   sticker: ApiSticker;
+  rarity: ApiStarGiftAttributeRarity;
 }
 
 export interface ApiStarGiftAttributePattern {
   type: 'pattern';
   name: string;
-  rarityPercent: number;
   sticker: ApiSticker;
+  rarity: ApiStarGiftAttributeRarity;
 }
 
 export interface ApiStarGiftAttributeBackdrop {
@@ -75,7 +101,7 @@ export interface ApiStarGiftAttributeBackdrop {
   edgeColor: string;
   patternColor: string;
   textColor: string;
-  rarityPercent: number;
+  rarity: ApiStarGiftAttributeRarity;
 }
 
 export interface ApiStarGiftAttributeOriginalDetails {
@@ -89,9 +115,21 @@ export interface ApiStarGiftAttributeOriginalDetails {
 export type ApiStarGiftAttribute = ApiStarGiftAttributeModel | ApiStarGiftAttributePattern
   | ApiStarGiftAttributeBackdrop | ApiStarGiftAttributeOriginalDetails;
 
+export interface ApiStarGiftUpgradePrice {
+  date: number;
+  upgradeStars: number;
+}
+
+export interface ApiStarGiftUpgradePreview {
+  sampleAttributes: ApiStarGiftAttribute[];
+  prices: ApiStarGiftUpgradePrice[];
+  nextPrices: ApiStarGiftUpgradePrice[];
+}
+
 export interface ApiSavedStarGift {
   isNameHidden?: boolean;
   isUnsaved?: boolean;
+  isRefunded?: boolean;
   fromId?: string;
   date: number;
   gift: ApiStarGift;
@@ -112,6 +150,7 @@ export interface ApiSavedStarGift {
   upgradeMsgId?: number; // Local field, used for Action Message
   localTag?: number; // Local field, used for key in list
   dropOriginalDetailsStars?: number;
+  canCraftAt?: number;
 }
 
 export type StarGiftAttributeIdModel = {
@@ -248,6 +287,7 @@ export interface ApiStarsTransaction {
   isPostsSearch?: true;
   isDropOriginalDetails?: true;
   isPrepaidUpgrade?: true;
+  isStarGiftAuctionBid?: true;
 }
 
 export interface ApiStarsSubscription {
@@ -303,4 +343,64 @@ export interface ApiStarsRating {
   currentLevelStars: number;
   stars: number;
   nextLevelStars?: number;
+}
+
+export interface ApiAuctionBidLevel {
+  pos: number;
+  amount: number;
+  date: number;
+}
+
+export interface ApiStarGiftAuctionStateActive {
+  type: 'active';
+  version: number;
+  startDate: number;
+  endDate: number;
+  minBidAmount: number;
+  bidLevels: ApiAuctionBidLevel[];
+  topBidders: string[];
+  nextRoundAt: number;
+  lastGiftNum: number;
+  giftsLeft: number;
+  currentRound: number;
+  totalRounds: number;
+}
+
+export interface ApiStarGiftAuctionStateFinished {
+  type: 'finished';
+  startDate: number;
+  endDate: number;
+  averagePrice: number;
+  listedCount?: number;
+  fragmentListedCount?: number;
+  fragmentListedUrl?: string;
+}
+
+export interface ApiStarGiftAuctionUserState {
+  isReturned?: true;
+  bidAmount?: number;
+  bidDate?: number;
+  minBidAmount?: number;
+  bidPeerId?: string;
+  acquiredCount: number;
+}
+
+export type ApiTypeStarGiftAuctionState = ApiStarGiftAuctionStateActive | ApiStarGiftAuctionStateFinished;
+
+export interface ApiStarGiftAuctionState {
+  gift: ApiStarGiftRegular;
+  state: ApiTypeStarGiftAuctionState;
+  userState: ApiStarGiftAuctionUserState;
+  timeout?: number;
+}
+
+export interface ApiStarGiftAuctionAcquiredGift {
+  peerId: string;
+  date: number;
+  bidAmount: number;
+  round: number;
+  position: number;
+  message?: ApiFormattedText;
+  giftNumber?: number;
+  isNameHidden?: true;
 }

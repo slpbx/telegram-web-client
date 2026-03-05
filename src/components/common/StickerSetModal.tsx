@@ -20,9 +20,9 @@ import {
   selectPeerPaidMessagesStars,
   selectShouldSchedule,
   selectStickerSet,
-  selectThreadInfo,
   selectTopic,
 } from '../../global/selectors';
+import { selectThreadInfo } from '../../global/selectors/threads';
 import buildClassName from '../../util/buildClassName';
 import { copyTextToClipboard } from '../../util/clipboard';
 import renderText from './helpers/renderText';
@@ -195,7 +195,7 @@ const StickerSetModal: FC<OwnProps & StateProps> = ({
         <Button
           round
           color="translucent"
-          size="smaller"
+          size="tiny"
           ariaLabel={lang('Close')}
           onClick={onClose}
           iconName="close"

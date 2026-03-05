@@ -148,6 +148,43 @@ export class PasswordFreshError extends BadRequestError {
   }
 }
 
+export class SessionFreshError extends BadRequestError {
+  public seconds: number;
+
+  constructor(args: any) {
+    const seconds = Number(args.capture || 0);
+    super(`Session is fresh, please try again in ${seconds} seconds.`, args.request);
+
+    this.message = `Session is fresh, please try again in ${seconds} seconds.`;
+    this.seconds = seconds;
+  }
+}
+
+export class PasskeyLoginRequestedError extends Error {
+  public credentialJson: PublicKeyCredentialJSON;
+
+  constructor(credentialJson: PublicKeyCredentialJSON) {
+    super('Passkey login requested');
+    this.message = 'RESTART_AUTH_WITH_PASSKEY';
+    this.credentialJson = credentialJson;
+  }
+}
+
+export class UserAlreadyAuthorizedError extends Error {
+  public userId: string;
+  constructor(userId: string) {
+    super('User already authorized');
+    this.message = 'USER_ALREADY_AUTHORIZED';
+    this.userId = userId;
+  }
+}
+
+export class PasskeyCredentialNotFoundError extends RPCError {
+  constructor(args: any) {
+    super('PASSKEY_CREDENTIAL_NOT_FOUND', args.request);
+  }
+}
+
 export const rpcErrorRe = new Map<RegExp, any>([
   [/FILE_MIGRATE_(\d+)/, FileMigrateError],
   [/FLOOD_TEST_PHONE_WAIT_(\d+)/, FloodTestPhoneWaitError],
@@ -160,5 +197,7 @@ export const rpcErrorRe = new Map<RegExp, any>([
   [/NETWORK_MIGRATE_(\d+)/, NetworkMigrateError],
   [/EMAIL_UNCONFIRMED_(\d+)/, EmailUnconfirmedError],
   [/PASSWORD_TOO_FRESH_(\d+)/, PasswordFreshError],
+  [/SESSION_TOO_FRESH_(\d+)/, SessionFreshError],
   [/^Timeout$/, TimedOutError],
+  [/PASSKEY_CREDENTIAL_NOT_FOUND/, PasskeyCredentialNotFoundError],
 ]);

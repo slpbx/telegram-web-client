@@ -13,9 +13,10 @@ import {
   selectCurrentGifSearch,
   selectCurrentMessageList,
   selectIsChatWithBot,
-  selectIsChatWithSelf, selectThreadInfo,
+  selectIsChatWithSelf,
   selectTopic,
 } from '../../global/selectors';
+import { selectThreadInfo } from '../../global/selectors/threads';
 import { IS_TOUCH_ENV } from '../../util/browser/windowEnvironment';
 import buildClassName from '../../util/buildClassName';
 
@@ -30,7 +31,7 @@ import Loading from '../ui/Loading';
 
 import './GifSearch.scss';
 
-type OwnProps = {
+export type OwnProps = {
   onClose: NoneToVoidFunction;
   isActive: boolean;
 };
@@ -172,7 +173,7 @@ export default memo(withGlobal(
     const { chatId, threadId } = selectCurrentMessageList(global) || {};
     const chat = chatId ? selectChat(global, chatId) : undefined;
     const chatFullInfo = chatId ? selectChatFullInfo(global, chatId) : undefined;
-    const isChatWithBot = chat ? selectIsChatWithBot(global, chat) : undefined;
+    const isChatWithBot = chatId ? selectIsChatWithBot(global, chatId) : undefined;
     const isSavedMessages = Boolean(chatId) && selectIsChatWithSelf(global, chatId);
     const threadInfo = chatId && threadId ? selectThreadInfo(global, chatId, threadId) : undefined;
     const isMessageThread = Boolean(!threadInfo?.isCommentsInfo && threadInfo?.fromChannelId);

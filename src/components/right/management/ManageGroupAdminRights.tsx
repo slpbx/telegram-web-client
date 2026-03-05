@@ -1,5 +1,3 @@
-import type { FC } from '../../../lib/teact/teact';
-import type React from '../../../lib/teact/teact';
 import {
   memo, useCallback, useEffect, useMemo, useState,
 } from '../../../lib/teact/teact';
@@ -10,13 +8,15 @@ import type {
 } from '../../../api/types';
 import { ManagementScreens } from '../../../types';
 
-import { getUserFullName, isChatBasicGroup, isChatChannel } from '../../../global/helpers';
+import { getUserFullName, isChatBasicGroup, isChatChannel, isUserBot } from '../../../global/helpers';
 import { selectChat, selectChatFullInfo } from '../../../global/selectors';
 
 import useFlag from '../../../hooks/useFlag';
 import useHistoryBack from '../../../hooks/useHistoryBack';
-import useOldLang from '../../../hooks/useOldLang';
+import useLang from '../../../hooks/useLang';
+import useLastCallback from '../../../hooks/useLastCallback';
 
+import PasswordConfirmModal from '../../common/PasswordConfirmModal';
 import PrivateChatInfo from '../../common/PrivateChatInfo';
 import Checkbox from '../../ui/Checkbox';
 import ConfirmDialog from '../../ui/ConfirmDialog';
@@ -40,15 +40,13 @@ type StateProps = {
   adminMembersById?: Record<string, ApiChatMember>;
   hasFullInfo: boolean;
   currentUserId?: string;
-  isChannel: boolean;
   isFormFullyDisabled: boolean;
-  isForum?: boolean;
   defaultRights?: ApiChatAdminRights;
 };
 
 const CUSTOM_TITLE_MAX_LENGTH = 16;
 
-const ManageGroupAdminRights: FC<OwnProps & StateProps> = ({
+const ManageGroupAdminRights = ({
   isActive,
   isNewAdmin,
   selectedUserId,
@@ -58,20 +56,27 @@ const ManageGroupAdminRights: FC<OwnProps & StateProps> = ({
   currentUserId,
   adminMembersById,
   hasFullInfo,
-  isChannel,
-  isForum,
   isFormFullyDisabled,
   onClose,
   onScreenSelect,
-}) => {
-  const { updateChatAdmin } = getActions();
+}: OwnProps & StateProps) => {
+  const {
+    updateChatAdmin, transferChannelOwnership, showNotification,
+    openTwoFaCheckModal, verifyTransferOwnership,
+  } = getActions();
 
   const [permissions, setPermissions] = useState<ApiChatAdminRights>({});
   const [isTouched, setIsTouched] = useState(Boolean(isNewAdmin));
   const [isLoading, setIsLoading] = useState(false);
   const [isDismissConfirmationDialogOpen, openDismissConfirmationDialog, closeDismissConfirmationDialog] = useFlag();
+  const [isTransferDialogOpen, openTransferDialog, closeTransferDialog] = useFlag();
+  const [isPasswordModalOpen, openPasswordModal, closePasswordModal] = useFlag();
   const [customTitle, setCustomTitle] = useState('');
-  const lang = useOldLang();
+  const lang = useLang();
+
+  const isChannel = isChatChannel(chat);
+  const isForum = chat.isForum;
+  const hasDirectMessages = Boolean(chat.linkedMonoforumId);
 
   useHistoryBack({
     isActive,
@@ -186,7 +191,7 @@ const ManageGroupAdminRights: FC<OwnProps & StateProps> = ({
       : undefined;
 
     if (promotedByUser) {
-      return lang('EditAdminPromotedBy', getUserFullName(promotedByUser));
+      return lang('EditAdminPromotedBy', { user: getUserFullName(promotedByUser) });
     }
 
     return lang('ChannelAdmin');
@@ -197,6 +202,52 @@ const ManageGroupAdminRights: FC<OwnProps & StateProps> = ({
     setCustomTitle(value);
     setIsTouched(true);
   }, []);
+
+  const handleStartTransfer = useLastCallback(() => {
+    if (!selectedUserId) return;
+
+    verifyTransferOwnership({
+      chatId: chat.id,
+      userId: selectedUserId,
+      onSuccess: openTransferDialog,
+      onPasswordMissing: openTwoFaCheckModal,
+      onPasswordTooFresh: openTwoFaCheckModal,
+      onSessionTooFresh: openTwoFaCheckModal,
+    });
+  });
+
+  const handleConfirmTransfer = useLastCallback(() => {
+    closeTransferDialog();
+    openPasswordModal();
+  });
+
+  const handleTransferOwnership = useLastCallback((password: string) => {
+    if (!selectedUserId) return;
+
+    const user = usersById[selectedUserId];
+    const userName = user ? getUserFullName(user) : '';
+
+    transferChannelOwnership({
+      chatId: chat.id,
+      userId: selectedUserId,
+      password,
+      onSuccess: () => {
+        showNotification({
+          message: lang(
+            isChannel ? 'EditAdminTransferChannelOwnershipSuccess' : 'EditAdminTransferGroupOwnershipSuccess',
+            { user: userName },
+          ),
+        });
+      },
+    });
+
+    closePasswordModal();
+  });
+
+  const selectedUser = selectedUserId ? usersById[selectedUserId] : undefined;
+  const canTransferOwnership = Boolean(
+    chat.isCreator && selectedUser && !isUserBot(selectedUser) && selectedUserId !== currentUserId,
+  );
 
   if (!selectedChatMember) {
     return undefined;
@@ -290,18 +341,28 @@ const ManageGroupAdminRights: FC<OwnProps & StateProps> = ({
               onChange={handlePermissionChange}
             />
           </div>
-          {!isChannel && (
+          {hasDirectMessages && (
             <div className="ListItem">
               <Checkbox
-                name="banUsers"
-                checked={Boolean(permissions.banUsers)}
-                label={lang('EditAdminBanUsers')}
+                name="manageDirectMessages"
+                checked={Boolean(permissions.manageDirectMessages)}
+                label={lang('EditAdminManageDirect')}
                 blocking
-                disabled={getControlIsDisabled('banUsers')}
+                disabled={getControlIsDisabled('manageDirectMessages')}
                 onChange={handlePermissionChange}
               />
             </div>
           )}
+          <div className="ListItem">
+            <Checkbox
+              name="banUsers"
+              checked={Boolean(permissions.banUsers)}
+              label={lang('EditAdminBanUsers')}
+              blocking
+              disabled={getControlIsDisabled('banUsers')}
+              onChange={handlePermissionChange}
+            />
+          </div>
           <div className="ListItem">
             <Checkbox
               name="inviteUsers"
@@ -349,7 +410,7 @@ const ManageGroupAdminRights: FC<OwnProps & StateProps> = ({
               <Checkbox
                 name="manageTopics"
                 checked={Boolean(permissions.manageTopics)}
-                label={lang('ManageTopicsPermission')}
+                label={lang('EditAdminManageTopics')}
                 blocking
                 disabled={getControlIsDisabled('manageTopics')}
                 onChange={handlePermissionChange}
@@ -371,7 +432,7 @@ const ManageGroupAdminRights: FC<OwnProps & StateProps> = ({
 
           {isFormFullyDisabled && (
             <p className="section-info mb-4" dir="auto">
-              {lang('Channel.EditAdmin.CannotEdit')}
+              {lang('EditAdminUnavailable')}
             </p>
           )}
 
@@ -379,6 +440,7 @@ const ManageGroupAdminRights: FC<OwnProps & StateProps> = ({
             <InputText
               id="admin-title"
               label={lang('EditAdminRank')}
+              className="input-admin-title"
               onChange={handleCustomTitleChange}
               value={customTitle}
               disabled={isFormFullyDisabled}
@@ -386,6 +448,11 @@ const ManageGroupAdminRights: FC<OwnProps & StateProps> = ({
             />
           )}
 
+          {canTransferOwnership && currentUserId !== selectedUserId && !isFormFullyDisabled && !isNewAdmin && (
+            <ListItem icon="key" ripple onClick={handleStartTransfer}>
+              {lang(isChannel ? 'EditAdminTransferChannelOwnership' : 'EditAdminTransferGroupOwnership')}
+            </ListItem>
+          )}
           {currentUserId !== selectedUserId && !isFormFullyDisabled && !isNewAdmin && (
             <ListItem icon="delete" ripple destructive onClick={openDismissConfirmationDialog}>
               {lang('EditAdminRemoveAdmin')}
@@ -407,12 +474,30 @@ const ManageGroupAdminRights: FC<OwnProps & StateProps> = ({
         <ConfirmDialog
           isOpen={isDismissConfirmationDialogOpen}
           onClose={closeDismissConfirmationDialog}
-          text="Are you sure you want to dismiss this admin?"
-          confirmLabel={lang('Channel.Admin.Dismiss')}
+          text={lang('EditAdminConfirmDismissText')}
+          confirmLabel={lang('EditAdminConfirmDismiss')}
           confirmHandler={handleDismissAdmin}
           confirmIsDestructive
         />
       )}
+      <ConfirmDialog
+        isOpen={isTransferDialogOpen}
+        onClose={closeTransferDialog}
+        title={lang(isChannel ? 'EditAdminTransferChannelOwnership' : 'EditAdminTransferGroupOwnership')}
+        textParts={lang('EditAdminTransferOwnershipText', {
+          chat: chat.title,
+          user: selectedUserId ? getUserFullName(usersById[selectedUserId]) : '',
+        }, { withNodes: true, withMarkdown: true })}
+        confirmLabel={lang('EditAdminTransferChangeOwner')}
+        confirmHandler={handleConfirmTransfer}
+      />
+      <PasswordConfirmModal
+        isOpen={isPasswordModalOpen}
+        title={lang(isChannel ? 'EditAdminTransferChannelOwnership' : 'EditAdminTransferGroupOwnership')}
+        confirmLabel={lang('EditAdminTransferChangeOwner')}
+        onClose={closePasswordModal}
+        onSubmit={handleTransferOwnership}
+      />
     </div>
   );
 };
@@ -423,16 +508,12 @@ export default memo(withGlobal<OwnProps>(
     const fullInfo = selectChatFullInfo(global, chatId);
     const { byId: usersById } = global.users;
     const { currentUserId } = global;
-    const isChannel = isChatChannel(chat);
     const isFormFullyDisabled = !(chat.isCreator || isPromotedByCurrentUser);
-    const isForum = chat.isForum;
 
     return {
       chat,
       usersById,
       currentUserId,
-      isChannel,
-      isForum,
       isFormFullyDisabled,
       defaultRights: chat.adminRights,
       hasFullInfo: Boolean(fullInfo),

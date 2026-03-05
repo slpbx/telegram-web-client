@@ -21,9 +21,9 @@ import {
   updatePeersWithStories,
   updatePoll,
   updateStealthMode,
-  updateThreadInfos,
 } from '../../reducers';
 import { updateTabState } from '../../reducers/tabs';
+import { updateThreadInfo } from '../../reducers/threads';
 import {
   selectPeer,
   selectPeerStories,
@@ -39,7 +39,11 @@ addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
       } = update;
       if (users) global = addUsers(global, users);
       if (chats) global = addChats(global, chats);
-      if (threadInfos) global = updateThreadInfos(global, threadInfos);
+      if (threadInfos) {
+        threadInfos.forEach((threadInfo) => {
+          global = updateThreadInfo(global, threadInfo);
+        });
+      }
       if (polls) {
         polls.forEach((poll) => {
           global = updatePoll(global, poll.id, poll);
@@ -240,6 +244,40 @@ addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
 
     case 'newMessage': {
       const action = update.message.content?.action;
+
+      if (action?.type === 'starGift' && update.message.isOutgoing) {
+        const { gift } = action;
+        if (!gift.isAuction || update.message.chatId === SERVICE_NOTIFICATIONS_USER_ID) return undefined;
+
+        const { chatId, id } = update.message;
+
+        if (!chatId || !id) return;
+
+        Object.values(global.byTabId).forEach(({ id: tabId }) => {
+          actions.focusMessage({
+            chatId,
+            messageId: id,
+            tabId,
+          });
+          actions.closeGiftAuctionBidModal({ tabId });
+          actions.closeGiftModal({ tabId });
+
+          actions.showNotification({
+            icon: 'auction-filled',
+            message: {
+              key: 'GiftAuctionWonNotification',
+              variables: {
+                gift: gift.title,
+              },
+            },
+            tabId,
+          });
+
+          actions.requestConfetti({ withStars: true, tabId });
+        });
+        return undefined;
+      }
+
       if (!update.message.isOutgoing && update.message.chatId !== SERVICE_NOTIFICATIONS_USER_ID) return undefined;
       if (action?.type !== 'starGiftUnique') return undefined;
       const actionStarGift = action.gift;
@@ -271,7 +309,7 @@ addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
           if (receiver) {
             actions.focusMessage({
               chatId: receiver.id,
-              messageId: update.message.id!,
+              messageId: update.message.id,
               tabId,
             });
 
@@ -300,6 +338,15 @@ addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
           }, tabId);
 
           actions.reloadPeerSavedGifts({ peerId: global.currentUserId! });
+        }
+
+        if (tabState.giftCraftModal && actionStarGift.isCrafted) {
+          global = updateTabState(global, {
+            giftCraftModal: {
+              ...tabState.giftCraftModal,
+              craftResult: { success: true, gift: actionStarGift },
+            },
+          }, tabId);
         }
       });
 

@@ -2,6 +2,7 @@ import type { ApiPrivacySettings, ApiUsername } from '../../../api/types';
 import type { ActionReturnType } from '../../types';
 import {
   ProfileEditProgress,
+  SettingsScreens,
   UPLOADING_WALLPAPER_SLUG,
 } from '../../../types';
 
@@ -11,6 +12,7 @@ import {
   MUTE_INDEFINITE_TIMESTAMP,
   UNMUTE_TIMESTAMP,
 } from '../../../config';
+import { toCredentialCreationOptions } from '../../../util/browser/passkeys';
 import { getCurrentTabId } from '../../../util/establishMultitabRole';
 import { buildCollectionByKey } from '../../../util/iteratees';
 import { requestPermission, subscribe, unsubscribe } from '../../../util/notifications';
@@ -19,7 +21,7 @@ import requestActionTimeout from '../../../util/requestActionTimeout';
 import { getServerTime } from '../../../util/serverTime';
 import { callApi } from '../../../api/gramjs';
 import { buildApiInputPrivacyRules } from '../../helpers';
-import { addActionHandler, getGlobal, setGlobal } from '../../index';
+import { addActionHandler, getGlobal, getPromiseActions, setGlobal } from '../../index';
 import {
   addBlockedUser, addNotifyExceptions, deletePeerPhoto,
   removeBlockedUser, replaceSettings, updateChat,
@@ -101,6 +103,17 @@ addActionHandler('updateProfile', async (global, actions, payload): Promise<void
   if (photo) {
     actions.loadFullUser({ userId: currentUserId, withPhotos: true });
   }
+});
+
+addActionHandler('updateBirthday', async (global, actions, payload): Promise<void> => {
+  const { birthday } = payload;
+  const { currentUserId } = global;
+  if (!currentUserId) return;
+
+  const result = await callApi('updateBirthday', birthday);
+  if (!result) return;
+
+  actions.loadFullUser({ userId: currentUserId });
 });
 
 addActionHandler('updateProfilePhoto', async (global, actions, payload): Promise<void> => {
@@ -395,7 +408,12 @@ addActionHandler('loadLanguages', async (global): Promise<void> => {
   setGlobal(global);
 });
 
-addActionHandler('loadPrivacySettings', async (global): Promise<void> => {
+addActionHandler('loadPrivacySettings', async (global, actions, payload): Promise<void> => {
+  const { skipIfCached } = payload;
+  if (skipIfCached && Object.keys(global.settings.privacy).length > 0) {
+    return;
+  }
+
   if (selectIsCurrentUserFrozen(global)) return;
 
   const result = await Promise.all([
@@ -620,9 +638,9 @@ addActionHandler('loadCountryList', async (global, actions, payload): Promise<vo
 });
 
 addActionHandler('ensureTimeFormat', async (global, actions): Promise<void> => {
-  if (global.authNearestCountry) {
+  if (global.auth.nearestCountry) {
     const timeFormat = COUNTRIES_WITH_12H_TIME_FORMAT
-      .has(global.authNearestCountry.toUpperCase()) ? '12h' : '24h';
+      .has(global.auth.nearestCountry.toUpperCase()) ? '12h' : '24h';
     actions.setSharedSettingOption({ timeFormat });
     setTimeFormat(timeFormat);
   }
@@ -642,7 +660,7 @@ addActionHandler('ensureTimeFormat', async (global, actions): Promise<void> => {
 addActionHandler('loadAppConfig', async (global, actions, payload): Promise<void> => {
   const hash = payload?.hash;
 
-  const appConfig = await callApi('fetchAppConfig', hash);
+  const appConfig = await callApi('fetchAppConfig', { hash });
   if (!appConfig) return;
 
   requestActionTimeout({
@@ -675,6 +693,32 @@ addActionHandler('loadConfig', async (global): Promise<void> => {
     config,
   };
   setGlobal(global);
+});
+
+addActionHandler('loadPromoData', async (global): Promise<void> => {
+  const promoData = await callApi('fetchPromoData');
+
+  global = getGlobal();
+  const timeout = (promoData?.expires || 0) - getServerTime();
+  if (timeout > 0) {
+    requestActionTimeout({
+      action: 'loadPromoData',
+      payload: undefined,
+    }, timeout * 1000);
+  }
+
+  global = {
+    ...global,
+    promoData,
+  };
+  setGlobal(global);
+});
+
+addActionHandler('dismissSuggestion', async (global, actions, payload): Promise<void> => {
+  const { suggestion } = payload;
+  await callApi('dismissSuggestion', suggestion);
+
+  actions.loadPromoData();
 });
 
 addActionHandler('loadPeerColors', async (global): Promise<void> => {
@@ -903,4 +947,80 @@ addActionHandler('sortChatUsernames', async (global, actions, payload): Promise<
     global = updateChat(global, chatId, { usernames: prevUsernames });
     setGlobal(global);
   }
+});
+
+addActionHandler('loadPasskeys', async (global): Promise<void> => {
+  const result = await callApi('fetchPasskeys');
+  if (!result) {
+    global = getGlobal();
+    global = {
+      ...global,
+      settings: {
+        ...global.settings,
+        passkeys: undefined,
+      },
+    };
+    setGlobal(global);
+    return;
+  }
+
+  global = getGlobal();
+  global = {
+    ...global,
+    settings: {
+      ...global.settings,
+      passkeys: result.passkeys,
+    },
+  };
+  setGlobal(global);
+});
+
+addActionHandler('startPasskeyRegistration', async (global, actions, payload): Promise<void> => {
+  const { tabId = getCurrentTabId() } = payload || {};
+
+  const preparedOptions = await callApi('initPasskeyRegistration');
+  if (!preparedOptions) return;
+
+  const options = toCredentialCreationOptions(preparedOptions);
+  const credential = await navigator.credentials.create(options).catch((e: unknown) => {
+    if (e instanceof DOMException && e.name === 'NotAllowedError') {
+      actions.showNotification({
+        message: {
+          key: 'PasskeyCreateError',
+        },
+        tabId,
+      });
+      return undefined;
+    }
+    throw e;
+  });
+  if (!credential) return;
+  const publicKeyCredential = credential as PublicKeyCredential;
+
+  const result = await callApi('registerPasskey', publicKeyCredential.toJSON());
+  if (!result) return;
+
+  await getPromiseActions().loadPasskeys();
+  actions.openSettingsScreen({ screen: SettingsScreens.Passkeys, tabId });
+});
+
+addActionHandler('deletePasskey', async (global, actions, payload): Promise<void> => {
+  const { id } = payload;
+
+  const passkeys = global.settings.passkeys;
+  if (passkeys?.length) {
+    const filteredPasskeys = passkeys.filter((passkey) => passkey.id !== id);
+    global = {
+      ...global,
+      settings: {
+        ...global.settings,
+        passkeys: filteredPasskeys,
+      },
+    };
+    setGlobal(global);
+  }
+
+  await callApi('deletePasskey', { id });
+
+  actions.loadPasskeys();
 });

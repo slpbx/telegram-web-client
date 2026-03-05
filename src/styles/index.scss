@@ -16,7 +16,8 @@ body {
   Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
   --font-family-monospace: "Cascadia Mono", "Roboto Mono", "Droid Sans Mono", 'SF Mono', "Menlo", "Ubuntu Mono",
   "Consolas", monospace;
-  --font-family-rounded: -ui-rounded, "Numbers Rounded", "Roboto", "Helvetica Neue", sans-serif;
+  --font-family-numbers-rounded: ui-rounded, "Numbers Rounded", "Roboto", "Helvetica Neue", sans-serif;
+  --font-family-rounded: "Nunito", "Roboto", "Helvetica Neue", sans-serif;
   --font-family-condensed: "Roboto Condensed", "Roboto", "Helvetica Neue", sans-serif;
   --font-weight-semibold: 500; // Note: Roboto is naturally quite bold, so 500 works well as default
 
@@ -33,13 +34,14 @@ body {
   font-family: var(--font-family);
   font-size: 16px;
   font-weight: var(--font-weight-normal);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
   line-height: 1.5;
   color: var(--color-text);
   text-align: left;
 
   background-color: var(--color-background);
+
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 
   @media (max-width: 600px) {
     height: calc(var(--vh, 1vh) * 100);
@@ -69,6 +71,7 @@ html.theme-dark {
 
 body.is-ios,
 body.is-macos {
+  --font-family-rounded: ui-rounded, "Nunito", "Roboto", "Helvetica Neue", sans-serif;
   --font-family: system-ui, -apple-system, BlinkMacSystemFont, "Roboto", "Apple Color Emoji", "Helvetica Neue",
   sans-serif;
   --font-weight-semibold: 600;
@@ -233,6 +236,10 @@ body:not(.is-ios) {
   touch-action: none;
 }
 
+.flex-grow {
+  flex-grow: 1;
+}
+
 .icon {
   @include iconsMixins.icon;
 }
@@ -351,7 +358,14 @@ body:not(.is-ios) {
   margin-inline-start: 0.375em; // Prevent sticking to the text without using `white-space: pre`
   margin-inline-end: 0.2em; // Prevent sticking to the text without using `white-space: pre`
   line-height: inherit; // Vertical centring
-  vertical-align: text-bottom; // As regular text
+  vertical-align: text-top; // As regular text
+}
+
+.next-arrow-icon {
+  font-size: var(--next-arrow-size, 0.5625em);
+  font-weight: var(--next-arrow-weight, inherit);
+  line-height: inherit;
+  vertical-align: middle;
 }
 
 .shared-canvas-container {
@@ -376,7 +390,7 @@ body:not(.is-ios) {
     content: "";
 
     position: absolute;
-    z-index: 1;
+    z-index: var(--z-scroll-notch);
     top: 0;
     left: 0;
 
@@ -393,6 +407,15 @@ body:not(.is-ios) {
     &::before {
       opacity: 1;
     }
+  }
+}
+
+.with-bottom-notch {
+  border-bottom: 1px solid var(--color-borders);
+  transition: border-color 0.2s ease-in-out;
+
+  &.scrolled-to-end {
+    border-bottom-color: transparent;
   }
 }
 

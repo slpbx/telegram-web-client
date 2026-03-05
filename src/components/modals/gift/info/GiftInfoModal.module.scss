@@ -2,6 +2,31 @@
   overflow: hidden;
 }
 
+.headerRightButtons {
+  position: absolute;
+  z-index: 3;
+  top: 0.875rem;
+  right: 3rem;
+
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.craftButton {
+  position: relative;
+}
+
+.uniqueTitleNumber {
+  &.small {
+    font-size: 0.75em;
+  }
+
+  &.regular {
+    font-size: 0.875em;
+  }
+}
+
 .checkBox {
   margin-inline: -1rem;
 }
@@ -42,52 +67,46 @@
   margin-bottom: 0;
 }
 
-.soldOut {
-  color: var(--color-error);
+.warningDescription {
+  color: var(--color-error) !important;
 }
 
-.modalContent {
-  position: relative;
-  max-height: min(97vh, 48rem) !important;
-}
-
-.headerSplitButton {
+.moreMenuButton {
   position: absolute;
-  right: 0.375rem;
-
-  display: flex;
-  flex-direction: row;
-
-  border-radius: 1rem;
-
-  backdrop-filter: blur(0.5rem);
+  z-index: 1;
+  top: 0.875rem;
+  right: 0.875rem;
 }
 
-.headerButton,
+.closeButton {
+  position: absolute;
+  z-index: 1;
+  top: 0.875rem;
+  left: 0.875rem;
+}
+
 .giftResalePriceContainer {
   pointer-events: auto;
+
+  position: relative;
 
   display: flex;
   align-items: center;
   justify-content: center;
 
   width: fit-content;
-  height: 1.75rem;
+  height: 1.875rem;
   padding: 0.25rem;
   padding-inline: 0.625rem;
   border-radius: 1rem;
 
-  font-size: 1rem;
+  font-size: 0.875rem;
   font-weight: var(--font-weight-medium);
   color: white;
 
-  background-color: rgba(0, 0, 0, 0.2);
-  outline: none !important;
-}
-
-.giftResalePriceContainer {
-  font-size: 0.75rem;
+  background-color: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(25px);
+  outline: none !important;
 }
 
 .starAmountIcon,
@@ -135,6 +154,24 @@
   font-size: 0.875rem;
   color: var(--color-text-secondary);
   text-align: center;
+}
+
+.footerHint {
+  display: flex;
+  align-items: center;
+
+  font-size: 0.75rem;
+  line-height: 1.125rem;
+  color: var(--color-white);
+  text-align: center;
+  text-transform: none;
+
+  opacity: 0.6;
+}
+
+.buyButton {
+  display: flex;
+  flex-direction: column;
 }
 
 .unknown {
@@ -206,4 +243,10 @@
 
 .removeMessageButton {
   color: var(--color-primary) !important;
+}
+
+.scrollableTable {
+  overflow-y: auto;
+  flex-shrink: 1;
+  min-height: 0;
 }

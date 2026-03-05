@@ -1,4 +1,4 @@
-import { memo, useMemo } from '../../../../lib/teact/teact';
+import { memo, useCallback, useMemo } from '../../../../lib/teact/teact';
 import { getActions } from '../../../../global';
 
 import type {
@@ -41,12 +41,7 @@ type OwnProps = {
 };
 
 const GIFT_STICKER_SIZE = 36;
-
-function selectOptionalPeer(peerId?: string) {
-  return (global: GlobalState) => (
-    peerId ? selectPeer(global, peerId) : undefined
-  );
-}
+const AVATAR_SIZE = 42;
 
 const StarsTransactionItem = ({ transaction, className }: OwnProps) => {
   const { openStarsTransactionModal } = getActions();
@@ -62,7 +57,11 @@ const StarsTransactionItem = ({ transaction, className }: OwnProps) => {
   const oldLang = useOldLang();
 
   const peerId = transactionPeer.type === 'peer' ? transactionPeer.id : undefined;
-  const peer = useSelector(selectOptionalPeer(peerId));
+
+  const peerSelector = useCallback((global: GlobalState) => {
+    return peerId ? selectPeer(global, peerId) : undefined;
+  }, [peerId]);
+  const peer = useSelector(peerSelector);
   const starGift = transaction.starGift;
   const isUniqueGift = starGift?.type === 'starGiftUnique';
   const giftSticker = starGift && getStickerFromGift(starGift);
@@ -159,7 +158,7 @@ const StarsTransactionItem = ({ transaction, className }: OwnProps) => {
 
     return (
       <>
-        <Avatar size="medium" webPhoto={photo} peer={data.avatarPeer} />
+        <Avatar size={AVATAR_SIZE} webPhoto={photo} peer={data.avatarPeer} />
         {Boolean(subscriptionPeriod) && (
           <StarIcon className={styles.subscriptionStar} type="gold" size="small" />
         )}

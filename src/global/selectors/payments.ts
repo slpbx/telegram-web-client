@@ -1,7 +1,7 @@
 import type { GlobalState, TabArgs } from '../types';
 
 import { DEFAULT_GIFT_PROFILE_FILTER_OPTIONS } from '../../config';
-import arePropsShallowEqual from '../../util/arePropsShallowEqual';
+import { areRecordsShallowEqual } from '../../util/areShallowEqual';
 import { getCurrentTabId } from '../../util/establishMultitabRole';
 import {
   getHasAdminRight, isChatAdmin, isChatChannel,
@@ -96,7 +96,7 @@ export function selectIsGiftProfileFilterDefault<T extends GlobalState>(
   global: T,
   ...[tabId = getCurrentTabId()]: TabArgs<T>
 ) {
-  return arePropsShallowEqual(selectTabState(global, tabId).savedGifts.filter, DEFAULT_GIFT_PROFILE_FILTER_OPTIONS);
+  return areRecordsShallowEqual(selectTabState(global, tabId).savedGifts.filter, DEFAULT_GIFT_PROFILE_FILTER_OPTIONS);
 }
 
 export function selectActiveGiftsCollectionId<T extends GlobalState>(
@@ -105,4 +105,13 @@ export function selectActiveGiftsCollectionId<T extends GlobalState>(
   ...[tabId = getCurrentTabId()]: TabArgs<T>
 ): ProfileCollectionKey {
   return selectTabState(global, tabId).savedGifts.activeCollectionByPeerId?.[peerId] || 'all';
+}
+
+export function selectStarsGiftResaleCommission<T extends GlobalState>(global: T) {
+  const permille = global.appConfig?.starsStargiftResaleCommissionPermille;
+  return permille !== undefined ? permille / 1000 : undefined;
+}
+export function selectTonGiftResaleCommission<T extends GlobalState>(global: T) {
+  const permille = global.appConfig?.tonStargiftResaleCommissionPermille;
+  return permille !== undefined ? permille / 1000 : undefined;
 }

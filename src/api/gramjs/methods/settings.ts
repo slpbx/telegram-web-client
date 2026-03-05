@@ -3,12 +3,12 @@ import { RPCError } from '../../../lib/gramjs/errors';
 
 import type { LANG_PACKS } from '../../../config';
 import type {
-  ApiAppConfig,
-  ApiConfig,
+  ApiBirthday,
   ApiDisallowedGiftsSettings,
   ApiInputPrivacyRules,
   ApiLanguage,
   ApiNotifyPeerType,
+  ApiPasskeyRegistrationOption,
   ApiPeerNotifySettings,
   ApiPhoto,
   ApiPrivacyKey,
@@ -17,6 +17,7 @@ import type {
 
 import {
   ACCEPTABLE_USERNAME_ERRORS,
+  DEBUG,
   LANG_PACK,
   MUTE_INDEFINITE_TIMESTAMP,
   UNMUTE_TIMESTAMP,
@@ -24,13 +25,12 @@ import {
 import { buildCollectionByKey } from '../../../util/iteratees';
 import { toJSNumber } from '../../../util/numbers';
 import { BLOCKED_LIST_LIMIT } from '../../../limits';
-import { buildAppConfig } from '../apiBuilders/appConfig';
 import { buildApiPhoto, buildPrivacyRules } from '../apiBuilders/common';
 import { buildApiDisallowedGiftsSettings } from '../apiBuilders/gifts';
 import {
-  buildApiConfig,
   buildApiCountryList,
   buildApiLanguage,
+  buildApiPasskey,
   buildApiSession,
   buildApiTimezone,
   buildApiWallpaper,
@@ -47,12 +47,14 @@ import {
 import {
   buildDisallowedGiftsSettings,
   buildInputChannel,
-  buildInputPeer, buildInputPhoto,
+  buildInputPeer,
+  buildInputPhoto,
   buildInputPrivacyKey,
   buildInputPrivacyRules,
   buildInputUser,
   DEFAULT_PRIMITIVES,
 } from '../gramjsBuilders';
+import { buildInputPasskeyCredential } from '../gramjsBuilders/passkeys';
 import { addPhotoToLocalDb } from '../helpers/localDb';
 import localDb from '../localDb';
 import { getClient, invokeRequest, uploadFile } from './client';
@@ -100,6 +102,18 @@ export async function checkUsername(username: string) {
 
 export function updateUsername(username: string) {
   return invokeRequest(new GramJs.account.UpdateUsername({ username }), {
+    shouldReturnTrue: true,
+  });
+}
+
+export function updateBirthday(birthday?: ApiBirthday) {
+  return invokeRequest(new GramJs.account.UpdateBirthday({
+    birthday: birthday ? new GramJs.Birthday({
+      day: birthday.day,
+      month: birthday.month,
+      year: birthday.year,
+    }) : undefined,
+  }), {
     shouldReturnTrue: true,
   });
 }
@@ -602,21 +616,6 @@ export function updateContentSettings(isEnabled: boolean) {
   }));
 }
 
-export async function fetchAppConfig(hash?: number): Promise<ApiAppConfig | undefined> {
-  const result = await invokeRequest(new GramJs.help.GetAppConfig({ hash: hash ?? DEFAULT_PRIMITIVES.INT }));
-  if (!result || result instanceof GramJs.help.AppConfigNotModified) return undefined;
-
-  const { config, hash: resultHash } = result;
-  return buildAppConfig(config, resultHash);
-}
-
-export async function fetchConfig(): Promise<ApiConfig | undefined> {
-  const result = await invokeRequest(new GramJs.help.GetConfig());
-  if (!result) return undefined;
-
-  return buildApiConfig(result);
-}
-
 export async function fetchPeerColors(hash?: number) {
   const result = await invokeRequest(new GramJs.help.GetPeerColors({
     hash: hash ?? DEFAULT_PRIMITIVES.INT,
@@ -771,4 +770,49 @@ export function reorderUsernames({ chatId, accessHash, usernames }: {
   return invokeRequest(new GramJs.account.ReorderUsernames({
     order: usernames,
   }));
+}
+
+export async function fetchPasskeys() {
+  const result = await invokeRequest(new GramJs.account.GetPasskeys());
+  if (!result) {
+    return undefined;
+  }
+
+  return {
+    passkeys: result.passkeys.map(buildApiPasskey),
+  };
+}
+
+export async function initPasskeyRegistration() {
+  const result = await invokeRequest(new GramJs.account.InitPasskeyRegistration());
+  if (!result) {
+    return undefined;
+  }
+
+  try {
+    return JSON.parse(result.options.data) as ApiPasskeyRegistrationOption;
+  } catch (err: unknown) {
+    if (DEBUG) {
+      // eslint-disable-next-line no-console
+      console.warn('Failed to parse passkey registration options:', err);
+    }
+  }
+  return undefined;
+}
+
+export async function registerPasskey(credentialJson: PublicKeyCredentialJSON) {
+  const result = await invokeRequest(new GramJs.account.RegisterPasskey({
+    credential: buildInputPasskeyCredential(credentialJson),
+  }));
+  if (!result) {
+    return undefined;
+  }
+
+  return buildApiPasskey(result);
+}
+
+export function deletePasskey({ id }: { id: string }) {
+  return invokeRequest(new GramJs.account.DeletePasskey({ id }), {
+    shouldReturnTrue: true,
+  });
 }

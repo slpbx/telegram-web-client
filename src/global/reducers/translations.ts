@@ -1,5 +1,5 @@
 import type { ApiFormattedText } from '../../api/types';
-import type { TranslatedMessage } from '../../types';
+import type { TextSummary, TranslatedMessage } from '../../types';
 import type { GlobalState, TabArgs } from '../types';
 
 import { getCurrentTabId } from '../../util/establishMultitabRole';
@@ -71,8 +71,9 @@ export function updateMessageTranslations<T extends GlobalState>(
   global: T, chatId: string, messageIds: number[], toLanguageCode: string, translations: ApiFormattedText[],
 ) {
   messageIds.forEach((messageId, index) => {
+    const text = translations[index];
     global = updateMessageTranslation(global, chatId, messageId, toLanguageCode, {
-      text: translations[index],
+      text: text.text.length ? text : undefined,
       isPending: false,
     });
   });
@@ -161,4 +162,45 @@ export function removeRequestedMessageTranslation<T extends GlobalState>(
   }, tabId);
 
   return global;
+}
+
+export function updateMessageSummary<T extends GlobalState>(
+  global: T, chatId: string, messageId: number, summary: TextSummary, toLanguageCode?: string,
+) {
+  if (toLanguageCode) {
+    return updateMessageTranslation(global, chatId, messageId, toLanguageCode, { summary });
+  }
+
+  const chatSummaries = global.messages.byChatId[chatId]?.summaryById;
+  return replaceGeneralSummaryStore(global, chatId, { ...chatSummaries, [messageId]: summary });
+}
+
+export function clearMessageSummary<T extends GlobalState>(
+  global: T, chatId: string, messageId: number,
+) {
+  const chatSummaries = global.messages.byChatId[chatId]?.summaryById;
+  if (!chatSummaries) return global;
+
+  const newSummaryById = omit(chatSummaries, [messageId]);
+  return replaceGeneralSummaryStore(global, chatId, newSummaryById);
+}
+
+function replaceGeneralSummaryStore<T extends GlobalState>(
+  global: T, chatId: string, update: Record<number, TextSummary>,
+): T {
+  if (!global.messages.byChatId[chatId]) return global; // Unloaded chats should not have summaries
+
+  return {
+    ...global,
+    messages: {
+      ...global.messages,
+      byChatId: {
+        ...global.messages.byChatId,
+        [chatId]: {
+          ...global.messages.byChatId[chatId],
+          summaryById: update,
+        },
+      },
+    },
+  };
 }

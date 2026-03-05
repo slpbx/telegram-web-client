@@ -1,4 +1,3 @@
-import type { FC } from '../../lib/teact/teact';
 import { memo, useEffect } from '../../lib/teact/teact';
 import { getActions, withGlobal } from '../../global';
 
@@ -9,7 +8,7 @@ import type { MessageList } from '../../types';
 
 import { selectCurrentMessageList, selectTabState } from '../../global/selectors';
 import getReadableErrorText from '../../util/getReadableErrorText';
-import renderText from '../common/helpers/renderText';
+import { renderTextWithEntities } from '../common/helpers/renderTextWithEntities';
 
 import useFlag from '../../hooks/useFlag';
 import useLang from '../../hooks/useLang';
@@ -22,7 +21,7 @@ type StateProps = {
   dialogs: (ApiError | ApiContact)[];
 };
 
-const Dialogs: FC<StateProps> = ({ dialogs, currentMessageList }) => {
+const Dialogs = ({ dialogs, currentMessageList }: StateProps) => {
   const {
     dismissDialog,
     sendMessage,
@@ -65,7 +64,7 @@ const Dialogs: FC<StateProps> = ({ dialogs, currentMessageList }) => {
         {lang(
           'AreYouSureShareMyContactInfoBot',
           undefined,
-          { withNodes: true, withMarkdown: true, renderTextFilters: ['br', 'emoji'],
+          { withNodes: true, withMarkdown: true, renderTextFilters: ['br'],
           })}
         <div className="dialog-buttons mt-2">
           <Button
@@ -92,7 +91,7 @@ const Dialogs: FC<StateProps> = ({ dialogs, currentMessageList }) => {
         title={getErrorHeader(error)}
       >
         {error.hasErrorKey ? getReadableErrorText(error)
-          : renderText(error.message, ['simple_markdown', 'emoji', 'br'])}
+          : renderTextWithEntities({ text: error.message, entities: error.entities })}
         <div className="dialog-buttons mt-2">
           <Button isText onClick={closeModal}>{lang('OK')}</Button>
         </div>

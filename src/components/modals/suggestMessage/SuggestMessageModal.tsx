@@ -14,7 +14,7 @@ import {
   TON_CURRENCY_CODE,
 } from '../../../config';
 import { selectIsMonoforumAdmin, selectPeer } from '../../../global/selectors';
-import { selectDraft } from '../../../global/selectors/messages';
+import { selectDraft } from '../../../global/selectors/threads';
 import buildClassName from '../../../util/buildClassName';
 import { formatScheduledDateTime, formatShortDuration } from '../../../util/dates/dateFormat';
 import { convertTonFromNanos, convertTonToNanos } from '../../../util/formatCurrency';

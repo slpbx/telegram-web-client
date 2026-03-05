@@ -32,7 +32,9 @@ export const IS_LINUX = PLATFORM_ENV === 'Linux';
 export const IS_IOS = PLATFORM_ENV === 'iOS';
 export const IS_ANDROID = PLATFORM_ENV === 'Android';
 export const IS_MOBILE = IS_IOS || IS_ANDROID;
-export const IS_SAFARI = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+export const IS_CHROMIUM = navigator.userAgentData?.brands.some((data) => data.brand === 'Chromium')
+  || /Chrom(e|ium)\//.test(navigator.userAgent);
+export const IS_SAFARI = !IS_CHROMIUM && /applewebkit/i.test(navigator.userAgent);
 export const IS_YA_BROWSER = navigator.userAgent.includes('YaBrowser');
 export const IS_FIREFOX = navigator.userAgent.toLowerCase().includes('firefox')
   || navigator.userAgent.toLowerCase().includes('iceweasel')
@@ -109,8 +111,11 @@ export const IS_BACKDROP_BLUR_SUPPORTED = CSS.supports('backdrop-filter: blur()'
 export const IS_INSTALL_PROMPT_SUPPORTED = 'onbeforeinstallprompt' in window;
 export const IS_OPEN_IN_NEW_TAB_SUPPORTED = false && !(IS_PWA && IS_MOBILE);
 export const IS_TRANSLATION_SUPPORTED = !IS_TEST;
+export const IS_TRANSLATION_DETECTOR_SUPPORTED = 'LanguageDetector' in window;
 export const IS_VIEW_TRANSITION_SUPPORTED = CSS.supports('view-transition-class: test')
-  && !IS_FIREFOX; // Fix flashing elements before removing
+  && !IS_FIREFOX; // https://bugzilla.mozilla.org/show_bug.cgi?id=1994547
+export const IS_WEBAUTHN_SUPPORTED = navigator.credentials && window.PublicKeyCredential
+  && 'parseCreationOptionsFromJSON' in PublicKeyCredential;
 
 export const MESSAGE_LIST_SENSITIVE_AREA = 750;
 

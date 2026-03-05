@@ -390,8 +390,9 @@ export function buildApiMessageAction(action: GramJs.TypeMessageAction): ApiMess
   }
   if (action instanceof GramJs.MessageActionStarGift) {
     const {
-      nameHidden, saved, converted, upgraded, refunded, canUpgrade, prepaidUpgrade, gift, message, convertStars,
-      upgradeMsgId, giftMsgId, upgradeStars, fromId, peer, savedId, prepaidUpgradeHash,
+      nameHidden, saved, converted, upgraded, refunded, canUpgrade, prepaidUpgrade, auctionAcquired,
+      gift, message, convertStars, upgradeMsgId, giftMsgId, upgradeStars, fromId, peer, savedId,
+      prepaidUpgradeHash, toId, giftNum,
     } = action;
 
     const starGift = buildApiStarGift(gift);
@@ -407,6 +408,7 @@ export function buildApiMessageAction(action: GramJs.TypeMessageAction): ApiMess
       isRefunded: refunded,
       canUpgrade,
       isPrepaidUpgrade: prepaidUpgrade,
+      isAuctionAcquired: auctionAcquired,
       gift: starGift,
       message: message && buildApiFormattedText(message),
       starsToConvert: toJSNumber(convertStars),
@@ -417,12 +419,14 @@ export function buildApiMessageAction(action: GramJs.TypeMessageAction): ApiMess
       peerId: peer && getApiChatIdFromMtpPeer(peer),
       savedId: savedId !== undefined ? buildApiPeerId(savedId, 'user') : undefined,
       prepaidUpgradeHash,
+      toId: toId && getApiChatIdFromMtpPeer(toId),
+      giftNumber: giftNum,
     };
   }
   if (action instanceof GramJs.MessageActionStarGiftUnique) {
     const {
       upgrade, transferred, saved, refunded, gift, canExportAt, transferStars, fromId, peer, savedId,
-      resaleAmount, prepaidUpgrade, dropOriginalDetailsStars,
+      resaleAmount, prepaidUpgrade, dropOriginalDetailsStars, fromOffer, canCraftAt,
     } = action;
 
     const starGift = buildApiStarGift(gift);
@@ -436,6 +440,7 @@ export function buildApiMessageAction(action: GramJs.TypeMessageAction): ApiMess
       isSaved: saved,
       isRefunded: refunded,
       isPrepaidUpgrade: prepaidUpgrade,
+      isFromOffer: fromOffer,
       gift: starGift,
       canExportAt,
       transferStars: toJSNumber(transferStars),
@@ -446,6 +451,7 @@ export function buildApiMessageAction(action: GramJs.TypeMessageAction): ApiMess
       dropOriginalDetailsStars: dropOriginalDetailsStars !== undefined
         ? toJSNumber(dropOriginalDetailsStars)
         : undefined,
+      canCraftAt,
     };
   }
   if (action instanceof GramJs.MessageActionPaidMessagesPrice) {
@@ -517,6 +523,54 @@ export function buildApiMessageAction(action: GramJs.TypeMessageAction): ApiMess
       mediaType: 'action',
       type: 'todoAppendTasks',
       items: list.map(buildTodoItem),
+    };
+  }
+  if (action instanceof GramJs.MessageActionStarGiftPurchaseOffer) {
+    const {
+      accepted, declined, gift, price, expiresAt,
+    } = action;
+
+    const starGift = buildApiStarGift(gift);
+    if (starGift.type !== 'starGiftUnique') return UNSUPPORTED_ACTION;
+
+    return {
+      mediaType: 'action',
+      type: 'starGiftPurchaseOffer',
+      isAccepted: accepted,
+      isDeclined: declined,
+      gift: starGift,
+      price: buildApiCurrencyAmount(price),
+      expiresAt,
+    };
+  }
+  if (action instanceof GramJs.MessageActionStarGiftPurchaseOfferDeclined) {
+    const { expired, gift, price } = action;
+
+    const starGift = buildApiStarGift(gift);
+    if (starGift.type !== 'starGiftUnique') return UNSUPPORTED_ACTION;
+
+    return {
+      mediaType: 'action',
+      type: 'starGiftPurchaseOfferDeclined',
+      isExpired: expired,
+      gift: starGift,
+      price: buildApiCurrencyAmount(price),
+    };
+  }
+  if (action instanceof GramJs.MessageActionNewCreatorPending) {
+    const { newCreatorId } = action;
+    return {
+      mediaType: 'action',
+      type: 'newCreatorPending',
+      newCreatorId: buildApiPeerId(newCreatorId, 'user'),
+    };
+  }
+  if (action instanceof GramJs.MessageActionChangeCreator) {
+    const { newCreatorId } = action;
+    return {
+      mediaType: 'action',
+      type: 'changeCreator',
+      newCreatorId: buildApiPeerId(newCreatorId, 'user'),
     };
   }
 

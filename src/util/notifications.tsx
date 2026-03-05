@@ -11,7 +11,6 @@ import {
   getChatAvatarHash,
   getChatTitle,
   getMessageRecentReaction,
-  getPrivateChatUserId,
   getUserFullName,
 } from '../global/helpers';
 import { getIsChatMuted, getIsChatSilent, getShouldShowMessagePreview } from '../global/helpers/notifications';
@@ -321,8 +320,7 @@ function getNotificationContent(chat: ApiChat, message: ApiMessage, reaction?: A
   }
 
   const { isScreenLocked } = global.passcode;
-  const privateChatUserId = getPrivateChatUserId(chat);
-  const isSelf = privateChatUserId === global.currentUserId;
+  const isSelf = chat.id === global.currentUserId;
 
   let body: string;
   if (

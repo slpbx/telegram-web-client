@@ -36,7 +36,7 @@ import TypingStatus from '../../../common/TypingStatus';
 
 export default function useChatListEntry({
   chat,
-  topics,
+  topicIds,
   lastMessage,
   statefulMediaContent,
   chatId,
@@ -47,15 +47,17 @@ export default function useChatListEntry({
   observeIntersection,
   animationType,
   orderDiff,
+  shiftDiff,
   withInterfaceAnimations,
   isTopic,
   isSavedDialog,
   isPreview,
   hasTags,
+  shouldForceNonForumView,
   onReorderAnimationEnd,
 }: {
   chat?: ApiChat;
-  topics?: Record<number, ApiTopic>;
+  topicIds?: number[];
   lastMessage?: ApiMessage;
   statefulMediaContent: StatefulMediaContent | undefined;
   chatId: string;
@@ -71,7 +73,9 @@ export default function useChatListEntry({
 
   animationType: ChatAnimationTypes;
   orderDiff: number;
+  shiftDiff: number;
   withInterfaceAnimations?: boolean;
+  shouldForceNonForumView?: boolean;
   onReorderAnimationEnd?: NoneToVoidFunction;
 }) {
   const lang = useLang();
@@ -149,13 +153,14 @@ export default function useChatListEntry({
   ]);
 
   function renderSubtitle() {
-    if (chat?.isForum && !isTopic) {
+    const shouldRenderAsForum = chat?.isForum && !isTopic && !shouldForceNonForumView;
+    if (shouldRenderAsForum) {
       return (
         <ChatForumLastMessage
           chat={chat}
           renderLastMessage={renderLastMessageOrTyping}
           observeIntersection={observeIntersection}
-          topics={topics}
+          topicIds={topicIds}
           hasTags={hasTags}
         />
       );
@@ -194,8 +199,10 @@ export default function useChatListEntry({
 
         waitStartingTransitionsEnd(element).then(notifyAnimationEnd);
       });
-    } else if (animationType === ChatAnimationTypes.Move) {
-      element.style.transform = `translate3d(0, ${-orderDiff * CHAT_HEIGHT_PX}px, 0)`;
+    }
+
+    if (animationType === ChatAnimationTypes.Move) {
+      element.style.transform = `translate3d(0, ${-orderDiff * CHAT_HEIGHT_PX - shiftDiff}px, 0)`;
 
       requestMutation(() => {
         element.classList.add('animate-transform');
@@ -203,14 +210,27 @@ export default function useChatListEntry({
 
         waitStartingTransitionsEnd(element).then(notifyAnimationEnd);
       });
-    } else {
+    }
+
+    if (animationType === ChatAnimationTypes.Shift) {
+      element.style.transform = `translate3d(0, ${-shiftDiff}px, 0)`;
+
+      requestMutation(() => {
+        element.classList.add('animate-transform');
+        element.style.transform = '';
+
+        waitStartingTransitionsEnd(element).then(notifyAnimationEnd);
+      });
+    }
+
+    if (animationType === ChatAnimationTypes.None) {
       return;
     }
 
     return () => {
       isCancelled = true;
     };
-  }, [withInterfaceAnimations, orderDiff, animationType, onReorderAnimationEnd]);
+  }, [withInterfaceAnimations, orderDiff, shiftDiff, animationType, onReorderAnimationEnd]);
 
   return {
     renderSubtitle,

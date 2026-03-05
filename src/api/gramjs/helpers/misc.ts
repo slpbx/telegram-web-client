@@ -36,6 +36,7 @@ const ERROR_KEYS: Record<string, RegularLangKey> = {
   SRP_PASSWORD_CHANGED: 'ErrorPasswordChanged',
   CODE_INVALID: 'ErrorEmailCodeInvalid',
   PASSWORD_MISSING: 'ErrorPasswordMissing',
+  PASSKEY_CREDENTIAL_NOT_FOUND: 'ErrorPasskeyUnknown',
 };
 
 export type MessageRepairContext = Pick<GramJs.TypeMessage, 'peerId' | 'id'>;
@@ -114,6 +115,11 @@ export function wrapError<T extends Error>(error: T): WrappedError<T> {
   } else if (error instanceof errors.PasswordFreshError) {
     messageKey = {
       key: 'ErrorPasswordFresh',
+      variables: { time: formatWait(error.seconds) },
+    };
+  } else if (error instanceof errors.SessionFreshError) {
+    messageKey = {
+      key: 'ErrorSessionFresh',
       variables: { time: formatWait(error.seconds) },
     };
   } else if (error instanceof errors.RPCError) {

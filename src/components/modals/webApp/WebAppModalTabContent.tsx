@@ -14,7 +14,7 @@ import type {
 } from '../../../types/webapp';
 
 import { TME_LINK_PREFIX } from '../../../config';
-import { convertToApiChatType } from '../../../global/helpers';
+import { convertToApiChatType, getUserFullName } from '../../../global/helpers';
 import { getWebAppKey } from '../../../global/helpers/bots';
 import {
   selectBotAppPermissions,
@@ -144,16 +144,20 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
     closeWebAppModal,
     openPreparedInlineMessageModal,
   } = getActions();
-  const [mainButton, setMainButton] = useState<WebAppButton | undefined>();
-  const [secondaryButton, setSecondaryButton] = useState<WebAppButton | undefined>();
+  const [mainButton, setMainButton] = useState<WebAppButton>();
+  const [secondaryButton, setSecondaryButton] = useState<WebAppButton>();
 
   const [isLoaded, markLoaded, markUnloaded] = useFlag(false);
 
-  const [popupParameters, setPopupParameters] = useState<PopupOptions | undefined>();
+  const [popupParameters, setPopupParameters] = useState<PopupOptions>();
+
+  const renderingPopupParameters = useCurrentOrPrev(popupParameters);
+
   const [isRequestingPhone, setIsRequestingPhone] = useState(false);
   const [isRequestingWriteAccess, setIsRequestingWriteAccess] = useState(false);
-  const [requestedFileDownload, setRequestedFileDownload] = useState<{ url: string; fileName: string } | undefined>();
-  const [bottomBarColor, setBottomBarColor] = useState<string | undefined>();
+  const [clipboardRequestId, setClipboardRequestId] = useState<string>();
+  const [requestedFileDownload, setRequestedFileDownload] = useState<{ url: string; fileName: string }>();
+  const [bottomBarColor, setBottomBarColor] = useState<string>();
   const {
     unlockPopupsAt, handlePopupOpened, handlePopupClosed,
   } = usePopupLimit(POPUP_SEQUENTIAL_LIMIT, POPUP_RESET_DELAY);
@@ -218,7 +222,7 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
   }, [themeParams]);
 
   const themeBackgroundColor = themeParams.bg_color;
-  const [backgroundColorFromEvent, setBackgroundColorFromEvent] = useState<string | undefined>();
+  const [backgroundColorFromEvent, setBackgroundColorFromEvent] = useState<string>();
   const backgroundColorFromSettings = theme === 'light' ? botAppSettings?.backgroundColor
     : botAppSettings?.backgroundDarkColor;
 
@@ -229,7 +233,7 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
   }, [themeBackgroundColor, backgroundColorFromEvent, backgroundColorFromSettings]);
 
   const themeHeaderColor = themeParams.bg_color;
-  const [headerColorFromEvent, setHeaderColorFromEvent] = useState<string | undefined>();
+  const [headerColorFromEvent, setHeaderColorFromEvent] = useState<string>();
   const headerColorFromSettings = theme === 'light' ? botAppSettings?.headerColor
     : botAppSettings?.headerDarkColor;
 
@@ -473,6 +477,44 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
     setIsRequestingWriteAccess(!canWrite);
   }
 
+  const handleRejectClipboardText = useLastCallback(() => {
+    if (!clipboardRequestId) return;
+    setClipboardRequestId(undefined);
+    sendEvent({
+      eventType: 'clipboard_text_received',
+      eventData: {
+        req_id: clipboardRequestId,
+        // eslint-disable-next-line no-null/no-null
+        data: null,
+      },
+    });
+  });
+
+  const handleConfirmClipboardText = useLastCallback(() => {
+    const reqId = clipboardRequestId;
+    if (!reqId) return;
+
+    setClipboardRequestId(undefined);
+    window.navigator.clipboard.readText().then((clipboardText) => {
+      sendEvent({
+        eventType: 'clipboard_text_received',
+        eventData: {
+          req_id: reqId,
+          data: clipboardText,
+        },
+      });
+    }).catch(() => {
+      sendEvent({
+        eventType: 'clipboard_text_received',
+        eventData: {
+          req_id: reqId,
+          // eslint-disable-next-line no-null/no-null
+          data: null,
+        },
+      });
+    });
+  });
+
   async function handleCheckDownloadFile(fileUrl: string, fileName: string) {
     const canDownload = await callApi('checkBotDownloadFileParams', {
       bot: bot!,
@@ -531,6 +573,8 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
       setIsRequestingWriteAccess(false);
       setMainButton(undefined);
       setSecondaryButton(undefined);
+      setRequestedFileDownload(undefined);
+      setClipboardRequestId(undefined);
       updateCurrentWebApp({
         isSettingsButtonVisible: false,
         shouldConfirmClosing: false,
@@ -631,7 +675,7 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
     }
 
     if (eventType === 'web_app_setup_closing_behavior') {
-      updateCurrentWebApp({ shouldConfirmClosing: true });
+      updateCurrentWebApp({ shouldConfirmClosing: eventData.need_confirmation });
     }
 
     if (eventType === 'web_app_open_popup') {
@@ -765,6 +809,10 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
 
     if (eventType === 'web_app_open_location_settings') {
       handleOpenChat();
+    }
+
+    if (eventType === 'web_app_read_text_from_clipboard') {
+      setClipboardRequestId(eventData.req_id);
     }
   }
 
@@ -1108,32 +1156,30 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
           </Button>
         </div>
       )}
-      {popupParameters && (
-        <Modal
-          isOpen={Boolean(popupParameters)}
-          title={popupParameters.title || NBSP}
-          className={
-            buildClassName(styles.webAppPopup, !popupParameters.title?.trim().length && styles.withoutTitle)
-          }
-          hasAbsoluteCloseButton
-          onClose={handleAppPopupModalClose}
-        >
-          {popupParameters.message}
-          <div className="dialog-buttons mt-2">
-            {popupParameters.buttons.map((button) => (
-              <Button
-                key={button.id || button.type}
-                className="confirm-dialog-button"
-                color={button.type === 'destructive' ? 'danger' : 'primary'}
-                isText
-                onClick={() => handleAppPopupClose(button.id)}
-              >
-                {button.text || oldLang(DEFAULT_BUTTON_TEXT[button.type])}
-              </Button>
-            ))}
-          </div>
-        </Modal>
-      )}
+      <Modal
+        isOpen={Boolean(popupParameters)}
+        title={renderingPopupParameters?.title || NBSP}
+        className={
+          buildClassName(styles.webAppPopup, !renderingPopupParameters?.title?.trim().length && styles.withoutTitle)
+        }
+        hasCloseButton
+        onClose={handleAppPopupModalClose}
+      >
+        {renderingPopupParameters?.message}
+        <div className="dialog-buttons mt-2">
+          {renderingPopupParameters?.buttons.map((button) => (
+            <Button
+              key={button.id || button.type}
+              className="confirm-dialog-button"
+              color={button.type === 'destructive' ? 'danger' : 'primary'}
+              isText
+              onClick={() => handleAppPopupClose(button.id)}
+            >
+              {button.text || oldLang(DEFAULT_BUTTON_TEXT[button.type])}
+            </Button>
+          ))}
+        </div>
+      </Modal>
 
       <ConfirmDialog
         isOpen={isRequestingPhone}
@@ -1142,7 +1188,7 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
         textParts={lang(
           'AreYouSureShareMyContactInfoBot',
           undefined,
-          { withNodes: true, withMarkdown: true, renderTextFilters: ['br', 'emoji'],
+          { withNodes: true, withMarkdown: true, renderTextFilters: ['br'],
           })}
         confirmHandler={handleAcceptPhone}
         confirmLabel={lang('ContactShare')}
@@ -1186,6 +1232,14 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
         textParts={renderText(oldLang('BotRemoveFromMenu', bot?.firstName), ['simple_markdown'])}
         confirmHandler={handleRemoveAttachBot}
         confirmIsDestructive
+      />
+      <ConfirmDialog
+        isOpen={Boolean(clipboardRequestId)}
+        title={lang('BotReadTextFromClipboardTitle')}
+        text={lang('BotReadTextFromClipboardDescription', { bot: getUserFullName(bot) })}
+        confirmLabel={lang('BotReadTextFromClipboardConfirm')}
+        onClose={handleRejectClipboardText}
+        confirmHandler={handleConfirmClipboardText}
       />
     </div>
   );

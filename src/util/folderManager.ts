@@ -2,11 +2,12 @@ import { onFullyIdle } from '../lib/teact/teact';
 import { addCallback } from '../lib/teact/teactn';
 import { addActionHandler, getGlobal } from '../global';
 
-import type {
-  ApiChat, ApiChatFolder, ApiNotifyPeerType, ApiPeerNotifySettings, ApiUser,
-} from '../api/types';
 import type { GlobalState } from '../global/types';
 import type { CallbackManager } from './callbacks';
+import {
+  type ApiChat, type ApiChatFolder, type ApiNotifyPeerType, type ApiPeerNotifySettings, type ApiUser,
+  MAIN_THREAD_ID,
+} from '../api/types';
 
 import {
   ALL_FOLDER_ID, ARCHIVED_FOLDER_ID, DEBUG, SAVED_FOLDER_ID, SERVICE_NOTIFICATIONS_USER_ID,
@@ -19,7 +20,8 @@ import {
   selectTabState,
   selectTopics,
 } from '../global/selectors';
-import arePropsShallowEqual from './arePropsShallowEqual';
+import { selectDraft, selectThreadReadState } from '../global/selectors/threads';
+import { areRecordsShallowEqual } from './areShallowEqual';
 import { createCallbackManager } from './callbacks';
 import { areSortedArraysEqual, unique } from './iteratees';
 import { throttle } from './schedulers';
@@ -486,7 +488,7 @@ function updateChats(
         isRemovedFromSaved,
       );
 
-      if (!areFoldersChanged && currentSummary && arePropsShallowEqual(newSummary, currentSummary)) {
+      if (!areFoldersChanged && currentSummary && areRecordsShallowEqual(newSummary, currentSummary)) {
         return;
       }
 
@@ -533,16 +535,21 @@ function buildChatSummary<T extends GlobalState>(
 ): ChatSummary {
   const {
     id, type, isNotJoined, migratedTo, folderId,
-    unreadCount: chatUnreadCount, unreadMentionsCount: chatUnreadMentionsCount, hasUnreadMark,
     isForum,
   } = chat;
+  const draft = selectDraft(global, id, MAIN_THREAD_ID);
   const isRestricted = selectIsChatRestricted(global, id);
   const topics = selectTopics(global, chat.id);
+  const chatReadState = selectThreadReadState(global, chat.id, MAIN_THREAD_ID);
+  const {
+    unreadCount: chatUnreadCount, unreadMentionsCount: chatUnreadMentionsCount, hasUnreadMark,
+  } = chatReadState || {};
 
   const { unreadCount, unreadMentionsCount } = isForum
     ? Object.values(topics || {}).reduce((acc, topic) => {
-      acc.unreadCount += topic.unreadCount;
-      acc.unreadMentionsCount += topic.unreadMentionsCount;
+      const topicReadState = selectThreadReadState(global, chat.id, topic.id);
+      acc.unreadCount += topicReadState?.unreadCount || 0;
+      acc.unreadMentionsCount += topicReadState?.unreadMentionsCount || 0;
 
       return acc;
     }, { unreadCount: 0, unreadMentionsCount: 0 })
@@ -554,7 +561,7 @@ function buildChatSummary<T extends GlobalState>(
     !lastMessage || lastMessage.content.action?.type === 'historyClear'
   );
 
-  const orderInAll = Math.max(chat.creationDate || 0, chat.draftDate || 0, lastMessage?.date || 0);
+  const orderInAll = Math.max(chat.creationDate || 0, draft?.date || 0, lastMessage?.date || 0);
 
   const lastMessageInSaved = selectChatLastMessage(global, chat.id, 'saved');
   const orderInSaved = lastMessageInSaved?.date || 0;
@@ -731,7 +738,7 @@ function updateResults(affectedFolderIds: number[]) {
     const newUnreadCounters = buildFolderUnreadCounters(folderId);
     if (!wasUnreadCountersChanged) {
       wasUnreadCountersChanged = (
-        !currentUnreadCounters || !arePropsShallowEqual(newUnreadCounters, currentUnreadCounters)
+        !currentUnreadCounters || !areRecordsShallowEqual(newUnreadCounters, currentUnreadCounters)
       );
     }
     results.unreadCountersByFolderId[folderId] = newUnreadCounters;

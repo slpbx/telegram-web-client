@@ -28,7 +28,7 @@ const useKeyboardListNavigation = (
   return useLastCallback((e: React.KeyboardEvent<any>) => {
     const element = elementRef.current;
 
-    if (!element) {
+    if (!element || !isOpen) {
       return;
     }
 
@@ -40,6 +40,8 @@ const useKeyboardListNavigation = (
     if (e.keyCode !== 38 && e.keyCode !== 40) {
       return;
     }
+
+    e.preventDefault();
 
     const focusedElement = document.activeElement;
     const elementChildren = Array.from(itemSelector ? element.querySelectorAll(itemSelector) : element.children);
@@ -59,7 +61,8 @@ const useKeyboardListNavigation = (
     const item = elementChildren[newIndex] as HTMLElement;
     if (item) {
       setFocusedIndex(newIndex);
-      item.focus();
+      item.focus({ preventScroll: true });
+      item.scrollIntoView({ behavior: 'instant', block: 'nearest' });
     }
   });
 };

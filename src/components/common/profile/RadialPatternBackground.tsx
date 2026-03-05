@@ -1,4 +1,4 @@
-import { memo, useEffect, useLayoutEffect, useMemo, useRef, useSignal, useState } from '../../../lib/teact/teact';
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useSignal } from '../../../lib/teact/teact';
 
 import type { ApiSticker } from '../../../api/types';
 
@@ -10,6 +10,7 @@ import { adjustHsv, getColorLuma, hex2rgb } from '../../../util/colors.ts';
 import { preloadImage } from '../../../util/files';
 import { REM } from '../helpers/mediaDimensions';
 
+import useAsync from '../../../hooks/useAsync';
 import useLastCallback from '../../../hooks/useLastCallback';
 import useMedia from '../../../hooks/useMedia';
 import useResizeObserver from '../../../hooks/useResizeObserver';
@@ -20,13 +21,16 @@ import styles from './RadialPatternBackground.module.scss';
 type OwnProps = {
   backgroundColors?: string[];
   patternIcon?: ApiSticker;
-  patternColor?: number;
+  patternUrl?: string;
+  patternColor?: string;
   patternSize?: number;
+  maxRadius?: number;
   centerEmptiness?: number;
   ringsCount?: number;
   ovalFactor?: number;
   withLinearGradient?: boolean;
   className?: string;
+  canvasClassName?: string;
   clearBottomSector?: boolean;
   yPosition?: number;
   withAdaptiveHeight?: boolean;
@@ -35,7 +39,7 @@ type OwnProps = {
 const BASE_RING_ITEM_COUNT = 8;
 const RING_INCREMENT = 0.5;
 const DEFAULT_CENTER_EMPTINESS = 0.1;
-const MAX_RADIUS = 0.42;
+const DEFAULT_MAX_RADIUS = 0.42;
 const MIN_SIZE = 4 * REM;
 const DARK_LUMA_THRESHOLD = 255 * 0.2;
 
@@ -46,13 +50,17 @@ const DEFAULT_OVAL_FACTOR = 1.4;
 const RadialPatternBackground = ({
   backgroundColors,
   patternIcon,
+  patternUrl,
+  patternColor,
   patternSize = DEFAULT_PATTERN_SIZE,
   centerEmptiness = DEFAULT_CENTER_EMPTINESS,
   ringsCount = DEFAULT_RINGS_COUNT,
   ovalFactor = DEFAULT_OVAL_FACTOR,
+  maxRadius = DEFAULT_MAX_RADIUS,
   withLinearGradient,
   clearBottomSector,
   className,
+  canvasClassName,
   yPosition,
   withAdaptiveHeight,
 }: OwnProps) => {
@@ -63,22 +71,22 @@ const RadialPatternBackground = ({
 
   const dpr = useDevicePixelRatio();
 
-  const [emojiImage, setEmojiImage] = useState<HTMLImageElement | undefined>();
-
   const previewMediaHash = patternIcon && getStickerMediaHash(patternIcon, 'preview');
   const previewUrl = useMedia(previewMediaHash);
 
-  useEffect(() => {
-    if (!previewUrl) return;
-    preloadImage(previewUrl).then(setEmojiImage);
-  }, [previewUrl]);
+  const imageUrl = previewUrl || patternUrl;
+
+  const { result: emojiImage } = useAsync(
+    () => (imageUrl ? preloadImage(imageUrl) : Promise.resolve(undefined)),
+    [imageUrl],
+  );
 
   const patternPositions = useMemo(() => {
     const coordinates: { x: number; y: number; sizeFactor: number }[] = [];
     for (let ring = 1; ring <= ringsCount; ring++) {
       const ringItemCount = Math.floor(BASE_RING_ITEM_COUNT * (1 + (ring - 1) * RING_INCREMENT));
       const ringProgress = ring / ringsCount;
-      const ringRadius = centerEmptiness + (MAX_RADIUS - centerEmptiness) * ringProgress;
+      const ringRadius = centerEmptiness + (maxRadius - centerEmptiness) * ringProgress;
       const angleShift = ring % 2 === 0 ? Math.PI / ringItemCount : 0;
 
       for (let i = 0; i < ringItemCount; i++) {
@@ -100,7 +108,7 @@ const RadialPatternBackground = ({
       }
     }
     return coordinates;
-  }, [centerEmptiness, clearBottomSector, ovalFactor, ringsCount]);
+  }, [centerEmptiness, clearBottomSector, maxRadius, ovalFactor, ringsCount]);
 
   useResizeObserver(containerRef, (entry) => {
     setContainerSize({
@@ -142,13 +150,17 @@ const RadialPatternBackground = ({
       ctx.drawImage(emojiImage, renderX - size / 2, renderY - size / 2, size, size);
     });
 
-    const patternColor = backgroundColors?.[1] ?? backgroundColors?.[0] ?? '#000000';
-    const isDark = getColorLuma(hex2rgb(patternColor)) < DARK_LUMA_THRESHOLD;
-    ctx.fillStyle = adjustHsv(patternColor, 0.5, isDark ? 0.28 : -0.28);
+    if (patternColor) {
+      ctx.fillStyle = patternColor;
+    } else {
+      const baseColor = backgroundColors?.[1] ?? backgroundColors?.[0] ?? '#000000';
+      const isDark = getColorLuma(hex2rgb(baseColor)) < DARK_LUMA_THRESHOLD;
+      ctx.fillStyle = adjustHsv(baseColor, 0.5, isDark ? 0.28 : -0.28);
+    }
     ctx.globalCompositeOperation = 'source-in';
     ctx.fillRect(0, 0, width, height);
 
-    const radialGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, width / 2);
+    const radialGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, width * maxRadius);
     radialGradient.addColorStop(0, 'rgb(255 255 255 / 0.4)');
     radialGradient.addColorStop(1, 'rgb(255 255 255 / 0.9)');
 
@@ -167,7 +179,7 @@ const RadialPatternBackground = ({
 
   useEffect(() => {
     draw();
-  }, [emojiImage, patternPositions, yPosition, ovalFactor]);
+  }, [emojiImage, patternPositions, yPosition, ovalFactor, patternColor]);
 
   useLayoutEffect(() => {
     const { width, height } = getContainerSize();
@@ -200,7 +212,7 @@ const RadialPatternBackground = ({
     >
       <canvas
         ref={canvasRef}
-        className={buildClassName(styles.canvas, emojiImage && styles.showing)}
+        className={buildClassName(styles.canvas, emojiImage && styles.showing, canvasClassName)}
         aria-hidden="true"
       />
     </div>

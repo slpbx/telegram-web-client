@@ -8,6 +8,7 @@ import type { IAnchorPosition, MessageListType, ThreadId } from '../../types';
 import { MAIN_THREAD_ID } from '../../api/types';
 import { ManagementScreens } from '../../types';
 
+import { COCOON_EMOJI_ID } from '../../config';
 import { requestMeasure, requestNextMutation } from '../../lib/fasterdom/fasterdom';
 import {
   getHasAdminRight,
@@ -39,11 +40,14 @@ import { isUserId } from '../../util/entities/ids';
 import focusNoScroll from '../../util/focusNoScroll';
 
 import { useHotkeys } from '../../hooks/useHotkeys';
+import useLang from '../../hooks/useLang';
 import useLastCallback from '../../hooks/useLastCallback';
 import useOldLang from '../../hooks/useOldLang';
 
+import CustomEmoji from '../common/CustomEmoji';
 import Button from '../ui/Button';
 import DropdownMenu from '../ui/DropdownMenu';
+import Link from '../ui/Link';
 import MenuItem from '../ui/MenuItem';
 import MenuSeparator from '../ui/MenuSeparator';
 import HeaderMenuContainer from './HeaderMenuContainer.async';
@@ -143,9 +147,12 @@ const HeaderActions: FC<OwnProps & StateProps> = ({
     unblockUser,
     setViewForumAsMessages,
     openFrozenAccountModal,
+    openCocoonModal,
   } = getActions();
   const menuButtonRef = useRef<HTMLButtonElement>();
-  const lang = useOldLang();
+  const oldLang = useOldLang();
+  const lang = useLang();
+
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<IAnchorPosition | undefined>(undefined);
 
@@ -167,7 +174,8 @@ const HeaderActions: FC<OwnProps & StateProps> = ({
     joinChannel({ chatId });
     if (shouldSendJoinRequest) {
       showNotification({
-        message: isChannel ? lang('RequestToJoinChannelSentDescription') : lang('RequestToJoinGroupSentDescription'),
+        message: isChannel ? oldLang('RequestToJoinChannelSentDescription')
+          : oldLang('RequestToJoinGroupSentDescription'),
       });
     }
   });
@@ -240,21 +248,21 @@ const HeaderActions: FC<OwnProps & StateProps> = ({
   const getTextWithLanguage = useCallback((langKey: string, langCode: string) => {
     const simplified = langCode.split('-')[0];
     const translationKey = `TranslateLanguage${simplified.toUpperCase()}`;
-    const name = lang(translationKey);
+    const name = oldLang(translationKey);
     if (name !== translationKey) {
-      return lang(langKey, name);
+      return oldLang(langKey, name);
     }
 
     const translatedNames = new Intl.DisplayNames([language], { type: 'language' });
     const translatedName = translatedNames.of(langCode)!;
-    return lang(`${langKey}Other`, translatedName);
-  }, [language, lang]);
+    return oldLang(`${langKey}Other`, translatedName);
+  }, [language, oldLang]);
 
   const buttonText = useMemo(() => {
-    if (isTranslating) return lang('ShowOriginalButton');
+    if (isTranslating) return oldLang('ShowOriginalButton');
 
     return getTextWithLanguage('TranslateToButton', translationLanguage);
-  }, [translationLanguage, getTextWithLanguage, isTranslating, lang]);
+  }, [translationLanguage, getTextWithLanguage, isTranslating, oldLang]);
 
   const doNotTranslateText = useMemo(() => {
     if (!detectedChatLanguage) return undefined;
@@ -269,6 +277,10 @@ const HeaderActions: FC<OwnProps & StateProps> = ({
 
   const handleChangeLanguage = useLastCallback(() => {
     openChatLanguageModal({ chatId });
+  });
+
+  const handleCocoonClick = useLastCallback(() => {
+    openCocoonModal();
   });
 
   const handleDoNotTranslate = useLastCallback(() => {
@@ -295,11 +307,11 @@ const HeaderActions: FC<OwnProps & StateProps> = ({
         size="smaller"
         className={isOpen ? 'active' : ''}
         onClick={onTrigger}
-        ariaLabel={lang('TranslateMessage')}
+        ariaLabel={oldLang('TranslateMessage')}
         iconName="language"
       />
     );
-  }, [isRightColumnShown, lang]);
+  }, [isRightColumnShown, oldLang]);
 
   return (
     <div className="HeaderActions">
@@ -313,12 +325,28 @@ const HeaderActions: FC<OwnProps & StateProps> = ({
             {buttonText}
           </MenuItem>
           <MenuItem icon="replace" onClick={handleChangeLanguage}>
-            {lang('Chat.Translate.Menu.To')}
+            {oldLang('Chat.Translate.Menu.To')}
           </MenuItem>
           <MenuSeparator />
           {detectedChatLanguage
             && <MenuItem icon="hand-stop" onClick={handleDoNotTranslate}>{doNotTranslateText}</MenuItem>}
-          <MenuItem icon="close-circle" onClick={handleHide}>{lang('Hide')}</MenuItem>
+          <MenuItem icon="close-circle" onClick={handleHide}>{oldLang('Hide')}</MenuItem>
+          <MenuSeparator />
+          <MenuItem withWrap onClick={handleCocoonClick}>
+            {lang('TranslateMenuCocoon', {
+              link: (
+                <Link isPrimary onClick={(e) => e.preventDefault()}>
+                  {lang('TranslateMenuCocoonLinkText')}
+                </Link>
+              ),
+            }, {
+              withNodes: true,
+              withMarkdown: true,
+              specialReplacement: {
+                '🥚': <CustomEmoji documentId={COCOON_EMOJI_ID} />,
+              },
+            })}
+          </MenuItem>
         </DropdownMenu>
       )}
       {!isMobile && (
@@ -330,7 +358,7 @@ const HeaderActions: FC<OwnProps & StateProps> = ({
               fluid
               onClick={handleSubscribeClick}
             >
-              {lang(isChannel ? 'ProfileJoinChannel' : 'ProfileJoinGroup')}
+              {oldLang(isChannel ? 'ProfileJoinChannel' : 'ProfileJoinGroup')}
             </Button>
           )}
           {canExpandActions && shouldSendJoinRequest && (
@@ -340,7 +368,7 @@ const HeaderActions: FC<OwnProps & StateProps> = ({
               fluid
               onClick={handleSubscribeClick}
             >
-              {lang('ChannelJoinRequest')}
+              {oldLang('ChannelJoinRequest')}
             </Button>
           )}
           {canExpandActions && canStartBot && (
@@ -350,7 +378,7 @@ const HeaderActions: FC<OwnProps & StateProps> = ({
               fluid
               onClick={handleStartBot}
             >
-              {lang('BotStart')}
+              {oldLang('BotStart')}
             </Button>
           )}
           {canExpandActions && canRestartBot && (
@@ -360,7 +388,7 @@ const HeaderActions: FC<OwnProps & StateProps> = ({
               fluid
               onClick={handleRestartBot}
             >
-              {lang('BotRestart')}
+              {oldLang('BotRestart')}
             </Button>
           )}
           {canExpandActions && canUnblock && (
@@ -370,7 +398,7 @@ const HeaderActions: FC<OwnProps & StateProps> = ({
               fluid
               onClick={handleUnblock}
             >
-              {lang('Unblock')}
+              {oldLang('Unblock')}
             </Button>
           )}
           {canSearch && (
@@ -380,7 +408,7 @@ const HeaderActions: FC<OwnProps & StateProps> = ({
               color="translucent"
               size="smaller"
               onClick={handleSearchClick}
-              ariaLabel={lang('Conversation.SearchPlaceholder')}
+              ariaLabel={oldLang('Conversation.SearchPlaceholder')}
               iconName="search"
             />
           )}
@@ -405,7 +433,7 @@ const HeaderActions: FC<OwnProps & StateProps> = ({
           size="smaller"
           iconName="user"
           onClick={handleJoinRequestsClick}
-          ariaLabel={isChannel ? lang('SubscribeRequests') : lang('MemberRequests')}
+          ariaLabel={isChannel ? oldLang('SubscribeRequests') : oldLang('MemberRequests')}
         >
           <div className="badge">{pendingJoinRequests}</div>
         </Button>

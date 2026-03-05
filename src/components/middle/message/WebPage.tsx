@@ -1,19 +1,16 @@
-import type { FC } from '../../../lib/teact/teact';
-import type React from '../../../lib/teact/teact';
 import { memo, useMemo, useRef } from '../../../lib/teact/teact';
-import { getActions, withGlobal } from '../../../global';
+import { getActions } from '../../../global';
 
 import type { ApiMessage, ApiMessageWebPage, ApiTypeStory, ApiWebPage, ApiWebPageFull } from '../../../api/types';
 import type { ObserveFn } from '../../../hooks/useIntersectionObserver';
 import { AudioOrigin, type ThemeKey, type WebPageMediaSize } from '../../../types';
 
 import { getPhotoFullDimensions } from '../../../global/helpers';
-import { selectCanPlayAnimatedEmojis } from '../../../global/selectors';
 import buildClassName from '../../../util/buildClassName';
 import { tryParseDeepLink } from '../../../util/deepLinkParser';
 import trimText from '../../../util/trimText';
 import renderText from '../../common/helpers/renderText';
-import { getWebpageButtonLangKey } from './helpers/webpageType';
+import { getWebpageButtonIcon, getWebpageButtonLangKey } from './helpers/webpageType';
 
 import useDynamicColorListener from '../../../hooks/stickers/useDynamicColorListener';
 import useEnsureStory from '../../../hooks/useEnsureStory';
@@ -23,6 +20,7 @@ import useLastCallback from '../../../hooks/useLastCallback';
 import Audio from '../../common/Audio';
 import Document from '../../common/Document';
 import EmojiIconBackground from '../../common/embedded/EmojiIconBackground';
+import Icon from '../../common/icons/Icon';
 import PeerColorWrapper from '../../common/PeerColorWrapper';
 import SafeLink from '../../common/SafeLink';
 import StickerView from '../../common/StickerView';
@@ -30,6 +28,7 @@ import Button from '../../ui/Button';
 import BaseStory from './BaseStory';
 import Photo from './Photo';
 import Video from './Video';
+import WebPageStarGiftAuction from './WebPageStarGiftAuction';
 import WebPageUniqueGift from './WebPageUniqueGift';
 
 import './WebPage.scss';
@@ -37,6 +36,7 @@ import './WebPage.scss';
 const MAX_TEXT_LENGTH = 170; // symbols
 const WEBPAGE_STORY_TYPE = 'telegram_story';
 const WEBPAGE_GIFT_TYPE = 'telegram_nft';
+const WEBPAGE_AUCTION_TYPE = 'telegram_auction';
 const STICKER_SIZE = 80;
 const EMOJI_SIZE = 38;
 
@@ -65,11 +65,8 @@ type OwnProps = {
   onCancelMediaTransfer?: NoneToVoidFunction;
   onContainerClick?: ((e: React.MouseEvent) => void);
 };
-type StateProps = {
-  canPlayAnimatedEmojis: boolean;
-};
 
-const WebPage: FC<OwnProps & StateProps> = ({
+const WebPage = ({
   messageWebPage,
   webPage,
   message,
@@ -93,7 +90,7 @@ const WebPage: FC<OwnProps & StateProps> = ({
   onContainerClick,
   onAudioPlay,
   onCancelMediaTransfer,
-}) => {
+}: OwnProps) => {
   const { openUrl, openTelegramLink } = getActions();
   const stickersRef = useRef<HTMLDivElement>();
 
@@ -122,13 +119,18 @@ const WebPage: FC<OwnProps & StateProps> = ({
     return parsedLink.timestamp;
   }, [webPage?.url]);
 
-  if (webPage?.webpageType !== 'full') return undefined;
+  const handleArticleClick = useLastCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    openUrl({ url: webPage.url!, shouldSkipModal: messageWebPage.isSafe });
+  });
 
   const handleOpenTelegramLink = useLastCallback(() => {
     openTelegramLink({
-      url: webPage.url,
+      url: webPage.url!,
     });
   });
+
+  if (webPage?.webpageType !== 'full') return undefined;
 
   const {
     siteName,
@@ -145,11 +147,14 @@ const WebPage: FC<OwnProps & StateProps> = ({
   const { mediaSize } = messageWebPage;
   const isStory = type === WEBPAGE_STORY_TYPE;
   const isGift = type === WEBPAGE_GIFT_TYPE;
+  const isAuction = type === WEBPAGE_AUCTION_TYPE;
   const isExpiredStory = story && 'isDeleted' in story;
 
   const resultType = stickers?.isEmoji ? 'telegram_emojiset' : type;
-  const quickButtonLangKey = !isExpiredStory ? getWebpageButtonLangKey(resultType) : undefined;
+  const auctionEndDate = isAuction && webPage.auction ? webPage.auction.endDate : undefined;
+  const quickButtonLangKey = !isExpiredStory ? getWebpageButtonLangKey(resultType, auctionEndDate) : undefined;
   const quickButtonTitle = quickButtonLangKey && lang(quickButtonLangKey);
+  const quickButtonIcon = getWebpageButtonIcon(resultType);
 
   const truncatedDescription = trimText(description, MAX_TEXT_LENGTH);
   const isArticle = Boolean(truncatedDescription || title || siteName);
@@ -167,20 +172,21 @@ const WebPage: FC<OwnProps & StateProps> = ({
     !isArticle && 'no-article',
     document && 'with-document',
     quickButtonTitle && 'with-quick-button',
-    isGift && 'with-gift',
+    (isGift || isAuction) && 'with-gift',
   );
 
-  function renderQuickButton(caption: string) {
+  function renderQuickButton() {
     return (
       <Button
         className="WebPage--quick-button"
         size="tiny"
         color="translucent"
         isRectangular
-        noForcedUpperCase
+        noForcedUpperCase={!isAuction}
         onClick={handleOpenTelegramLink}
       >
-        {caption}
+        {quickButtonIcon && <Icon name={quickButtonIcon} />}
+        {quickButtonTitle}
       </Button>
     );
   }
@@ -195,7 +201,7 @@ const WebPage: FC<OwnProps & StateProps> = ({
       <div className={buildClassName(
         'WebPage--content',
         isStory && 'is-story',
-        isGift && 'is-gift',
+        (isGift || isAuction) && 'is-gift',
       )}
       >
         {backgroundEmojiId && (
@@ -215,21 +221,29 @@ const WebPage: FC<OwnProps & StateProps> = ({
             onClick={handleOpenTelegramLink}
           />
         )}
+        {isAuction && webPage.auction && (
+          <WebPageStarGiftAuction
+            auction={webPage.auction}
+            observeIntersectionForLoading={observeIntersectionForLoading}
+            observeIntersectionForPlaying={observeIntersectionForPlaying}
+            onClick={handleOpenTelegramLink}
+          />
+        )}
         {isArticle && (
           <div
             className={buildClassName('WebPage-text', 'WebPage-text_interactive')}
-            onClick={() => openUrl({ url, shouldSkipModal: messageWebPage.isSafe })}
+            onClick={handleArticleClick}
           >
             <SafeLink className="site-name" url={url} text={siteName || displayUrl} />
             {title && (
               <p className="site-title">{renderText(title)}</p>
             )}
-            {truncatedDescription && !isGift && (
+            {truncatedDescription && !isGift && !isAuction && (
               <p className="site-description">{renderText(truncatedDescription, ['emoji', 'br'])}</p>
             )}
           </div>
         )}
-        {photo && !isGift && !video && !document && (
+        {photo && !isGift && !isAuction && !video && (
           <Photo
             photo={photo}
             isOwn={message?.isOutgoing}
@@ -275,7 +289,7 @@ const WebPage: FC<OwnProps & StateProps> = ({
             onCancelUpload={onCancelMediaTransfer}
           />
         )}
-        {document && (
+        {document && !photo && (
           <Document
             document={document}
             message={message}
@@ -310,7 +324,7 @@ const WebPage: FC<OwnProps & StateProps> = ({
           </div>
         )}
       </div>
-      {quickButtonTitle && renderQuickButton(quickButtonTitle)}
+      {quickButtonTitle && renderQuickButton()}
     </PeerColorWrapper>
   );
 };
@@ -326,10 +340,4 @@ function getIsSmallPhoto(webPage: ApiWebPageFull, mediaSize?: WebPageMediaSize) 
   return width === height && !webPage.hasLargeMedia;
 }
 
-export default memo(withGlobal<OwnProps>(
-  (global): Complete<StateProps> => {
-    return {
-      canPlayAnimatedEmojis: selectCanPlayAnimatedEmojis(global),
-    };
-  },
-)(WebPage));
+export default memo(WebPage);

@@ -37,12 +37,11 @@ import {
   cancelMessageMediaDownload,
   enterMessageSelectMode,
   exitMessageSelectMode,
-  replaceTabThreadParam,
-  replaceThreadParam,
   toggleMessageSelection,
   updateFocusedMessage,
 } from '../../reducers';
 import { updateTabState } from '../../reducers/tabs';
+import { replaceTabThreadParam, replaceThreadLocalStateParam, updateThreadReadState } from '../../reducers/threads';
 import {
   selectAllowedMessageActionsSlow,
   selectCanForwardMessage,
@@ -53,20 +52,18 @@ import {
   selectChatScheduledMessages,
   selectCurrentChat,
   selectCurrentMessageList,
-  selectDraft,
   selectForwardedMessageIdsByGroupId,
   selectIsRightColumnShown,
   selectIsViewportNewest,
   selectMessageIdsByGroupId,
-  selectReplyStack,
   selectRequestedChatTranslationLanguage,
   selectRequestedMessageTranslationLanguage,
   selectSender,
   selectTabState,
-  selectThreadInfo,
   selectViewportIds,
 } from '../../selectors';
 import { selectMessageDownloadableMedia } from '../../selectors/media';
+import { selectDraft, selectReplyStack, selectThreadInfo } from '../../selectors/threads';
 import { getPeerStarsForMessage } from '../api/messages';
 
 import { getIsMobile } from '../../../hooks/useAppLayout';
@@ -84,7 +81,7 @@ addActionHandler('setScrollOffset', (global, actions, payload): ActionReturnType
     chatId, threadId, scrollOffset, tabId = getCurrentTabId(),
   } = payload;
 
-  global = replaceThreadParam(global, chatId, threadId, 'lastScrollOffset', scrollOffset);
+  global = replaceThreadLocalStateParam(global, chatId, threadId, 'lastScrollOffset', scrollOffset);
 
   return replaceTabThreadParam(global, chatId, threadId, 'scrollOffset', scrollOffset, tabId);
 });
@@ -99,7 +96,7 @@ addActionHandler('setEditingId', (global, actions, payload): ActionReturnType =>
   const { chatId, threadId, type } = currentMessageList;
   const paramName = type === 'scheduled' ? 'editingScheduledId' : 'editingId';
 
-  return replaceThreadParam(global, chatId, threadId, paramName, messageId);
+  return replaceThreadLocalStateParam(global, chatId, threadId, paramName, messageId);
 });
 
 addActionHandler('setEditingDraft', (global, actions, payload): ActionReturnType => {
@@ -109,7 +106,7 @@ addActionHandler('setEditingDraft', (global, actions, payload): ActionReturnType
 
   const paramName = type === 'scheduled' ? 'editingScheduledDraft' : 'editingDraft';
 
-  return replaceThreadParam(global, chatId, threadId, paramName, text);
+  return replaceThreadLocalStateParam(global, chatId, threadId, paramName, text);
 });
 
 addActionHandler('editLastMessage', (global, actions, payload): ActionReturnType => {
@@ -133,7 +130,7 @@ addActionHandler('editLastMessage', (global, actions, payload): ActionReturnType
     return undefined;
   }
 
-  return replaceThreadParam(global, chatId, threadId, 'editingId', lastOwnEditableMessageId);
+  return replaceThreadLocalStateParam(global, chatId, threadId, 'editingId', lastOwnEditableMessageId);
 });
 
 addActionHandler('replyToNextMessage', (global, actions, payload): ActionReturnType => {
@@ -183,7 +180,7 @@ addActionHandler('replyToNextMessage', (global, actions, payload): ActionReturnT
 
 addActionHandler('openAudioPlayer', (global, actions, payload): ActionReturnType => {
   const {
-    chatId, threadId, messageId, origin, volume, playbackRate, isMuted, timestamp,
+    chatId, threadId, messageId, origin, playbackRate, isMuted, timestamp,
     tabId = getCurrentTabId(),
   } = payload;
 
@@ -195,7 +192,6 @@ addActionHandler('openAudioPlayer', (global, actions, payload): ActionReturnType
       messageId,
       timestamp,
       origin: origin ?? tabState.audioPlayer.origin,
-      volume: volume ?? tabState.audioPlayer.volume,
       playbackRate: playbackRate || tabState.audioPlayer.playbackRate || global.audioPlayer.lastPlaybackRate,
       isPlaybackRateActive: (tabState.audioPlayer.isPlaybackRateActive === undefined
         ? global.audioPlayer.isLastPlaybackRateActive
@@ -210,13 +206,20 @@ addActionHandler('setAudioPlayerVolume', (global, actions, payload): ActionRetur
     volume, tabId = getCurrentTabId(),
   } = payload;
 
-  return updateTabState(global, {
+  global = updateTabState(global, {
     audioPlayer: {
       ...selectTabState(global, tabId).audioPlayer,
-      volume,
       isMuted: false,
     },
   }, tabId);
+  global = {
+    ...global,
+    audioPlayer: {
+      ...global.audioPlayer,
+      volume,
+    },
+  };
+  return global;
 });
 
 addActionHandler('setAudioPlayerPlaybackRate', (global, actions, payload): ActionReturnType => {
@@ -273,7 +276,6 @@ addActionHandler('closeAudioPlayer', (global, actions, payload): ActionReturnTyp
   const tabState = selectTabState(global, tabId);
   return updateTabState(global, {
     audioPlayer: {
-      volume: tabState.audioPlayer.volume,
       playbackRate: tabState.audioPlayer.playbackRate,
       isPlaybackRateActive: tabState.audioPlayer.isPlaybackRateActive,
       isMuted: tabState.audioPlayer.isMuted,
@@ -493,6 +495,7 @@ addActionHandler('scrollMessageListToBottom', (global, actions, payload): Action
   blurTimeout = window.setTimeout(() => {
     global = getGlobal();
     global = updateFocusedMessage(global, undefined, tabId);
+    global = updateThreadReadState(global, chatId, threadId, { unreadCount: 0 });
     setGlobal(global);
   }, FOCUS_NO_HIGHLIGHT_DURATION);
 

@@ -1,11 +1,18 @@
+import type { ApiTypeCurrencyAmount } from '../../api/types';
 import type { LangFn } from './types';
 
-import { STARS_ICON_PLACEHOLDER } from '../../config';
+import { STARS_ICON_PLACEHOLDER, TON_CURRENCY_CODE } from '../../config';
 import { convertTonFromNanos } from '../../util/formatCurrency';
 import buildClassName from '../buildClassName';
 
 import Icon from '../../components/common/icons/Icon';
 import StarIcon from '../../components/common/icons/StarIcon';
+
+export function getNextArrowReplacement() {
+  return {
+    '>': <Icon name="next-link" className="next-arrow-icon" />,
+  };
+}
 
 export function formatStarsAsText(lang: LangFn, amount: number) {
   return lang('StarsAmountText', { amount }, { pluralValue: amount });
@@ -48,11 +55,15 @@ export function formatTonAsIcon(
 }
 
 export function formatStarsAsIcon(lang: LangFn, amount: number | string, options?: {
-  asFont?: boolean; className?: string; containerClassName?: string; }) {
-  const { asFont, className, containerClassName } = options || {};
+  asFont?: boolean;
+  className?: string;
+  containerClassName?: string;
+  noStyles?: boolean;
+}) {
+  const { asFont, className, containerClassName, noStyles } = options || {};
   const icon = asFont
-    ? <Icon name="star" className={buildClassName('star-amount-icon', className)} />
-    : <StarIcon type="gold" className={buildClassName('star-amount-icon', className)} size="adaptive" />;
+    ? <Icon name="star" className={buildClassName(!noStyles && 'star-amount-icon', className)} />
+    : <StarIcon type="gold" className={buildClassName(!noStyles && 'star-amount-icon', className)} size="adaptive" />;
 
   if (containerClassName) {
     return (
@@ -73,4 +84,13 @@ export function formatStarsAsIcon(lang: LangFn, amount: number | string, options
       [STARS_ICON_PLACEHOLDER]: icon,
     },
   });
+}
+
+export function formatCurrencyAmountAsText(lang: LangFn, currencyAmount: ApiTypeCurrencyAmount) {
+  if (currencyAmount.currency === TON_CURRENCY_CODE) {
+    return formatTonAsText(lang, currencyAmount.amount, true);
+  }
+
+  const amount = currencyAmount.amount + currencyAmount.nanos / 1e9;
+  return formatStarsAsText(lang, amount);
 }

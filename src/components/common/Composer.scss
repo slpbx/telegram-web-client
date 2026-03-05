@@ -81,7 +81,7 @@
     height: var(--base-height);
     margin-left: 0.5rem;
 
-    &:not(.danger) {
+    &:not(.danger):not(:hover) {
       color: var(--color-composer-button);
     }
 
@@ -774,6 +774,7 @@
     cursor: var(--custom-cursor, default);
     color: var(--color-links) !important;
     text-decoration: none;
+    word-break: break-all;
 
     &:hover,
     &:active,

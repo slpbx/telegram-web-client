@@ -13,7 +13,7 @@ import {
 } from './messages';
 
 const SPOILER_CHARS = ['⠺', '⠵', '⠞', '⠟'];
-export const TRUNCATED_SUMMARY_LENGTH = 80;
+export const TRUNCATED_SUMMARY_LENGTH = 200;
 
 export function getMessageSummaryText(
   lang: LangFn,
@@ -152,6 +152,7 @@ function getSummaryDescription(
     giveawayResults,
     paidMedia,
     todo,
+    dice,
   } = mediaContent;
   const { poll } = statefulContent || {};
 
@@ -254,6 +255,10 @@ function getSummaryDescription(
       entities: todo.todo.title.entities,
       asPreview: true,
     });
+  }
+
+  if (dice) {
+    summary = dice.emoticon;
   }
 
   return summary || lang('MessageUnsupported');

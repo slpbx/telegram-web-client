@@ -70,13 +70,13 @@ export function formatPastTimeShort(lang: OldLangFn, datetime: number | Date, al
   weekAgo.setDate(today.getDate() - 7);
   if (date >= weekAgo) {
     const weekday = lang(`Weekday.Short${WEEKDAYS_FULL[date.getDay()]}`);
-    return alwaysShowTime ? lang('FullDateTimeFormat', [weekday, time]) : weekday;
+    return alwaysShowTime ? lang('formatDateAtTime', [weekday, time]) : weekday;
   }
 
   const noYear = date.getFullYear() === today.getFullYear();
 
   const formattedDate = formatDateToString(date, lang.code, noYear);
-  return alwaysShowTime ? lang('FullDateTimeFormat', [formattedDate, time]) : formattedDate;
+  return alwaysShowTime ? lang('formatDateAtTime', [formattedDate, time]) : formattedDate;
 }
 
 export function formatFullDate(lang: OldLangFn | LangFn, datetime: number | Date) {
@@ -339,6 +339,26 @@ export function formatMediaDuration(duration: number, maxValue?: number) {
   return string;
 }
 
+export function formatShortHoursMinutes(lang: OldLangFn, durationInSeconds: number) {
+  if (durationInSeconds <= 0) {
+    return lang('MessageTimer.ShortMinutes', 0);
+  }
+
+  const hours = Math.floor(durationInSeconds / 3600);
+  const minutes = Math.floor((durationInSeconds % 3600) / 60);
+
+  if (hours > 0) {
+    const hoursText = lang('MessageTimer.ShortHours', hours);
+    if (minutes === 0) {
+      return hoursText;
+    }
+
+    const minutesText = lang('MessageTimer.ShortMinutes', minutes);
+    return `${hoursText} ${minutesText}`;
+  }
+  return lang('MessageTimer.ShortMinutes', minutes);
+}
+
 export function formatVoiceRecordDuration(durationInMs: number) {
   const parts = [];
 
@@ -398,13 +418,13 @@ export function formatDateToString(
 
 export function formatDateTimeToString(
   datetime: Date | number, locale = 'en-US', noSeconds?: boolean,
-  timeFormat?: TimeFormat,
+  timeFormat?: TimeFormat, noYear?: boolean,
 ) {
   const date = typeof datetime === 'number' ? new Date(datetime) : datetime;
   return date.toLocaleString(
     locale,
     {
-      year: 'numeric',
+      year: noYear ? undefined : 'numeric',
       month: 'short',
       day: 'numeric',
       hour: 'numeric',

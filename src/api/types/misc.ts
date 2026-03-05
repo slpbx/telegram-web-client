@@ -1,9 +1,7 @@
-import type { TeactNode } from '../../lib/teact/teact';
-
 import type { CallbackAction } from '../../global/types';
 import type { IconName } from '../../types/icons';
-import type { RegularLangFnParameters } from '../../util/localization';
-import type { ApiDocument, ApiPhoto, ApiReaction } from './messages';
+import type { LangFnParameters, RegularLangFnParameters } from '../../util/localization';
+import type { ApiDocument, ApiFormattedText, ApiMessageEntity, ApiPhoto, ApiReaction } from './messages';
 import type { ApiPremiumSection } from './payments';
 import type { ApiBotVerification } from './peers';
 import type { ApiStarsSubscriptionPricing } from './stars';
@@ -25,7 +23,16 @@ export interface ApiInitialArgs {
   langCode: string;
   isTestServerRequested?: boolean;
   accountIds?: string[];
+  hasPasskeySupport?: boolean;
 }
+
+export type ApiPasskeyOption = {
+  publicKey: PublicKeyCredentialRequestOptionsJSON;
+};
+
+export type ApiPasskeyRegistrationOption = {
+  publicKey: PublicKeyCredentialCreationOptionsJSON;
+};
 
 export interface ApiOnProgress {
   (
@@ -114,8 +121,7 @@ export type ApiNotification = {
   localId: string;
   containerSelector?: string;
   type?: 'paidMessage' | undefined;
-  title?: string | RegularLangFnParameters;
-  message: TeactNode | RegularLangFnParameters;
+  title?: string | LangFnParameters;
   cacheBreaker?: string;
   actionText?: string | RegularLangFnParameters;
   action?: CallbackAction | CallbackAction[];
@@ -127,10 +133,17 @@ export type ApiNotification = {
   customEmojiIconId?: string;
   shouldUseCustomIcon?: boolean;
   dismissAction?: CallbackAction;
-};
+} & ({
+  message: string;
+  messageEntities?: ApiMessageEntity[];
+} | {
+  message: LangFnParameters;
+  messageEntities?: undefined;
+});
 
 export type ApiError = {
   message: string;
+  entities?: ApiMessageEntity[];
   hasErrorKey?: boolean;
   isSlowMode?: boolean;
   textParams?: Record<string, string>;
@@ -231,6 +244,7 @@ export interface ApiAppConfig {
   starsPaidMessageCommissionPermille?: number;
   starsPaidMessageAmountMax?: number;
   starsUsdWithdrawRateX1000: number;
+  starsUsdSellRateX1000?: number;
   bandwidthPremiumNotifyPeriod?: number;
   bandwidthPremiumUploadSpeedup?: number;
   bandwidthPremiumDownloadSpeedup?: number;
@@ -251,6 +265,7 @@ export interface ApiAppConfig {
   starsStargiftResaleAmountMin?: number;
   starsStargiftResaleAmountMax?: number;
   starsStargiftResaleCommissionPermille?: number;
+  stargiftsCraftAttributePermilles?: number[];
   starsSuggestedPostAmountMax: number;
   starsSuggestedPostAmountMin: number;
   starsSuggestedPostCommissionPermille: number;
@@ -276,6 +291,14 @@ export interface ApiAppConfig {
   verifyAgeMin?: number;
   typingDraftTtl: number;
   contactNoteLimit?: number;
+  whitelistedBotIds?: string[];
+  arePasskeysAvailable: boolean;
+  passkeysMaxCount: number;
+  diceEmojies: string[];
+  diceEmojiesSuccess: Record<string, {
+    value: number;
+    frameStart: number;
+  }>;
 }
 
 export interface ApiConfig {
@@ -288,6 +311,20 @@ export interface ApiConfig {
   maxMessageLength: number;
   editTimeLimit: number;
   maxForwardedCount: number;
+}
+
+export interface ApiPromoData {
+  expires: number;
+  pendingSuggestions: string[];
+  dismissedSuggestions: string[];
+  customPendingSuggestion?: ApiPendingSuggestion;
+}
+
+export interface ApiPendingSuggestion {
+  suggestion: string;
+  title: ApiFormattedText;
+  description: ApiFormattedText;
+  url: string;
 }
 
 export interface ApiTimezone {
@@ -317,7 +354,7 @@ type ApiUrlAuthResultRequest = {
 
 type ApiUrlAuthResultAccepted = {
   type: 'accepted';
-  url: string;
+  url?: string;
 };
 
 type ApiUrlAuthResultDefault = {
@@ -375,4 +412,12 @@ export interface ApiRestrictionReason {
   reason: string;
   text: string;
   platform: string;
+}
+
+export interface ApiPasskey {
+  id: string;
+  name: string;
+  date: number;
+  softwareEmojiId?: string;
+  lastUsageDate?: number;
 }
