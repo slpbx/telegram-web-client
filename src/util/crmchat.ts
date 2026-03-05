@@ -36,7 +36,8 @@ const sessionPromise = new Promise<ApiSessionData>(
   },
 );
 
-type CurrentState = Pick<GlobalState, 'authState' | 'currentUserId'> & {
+type CurrentState = Pick<GlobalState, 'currentUserId'> & {
+  authState: GlobalState['auth']['state'];
   messageList?: GlobalState['byTabId'][number]['messageLists'][number];
 };
 const current: CurrentState = {
@@ -47,8 +48,8 @@ const current: CurrentState = {
 
 addCallback(async () => {
   const global = getGlobal();
-  if (global.authState !== current.authState) {
-    current.authState = global.authState;
+  if (global.auth.state !== current.authState) {
+    current.authState = global.auth.state;
     sendMessage({
       type: 'authStateLegacy',
       state: current.authState,
