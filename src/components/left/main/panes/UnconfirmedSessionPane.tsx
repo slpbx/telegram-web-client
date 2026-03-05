@@ -66,6 +66,9 @@ const UnconfirmedSessionPane = ({
     });
   });
 
+  /* [crmchat] disable unconfirmed session */
+  return undefined;
+
   if (!shouldRender || !renderingSession) return undefined;
 
   return (
