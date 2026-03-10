@@ -17,6 +17,7 @@ import { type BotAppPermissions, ManagementScreens } from '../../../types';
 import {
   FRAGMENT_PHONE_CODE, FRAGMENT_PHONE_LENGTH, MUTE_INDEFINITE_TIMESTAMP, UNMUTE_TIMESTAMP,
 } from '../../../config';
+import { CAN_SEE_PHONE_NUMBERS } from '../../../util/crmchat';
 import {
   buildStaticMapHash,
   getChatLink,
@@ -408,7 +409,7 @@ const ChatExtra = ({
           />
         </div>
       )}
-      {Boolean(formattedNumber?.length) && (
+      {(CAN_SEE_PHONE_NUMBERS || !isSelf) && Boolean(formattedNumber?.length) && (
         <ListItem
           icon="phone"
           className={styles.phone}

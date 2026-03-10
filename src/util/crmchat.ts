@@ -242,3 +242,4 @@ export const CAN_ACCESS_SETTINGS = !isChatter;
 export const CAN_ACCESS_SERVICE_NOTIFICATIONS = !isChatter;
 export const CAN_BLOCK_CONTACT = !isChatter;
 export const CAN_MUTE_CHAT = !isChatter;
+export const CAN_SEE_PHONE_NUMBERS = !isChatter;
