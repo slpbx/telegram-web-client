@@ -8,7 +8,7 @@ import type {
 } from '../../../api/types';
 
 import buildClassName from '../../../util/buildClassName';
-import { formatDateTimeToString, formatPastTimeShort, formatTime } from '../../../util/dates/dateFormat';
+import { formatDateTimeToString, formatPastTimeShort, formatTime } from '../../../util/dates/oldDateFormat';
 import { formatStarsAsIcon } from '../../../util/localization/format';
 import { getRepeatPeriodText } from '../../../util/scheduledMessages';
 import { formatIntegerCompact } from '../../../util/textFormat';
@@ -198,8 +198,6 @@ const MessageMeta: FC<OwnProps> = ({
           {
             formatStarsAsIcon(lang, paidMessageStars, {
               asFont: true,
-              className: 'message-price-star-icon',
-              containerClassName: 'message-price-stars-container',
             })
           }
         </span>

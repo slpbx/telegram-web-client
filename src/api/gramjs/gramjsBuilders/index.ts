@@ -197,14 +197,14 @@ export function buildInputDocument(media: ApiSticker | ApiVideo) {
   ]));
 }
 
-export function buildInputMediaDocument(media: ApiSticker | ApiVideo) {
+export function buildInputMediaDocument(media: ApiSticker | ApiVideo, spoiler?: true) {
   const inputDocument = buildInputDocument(media);
 
   if (!inputDocument) {
     return undefined;
   }
 
-  return new GramJs.InputMediaDocument({ id: inputDocument });
+  return new GramJs.InputMediaDocument({ id: inputDocument, spoiler });
 }
 
 export function buildInputPoll(pollParams: ApiNewPoll, randomId: bigint) {
@@ -420,6 +420,18 @@ export function buildMtpMessageEntity(entity: ApiMessageEntity): GramJs.TypeMess
       return new GramJs.MessageEntitySpoiler({ offset, length });
     case ApiMessageEntityTypes.CustomEmoji:
       return new GramJs.MessageEntityCustomEmoji({ offset, length, documentId: BigInt(entity.documentId) });
+    case ApiMessageEntityTypes.FormattedDate:
+      return new GramJs.MessageEntityFormattedDate({
+        offset,
+        length,
+        date: entity.date,
+        relative: entity.relative,
+        shortTime: entity.shortTime,
+        longTime: entity.longTime,
+        shortDate: entity.shortDate,
+        longDate: entity.longDate,
+        dayOfWeek: entity.dayOfWeek,
+      });
     default:
       return new GramJs.MessageEntityUnknown({ offset, length });
   }

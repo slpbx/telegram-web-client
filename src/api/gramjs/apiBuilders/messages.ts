@@ -297,6 +297,7 @@ export function buildApiMessageWithChatId(
     paidMessageStars: toJSNumber(mtpMessage.paidMessageStars),
     restrictionReasons,
     summaryLanguageCode: mtpMessage.summaryFromLanguage,
+    fromRank: mtpMessage.fromRank,
   };
 }
 
@@ -662,6 +663,10 @@ function buildReplyInfo(inputInfo: ApiInputReplyInfo, isForum?: boolean): ApiRep
 export function buildUploadingMedia(
   attachment: ApiAttachment,
 ): MediaContent {
+  if (attachment.gif) {
+    return { video: attachment.gif };
+  }
+
   const {
     filename: fileName,
     blobUrl,

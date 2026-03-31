@@ -8,7 +8,8 @@ import { IS_IOS } from '../../../util/browser/windowEnvironment';
 import { CAN_ACCESS_SETTINGS } from '../../../util/crmchat';
 import { disableDebugConsole, initDebugConsole } from '../../../util/debugConsole';
 import { getCurrentTabId } from '../../../util/establishMultitabRole';
-import { oldSetLanguage, setTimeFormat } from '../../../util/oldLangProvider';
+import { setTimeFormat as setLocalizedTimeFormat } from '../../../util/localization';
+import { oldSetLanguage, setTimeFormat as setLegacyTimeFormat } from '../../../util/oldLangProvider';
 import { applyPerformanceSettings } from '../../../util/perfomanceSettings';
 import switchTheme from '../../../util/switchTheme';
 import { updatePeerColors } from '../../../util/theme';
@@ -60,7 +61,8 @@ addCallback((global: GlobalState) => {
   }
 
   if (sharedSettings.timeFormat !== oldSharedSettings.timeFormat) {
-    setTimeFormat(sharedSettings.timeFormat);
+    setLocalizedTimeFormat(sharedSettings.timeFormat);
+    setLegacyTimeFormat(sharedSettings.timeFormat);
   }
 
   if (sharedSettings.messageTextSize !== oldSharedSettings.messageTextSize) {

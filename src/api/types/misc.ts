@@ -1,7 +1,7 @@
 import type { CallbackAction } from '../../global/types';
 import type { IconName } from '../../types/icons';
 import type { LangFnParameters, RegularLangFnParameters } from '../../util/localization';
-import type { ApiDocument, ApiFormattedText, ApiMessageEntity, ApiPhoto, ApiReaction } from './messages';
+import type { ApiDocument, ApiFormattedText, ApiMessageEntity, ApiPhoto, ApiReaction, ApiVideo } from './messages';
 import type { ApiPremiumSection } from './payments';
 import type { ApiBotVerification } from './peers';
 import type { ApiStarsSubscriptionPricing } from './stars';
@@ -44,7 +44,7 @@ export interface ApiOnProgress {
 }
 
 export interface ApiAttachment {
-  blob: Blob;
+  blob?: Blob;
   blobUrl: string;
   compressedBlobUrl?: string;
   filename: string;
@@ -72,6 +72,8 @@ export interface ApiAttachment {
   uniqueId?: string;
   ttlSeconds?: number;
   shouldSendInHighQuality?: boolean;
+
+  gif?: ApiVideo;
 }
 
 export interface ApiWallpaper {
@@ -272,6 +274,7 @@ export interface ApiAppConfig {
   starsSuggestedPostAgeMin: number;
   starsSuggestedPostFutureMax: number;
   starsSuggestedPostFutureMin: number;
+  noForwardsRequestExpirePeriod: number;
   tonSuggestedPostCommissionPermille: number;
   tonSuggestedPostAmountMax: number;
   tonSuggestedPostAmountMin: number;
@@ -345,11 +348,19 @@ export interface ApiEmojiInteraction {
   timestamps: number[];
 }
 
-type ApiUrlAuthResultRequest = {
+export type ApiUrlAuthResultRequest = {
   type: 'request';
   bot: ApiUser;
   domain: string;
   shouldRequestWriteAccess?: boolean;
+  shouldRequestPhoneNumber?: boolean;
+  browser?: string;
+  platform?: string;
+  ip?: string;
+  region?: string;
+  matchCodes?: string[];
+  matchCodesFirst?: boolean;
+  userIdHint?: string;
 };
 
 type ApiUrlAuthResultAccepted = {
@@ -357,11 +368,19 @@ type ApiUrlAuthResultAccepted = {
   url?: string;
 };
 
+type ApiUrlAuthResultExpired = {
+  type: 'expired';
+};
+
 type ApiUrlAuthResultDefault = {
   type: 'default';
 };
 
-export type ApiUrlAuthResult = ApiUrlAuthResultRequest | ApiUrlAuthResultAccepted | ApiUrlAuthResultDefault;
+export type ApiUrlAuthResult =
+  ApiUrlAuthResultRequest
+  | ApiUrlAuthResultAccepted
+  | ApiUrlAuthResultExpired
+  | ApiUrlAuthResultDefault;
 
 export interface ApiCollectibleInfo {
   amount: number;

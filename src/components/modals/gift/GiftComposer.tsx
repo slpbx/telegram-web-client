@@ -16,7 +16,7 @@ import {
 } from '../../../global/selectors';
 import buildClassName from '../../../util/buildClassName';
 import buildStyle from '../../../util/buildStyle';
-import { formatCountdown } from '../../../util/dates/dateFormat';
+import { formatCountdown } from '../../../util/dates/oldDateFormat';
 import { HOUR } from '../../../util/dates/units';
 import { formatCurrency } from '../../../util/formatCurrency';
 import { formatStarsAsIcon, getNextArrowReplacement } from '../../../util/localization/format';
@@ -409,10 +409,10 @@ function GiftComposer({
           </div>
         )}
         <Button
-          className={styles.mainButton}
           size={auctionTimeLeft ? undefined : 'smaller'}
           onClick={handleMainButtonClick}
           isLoading={isPaymentFormLoading}
+          inline
           noForcedUpperCase
         >
           {giftAuction ? (

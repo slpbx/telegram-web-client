@@ -8,14 +8,14 @@ import type {
 import type { GlobalState } from '../../../../global/types';
 import type { CustomPeer } from '../../../../types';
 
-import { STARS_CURRENCY_CODE, TON_CURRENCY_CODE } from '../../../../config';
+import { NNBSP, STARS_CURRENCY_CODE, TON_CURRENCY_CODE } from '../../../../config';
 import { buildStarsTransactionCustomPeer,
   formatStarsTransactionAmount,
   shouldUseCustomPeer } from '../../../../global/helpers/payments';
 import { getPeerTitle } from '../../../../global/helpers/peers';
 import { selectPeer } from '../../../../global/selectors';
 import buildClassName from '../../../../util/buildClassName';
-import { formatDateTimeToString } from '../../../../util/dates/dateFormat';
+import { formatDateTimeToString } from '../../../../util/dates/oldDateFormat';
 import { CUSTOM_PEER_PREMIUM } from '../../../../util/objects/customPeer';
 import { getGiftAttributes, getStickerFromGift } from '../../../common/helpers/gifts';
 import renderText from '../../../common/helpers/renderText';
@@ -187,15 +187,18 @@ const StarsTransactionItem = ({ transaction, className }: OwnProps) => {
           {data.status && ` — (${data.status})`}
         </p>
       </div>
-      <div className={styles.stars}>
+      <span className={styles.stars}>
         <span
           className={buildClassName(styles.amount, amountColorClass)}
         >
           {formatStarsTransactionAmount(lang, amount)}
         </span>
-        {amount.currency === STARS_CURRENCY_CODE && <StarIcon className={styles.star} type="gold" size="adaptive" />}
-        {amount.currency === TON_CURRENCY_CODE && <Icon name="toncoin" className={amountColorClass} />}
-      </div>
+        {NNBSP}
+        {amount.currency === STARS_CURRENCY_CODE && <StarIcon type="gold" size="adaptive" />}
+        {amount.currency === TON_CURRENCY_CODE && (
+          <Icon name="toncoin" className={buildClassName('in-text-icon', amountColorClass)} />
+        )}
+      </span>
     </div>
   );
 };

@@ -303,7 +303,6 @@
     user-select: none;
 
     unicode-bidi: plaintext;
-    overflow: hidden;
     display: flex;
 
     font-size: calc(var(--message-text-size, 1rem) - 0.125rem);
@@ -399,11 +398,24 @@
       flex-grow: 1;
     }
 
-    .admin-title {
+    .message-title-meta {
       user-select: none;
 
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
       margin-left: 1rem;
+    }
 
+    .admin-title-badge, .admin-title {
+      user-select: none;
+    }
+
+    .admin-title-badge:last-child {
+      margin-right: -0.1875rem;
+    }
+
+    .admin-title {
       font-size: 0.75rem;
       font-weight: var(--font-weight-normal);
       color: rgba(var(--color-text-meta-rgb), 0.75);
@@ -419,9 +431,6 @@
 
       display: flex;
       align-items: center;
-
-      margin-top: -0.125rem;
-      margin-inline-start: 0.125rem;
 
       font-size: 0.75rem;
     }
@@ -537,23 +546,6 @@
 
     .CommentButton {
       margin-top: 0.625rem;
-    }
-  }
-
-  &.voice,
-  &.audio,
-  &.document {
-    .text-content {
-      margin-top: 0.25rem;
-    }
-  }
-
-  &.voice,
-  &.audio {
-    .message-title,
-    .Embedded {
-      margin-top: -0.1875rem;
-      margin-bottom: 0.1875rem;
     }
   }
 

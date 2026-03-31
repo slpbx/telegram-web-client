@@ -29,7 +29,7 @@ export const DEBUG = process.env.APP_ENV !== 'production';
 export const DEBUG_MORE = false;
 export const DEBUG_LOG_FILENAME = 'tt-log.json';
 export const STRICTERDOM_ENABLED = DEBUG;
-export const FORCE_FALLBACK_LANG = false;
+export const FORCE_FALLBACK_LANG = DEBUG;
 
 export const BETA_CHANGELOG_URL = 'https://telegra.ph/WebA-Beta-03-20';
 
@@ -144,6 +144,9 @@ export const DEFAULT_MESSAGE_TEXT_SIZE_PX = 16;
 export const IOS_DEFAULT_MESSAGE_TEXT_SIZE_PX = 17;
 export const MACOS_DEFAULT_MESSAGE_TEXT_SIZE_PX = 15;
 
+export const NBSP = '\u00A0';
+export const NNBSP = '\u202F';
+
 export const FOLDERS_POSITION_TOP = 'top';
 export const FOLDERS_POSITION_LEFT = 'left';
 export const FOLDERS_POSITION_DEFAULT = FOLDERS_POSITION_TOP;
@@ -250,7 +253,8 @@ export const DEFAULT_TOPIC_ICON_STICKER_ID = 'topic-default-icon';
 export const DEFAULT_STATUS_ICON_ID = 'status-default-icon';
 export const EMOJI_IMG_REGEX = /<img[^>]+alt="([^"]+)"(?![^>]*data-document-id)[^>]*>/gm;
 
-export const BASE_EMOJI_KEYWORD_LANG = 'en';
+export const FALLBACK_LANG_CODE = 'en';
+export const BASE_EMOJI_KEYWORD_LANG = FALLBACK_LANG_CODE;
 
 export const MENU_TRANSITION_DURATION = 200;
 export const SLIDE_TRANSITION_DURATION = 450;
@@ -416,6 +420,7 @@ export const PREMIUM_FEATURE_SECTIONS = [
   'message_privacy',
   'effects',
   'todo',
+  'pm_noforwards',
 ] as const;
 
 export const PREMIUM_BOTTOM_VIDEOS: ApiPremiumSection[] = [

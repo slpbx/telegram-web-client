@@ -23,6 +23,7 @@ import {
   updateChat,
   updateChatFullInfo,
   updateChatListType,
+  updateChatParticipantRank,
   updatePeerStoriesHidden,
   updateTopic,
 } from '../../reducers';
@@ -444,6 +445,10 @@ addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
       return undefined;
     }
 
+    case 'updateChatParticipantRank': {
+      return updateChatParticipantRank(global, update.id, update.userId, update.rank);
+    }
+
     case 'draftMessage': {
       const {
         chatId, threadId, draft,
@@ -520,6 +525,14 @@ addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
       if (!chat?.isForum) return undefined;
 
       actions.loadTopics({ chatId, force: true });
+
+      return undefined;
+    }
+
+    case 'updateDiscussion': {
+      const { chatId, threadId } = update;
+
+      actions.loadDiscussion({ chatId, threadId });
 
       return undefined;
     }

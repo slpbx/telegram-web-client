@@ -69,6 +69,7 @@ import {
   isOwnMessage,
   isServiceNotificationMessage,
   isUserRightBanned,
+  prepareMessageReplyInfo,
 } from '../helpers';
 import { getMessageReplyInfo } from '../helpers/replies';
 import {
@@ -98,7 +99,7 @@ import {
 } from './threads';
 import { selectTopic, selectTopicFromMessage } from './topics';
 import {
-  selectBot, selectUser, selectUserStatus,
+  selectBot, selectIsUserChatProtected, selectUser, selectUserStatus,
 } from './users';
 
 export function selectCurrentMessageList<T extends GlobalState>(
@@ -692,6 +693,20 @@ export function selectAllowedMessageActionsSlow<T extends GlobalState>(
   };
 }
 
+export function selectCanCopyMessageLink<T extends GlobalState>(
+  global: T, message: ApiMessage,
+) {
+  const chat = selectChat(global, message.chatId);
+  if (!chat || selectIsChatRestricted(global, message.chatId)) return false;
+
+  const isLocal = isMessageLocal(message);
+  const isAction = isActionMessage(message);
+  const isChannel = isChatChannel(chat);
+  const isSuperGroup = isChatSuperGroup(chat);
+
+  return !isLocal && !isAction && (isChannel || isSuperGroup) && !chat.isMonoforum;
+}
+
 export function selectCanDeleteMessages<T extends GlobalState>(
   global: T,
   chatId: string,
@@ -1142,11 +1157,19 @@ export function selectIsMessageProtected<T extends GlobalState>(global: T, messa
 }
 
 export function selectIsChatProtected<T extends GlobalState>(global: T, chatId: string) {
-  return selectChat(global, chatId)?.isProtected || false;
+  const chat = selectChat(global, chatId);
+
+  if (!chat) return false;
+
+  if (chat.isProtected || (isUserId(chatId) && selectIsUserChatProtected(global, chatId))) {
+    return true;
+  }
+
+  return false;
 }
 
 export function selectHasProtectedMessage<T extends GlobalState>(global: T, chatId: string, messageIds?: number[]) {
-  if (selectChat(global, chatId)?.isProtected) {
+  if (selectIsChatProtected(global, chatId)) {
     return true;
   }
 
@@ -1160,7 +1183,7 @@ export function selectHasProtectedMessage<T extends GlobalState>(global: T, chat
 }
 
 export function selectCanForwardMessages<T extends GlobalState>(global: T, chatId: string, messageIds?: number[]) {
-  if (selectChat(global, chatId)?.isProtected) {
+  if (selectIsChatProtected(global, chatId)) {
     return false;
   }
 
@@ -1439,17 +1462,8 @@ export function selectMessageReplyInfo<T extends GlobalState>(
 ) {
   const chat = selectChat(global, chatId);
   if (!chat) return undefined;
-  const isMainThread = threadId === MAIN_THREAD_ID;
-  if (!additionalReplyInfo && isMainThread) return undefined;
 
-  const replyInfo: ApiInputMessageReplyInfo = {
-    type: 'message',
-    ...additionalReplyInfo,
-    replyToMsgId: additionalReplyInfo?.replyToMsgId || Number(threadId),
-    replyToTopId: additionalReplyInfo?.replyToTopId || (!isMainThread ? Number(threadId) : undefined),
-  };
-
-  return replyInfo;
+  return prepareMessageReplyInfo(threadId, additionalReplyInfo);
 }
 
 export function selectReplyMessage<T extends GlobalState>(global: T, message: ApiMessage) {

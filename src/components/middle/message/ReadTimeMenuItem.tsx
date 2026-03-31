@@ -3,7 +3,7 @@ import { getActions } from '../../../global';
 
 import type { ApiMessage } from '../../../api/types';
 
-import { formatDateAtTime } from '../../../util/dates/dateFormat';
+import { formatDateAtTime } from '../../../util/dates/oldDateFormat';
 
 import useOldLang from '../../../hooks/useOldLang';
 
@@ -36,7 +36,7 @@ function ReadTimeMenuItem({
   return (
     <MenuItem icon="message-read" className={styles.item}>
       <Transition name="fade" activeKey={shouldRenderSkeleton ? 1 : 2} className={styles.transition}>
-        {shouldRenderSkeleton ? <Skeleton className={styles.skeleton} /> : (
+        {shouldRenderSkeleton ? <Skeleton className={styles.skeleton} animation="wave" /> : (
           <>
             {Boolean(readDate) && lang('PmReadAt', formatDateAtTime(lang, readDate * 1000))}
             {!readDate && shouldRenderShowWhen && (

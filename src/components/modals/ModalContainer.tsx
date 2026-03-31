@@ -18,6 +18,7 @@ import ChatlistModal from './chatlist/ChatlistModal.async';
 import CocoonModal from './cocoon/CocoonModal.async';
 import CollectibleInfoModal from './collectible/CollectibleInfoModal.async';
 import DeleteAccountModal from './deleteAccount/DeleteAccountModal.async';
+import DisableSharingAboutModal from './disableSharing/DisableSharingAboutModal.async';
 import EmojiStatusAccessModal from './emojiStatusAccess/EmojiStatusAccessModal.async';
 import FrozenAccountModal from './frozenAccount/FrozenAccountModal.async';
 import AboutStarGiftModal from './gift/AboutStarGiftModal.async';
@@ -58,6 +59,8 @@ import PriceConfirmModal from './priceConfirm/PriceConfirmModal.async';
 import ProfileRatingModal from './profileRating/ProfileRatingModal.async';
 import QuickChatPickerModal from './quickChatPicker/QuickChatPickerModal.async';
 import QuickPreviewModal from './quickPreview/QuickPreviewModal.async';
+import EditRankModal from './rank/EditRankModal.async';
+import RankModal from './rank/RankModal.async';
 import ReportAdModal from './reportAd/ReportAdModal.async';
 import ReportModal from './reportModal/ReportModal.async';
 import SharePreparedMessageModal from './sharePreparedMessage/SharePreparedMessageModal.async';
@@ -132,6 +135,7 @@ type ModalKey = keyof Pick<TabState,
   'giftDescriptionRemoveModal' |
   'giftOfferAcceptModal' |
   'chatRefundModal' |
+  'disableSharingAboutModal' |
   'priceConfirmModal' |
   'isFrozenAccountModalOpen' |
   'deleteAccountModal' |
@@ -144,7 +148,9 @@ type ModalKey = keyof Pick<TabState,
   'leaveGroupModal' |
   'isTwoFaCheckModalOpen' |
   'isQuickChatPickerOpen' |
-  'isCocoonModalOpen'
+  'isCocoonModalOpen' |
+  'editRankModal' |
+  'rankModal'
 >;
 
 type StateProps = {
@@ -215,6 +221,7 @@ const MODALS: ModalRegistry = {
   giftDescriptionRemoveModal: GiftDescriptionRemoveModal,
   giftOfferAcceptModal: GiftOfferAcceptModal,
   chatRefundModal: ChatRefundModal,
+  disableSharingAboutModal: DisableSharingAboutModal,
   priceConfirmModal: PriceConfirmModal,
   isFrozenAccountModalOpen: FrozenAccountModal,
   deleteAccountModal: DeleteAccountModal,
@@ -228,6 +235,8 @@ const MODALS: ModalRegistry = {
   isTwoFaCheckModalOpen: TwoFaCheckModal,
   isQuickChatPickerOpen: QuickChatPickerModal,
   isCocoonModalOpen: CocoonModal,
+  editRankModal: EditRankModal,
+  rankModal: RankModal,
 };
 const MODAL_KEYS = Object.keys(MODALS) as ModalKey[];
 const MODAL_ENTRIES = Object.entries(MODALS) as Entries<ModalRegistry>;

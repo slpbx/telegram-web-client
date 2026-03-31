@@ -10,7 +10,7 @@ import { isChatChannel } from '../../../global/helpers';
 import { selectChat, selectIsGiveawayGiftsPurchaseAvailable, selectTabState } from '../../../global/selectors';
 import { selectSharedSettings } from '../../../global/selectors/sharedState.ts';
 import buildClassName from '../../../util/buildClassName';
-import { formatDateAtTime } from '../../../util/dates/dateFormat';
+import { formatDateAtTime } from '../../../util/dates/oldDateFormat';
 import { resolveTransitionName } from '../../../util/resolveTransitionName.ts';
 import { formatInteger } from '../../../util/textFormat';
 import { getBoostProgressInfo } from '../../common/helpers/boostInfo';
@@ -25,7 +25,7 @@ import PrivateChatInfo from '../../common/PrivateChatInfo';
 import ListItem from '../../ui/ListItem';
 import Loading from '../../ui/Loading';
 import Spinner from '../../ui/Spinner';
-import TabList from '../../ui/TabList';
+import SquareTabList from '../../ui/SquareTabList';
 import Transition from '../../ui/Transition';
 import StatisticsOverview from './StatisticsOverview';
 
@@ -366,7 +366,7 @@ const BoostStatistics = ({
                 >
                   {renderContent()}
                 </Transition>
-                <TabList activeTab={renderingActiveTab} tabs={tabs} onSwitchTab={setActiveTab} />
+                <SquareTabList activeTab={renderingActiveTab} tabs={tabs} onSwitchTab={setActiveTab} />
               </div>
             ) : (
               <>

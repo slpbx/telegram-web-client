@@ -27,7 +27,9 @@ import {
 } from '../../../global/selectors';
 import { selectThreadIdFromMessage } from '../../../global/selectors/threads';
 import { ensureProtocol } from '../../../util/browser/url';
-import { formatDateTimeToString, formatScheduledDateTime, formatShortDuration } from '../../../util/dates/dateFormat';
+import {
+  formatDateTimeToString, formatScheduledDateTime, formatShortDuration,
+} from '../../../util/dates/oldDateFormat';
 import { formatCurrency } from '../../../util/formatCurrency';
 import { convertTonFromNanos } from '../../../util/formatCurrency';
 import { formatCurrencyAmountAsText, formatStarsAsText, formatTonAsText } from '../../../util/localization/format';
@@ -1056,6 +1058,25 @@ const ActionMessageText = ({
 
       case 'phoneCall': // Rendered as a regular message, but considered an action for the summary
         return lang(getCallMessageKey(action, isOutgoing));
+
+      case 'noForwardsToggle': {
+        const { prevValue, newValue } = action;
+        if (newValue && newValue === prevValue) {
+          return lang('ActionSharingStillDisabled');
+        }
+        return translateWithYou(
+          lang,
+          newValue ? 'ActionSharingDisabled' : 'ActionSharingEnabled',
+          isOutgoing,
+          { from: senderLink },
+        );
+      }
+
+      case 'noForwardsRequest': {
+        return isOutgoing
+          ? lang('NoForwardsRequestYouTitle')
+          : lang('NoForwardsRequestTitle', { user: senderLink }, { withNodes: true });
+      }
 
       case 'newCreatorPending': {
         const { newCreatorId } = action;

@@ -1,14 +1,15 @@
-import type { FC } from '../../../lib/teact/teact';
 import { memo, useMemo } from '../../../lib/teact/teact';
 
 import type { ApiAttachment } from '../../../api/types';
 
 import { SUPPORTED_PHOTO_CONTENT_TYPES, SUPPORTED_VIDEO_CONTENT_TYPES } from '../../../config';
 import buildClassName from '../../../util/buildClassName';
-import { formatMediaDuration } from '../../../util/dates/dateFormat';
+import { formatMediaDuration } from '../../../util/dates/oldDateFormat';
 import { getFileExtension } from '../../common/helpers/documentInfo';
 import { REM } from '../../common/helpers/mediaDimensions';
 
+import useAppLayout from '../../../hooks/useAppLayout';
+import useLang from '../../../hooks/useLang';
 import useLastCallback from '../../../hooks/useLastCallback';
 
 import File from '../../common/File';
@@ -26,11 +27,12 @@ type OwnProps = {
   index: number;
   onDelete?: (index: number) => void;
   onToggleSpoiler?: (index: number) => void;
+  onEdit?: (index: number) => void;
 };
 
 const BLUR_CANVAS_SIZE = 15 * REM;
 
-const AttachmentModalItem: FC<OwnProps> = ({
+const AttachmentModalItem = ({
   attachment,
   className,
   isSingle,
@@ -39,11 +41,18 @@ const AttachmentModalItem: FC<OwnProps> = ({
   index,
   onDelete,
   onToggleSpoiler,
-}) => {
+  onEdit,
+}: OwnProps) => {
+  const lang = useLang();
+  const { isMobile } = useAppLayout();
   const displayType = getDisplayType(attachment, shouldDisplayCompressed);
 
   const handleSpoilerClick = useLastCallback(() => {
     onToggleSpoiler?.(index);
+  });
+
+  const handleEditClick = useLastCallback(() => {
+    onEdit?.(index);
   });
 
   const content = useMemo(() => {
@@ -73,16 +82,20 @@ const AttachmentModalItem: FC<OwnProps> = ({
             />
           </>
         );
-      default:
+      default: {
+        const canEdit = SUPPORTED_PHOTO_CONTENT_TYPES.has(attachment.mimeType) && !isMobile;
+        const isPhoto = SUPPORTED_PHOTO_CONTENT_TYPES.has(attachment.mimeType);
         return (
           <>
             <File
               className={styles.file}
               name={attachment.filename}
               extension={getFileExtension(attachment.filename, attachment.mimeType)}
-              previewData={attachment.previewBlobUrl}
+              previewData={isPhoto && attachment.blobUrl ? attachment.blobUrl : attachment.previewBlobUrl}
               size={attachment.size}
-              smaller
+              previewSize="large"
+              onClick={canEdit ? handleEditClick : undefined}
+              actionIcon={canEdit ? 'edit' : undefined}
             />
             {onDelete && (
               <Icon
@@ -94,8 +107,9 @@ const AttachmentModalItem: FC<OwnProps> = ({
             )}
           </>
         );
+      }
     }
-  }, [attachment, displayType, index, onDelete]);
+  }, [attachment, displayType, index, onDelete, isMobile]);
 
   const shouldSkipGrouping = displayType === 'file' || !shouldDisplayGrouped;
   const shouldDisplaySpoiler = Boolean(displayType !== 'file' && attachment.shouldSendAsSpoiler);
@@ -106,7 +120,7 @@ const AttachmentModalItem: FC<OwnProps> = ({
   );
 
   return (
-    <div className={rootClassName}>
+    <div className={rootClassName} dir={lang.isRtl ? 'rtl' : undefined}>
       {content}
       <MediaSpoiler
         isVisible={shouldDisplaySpoiler}
@@ -116,6 +130,13 @@ const AttachmentModalItem: FC<OwnProps> = ({
       />
       {shouldRenderOverlay && (
         <div className={styles.overlay}>
+          {displayType === 'photo' && onEdit && (
+            <Icon
+              name="edit"
+              className={styles.actionItem}
+              onClick={handleEditClick}
+            />
+          )}
           <Icon
             name={attachment.shouldSendAsSpoiler ? 'spoiler-disable' : 'spoiler'}
             className={styles.actionItem}

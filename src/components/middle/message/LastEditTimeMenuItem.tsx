@@ -2,7 +2,7 @@ import { memo } from '../../../lib/teact/teact';
 
 import type { ApiMessage } from '../../../api/types';
 
-import { formatDateAtTime } from '../../../util/dates/dateFormat';
+import { formatDateAtTime } from '../../../util/dates/oldDateFormat';
 
 import useOldLang from '../../../hooks/useOldLang';
 
@@ -24,7 +24,7 @@ function LastEditTimeMenuItem({
 
   return (
     <MenuItem icon="clock-edit" className={styles.item}>
-      {shouldRenderSkeleton ? <Skeleton className={styles.skeleton} /> : Boolean(editDate)
+      {shouldRenderSkeleton ? <Skeleton className={styles.skeleton} animation="wave" /> : Boolean(editDate)
         && lang('Chat.PrivateMessageEditTimestamp.Date', formatDateAtTime(lang, editDate * 1000))}
     </MenuItem>
   );

@@ -22,10 +22,11 @@ import useFolderTabs from '../../../hooks/useFolderTabs';
 import useHistoryBack from '../../../hooks/useHistoryBack';
 import useLang from '../../../hooks/useLang';
 import useLastCallback from '../../../hooks/useLastCallback';
+import useScrolledState from '../../../hooks/useScrolledState';
 import useShowTransition from '../../../hooks/useShowTransition';
 
 import StoryRibbon from '../../story/StoryRibbon';
-import TabList from '../../ui/TabList';
+import SquareTabList from '../../ui/SquareTabList';
 import Transition from '../../ui/Transition';
 import ChatList from './ChatList';
 
@@ -86,9 +87,16 @@ const ChatFolders: FC<OwnProps & StateProps> = ({
 
   const lang = useLang();
 
+  const { isAtBeginning: isNotScrolled, handleScroll, updateScrollState } = useScrolledState();
+
   useEffect(() => {
     loadChatFolders();
   }, []);
+
+  useEffect(() => {
+    const activeList = transitionRef.current?.querySelector<HTMLElement>('.chat-list.Transition_slide-active');
+    updateScrollState(activeList ?? undefined);
+  }, [activeChatFolder, updateScrollState]);
 
   const {
     ref,
@@ -231,6 +239,7 @@ const ChatFolders: FC<OwnProps & StateProps> = ({
         isFoldersSidebarShown={isFoldersSidebarShown}
         isStoryRibbonShown={isStoryRibbonShown}
         withTags
+        onScroll={handleScroll}
       />
     );
   }
@@ -250,11 +259,12 @@ const ChatFolders: FC<OwnProps & StateProps> = ({
     >
       {shouldRenderStoryRibbon && <StoryRibbon isClosing={isStoryRibbonClosing} />}
       {shouldRenderFolders ? (
-        <TabList
+        <SquareTabList
           contextRootElementSelector="#LeftColumn"
           tabs={folderTabs}
           activeTab={activeChatFolder}
           onSwitchTab={handleSwitchTab}
+          className={!isNotScrolled ? 'scrolled' : undefined}
         />
       ) : shouldRenderPlaceholder ? (
         <div ref={placeholderRef} className="tabs-placeholder" />

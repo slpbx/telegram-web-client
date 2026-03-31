@@ -25,7 +25,7 @@ import {
 } from '../../../global/selectors';
 import { selectPremiumLimit } from '../../../global/selectors/limits';
 import buildClassName from '../../../util/buildClassName';
-import { formatCountdownDays } from '../../../util/dates/dateFormat';
+import { formatCountdownDays } from '../../../util/dates/oldDateFormat';
 import { formatCurrency } from '../../../util/formatCurrency';
 import { getStickerFromGift } from '../../common/helpers/gifts';
 import { REM } from '../../common/helpers/mediaDimensions';
@@ -57,6 +57,7 @@ import PremiumFile from '../../../assets/premium/PremiumFile.svg';
 import PremiumLastSeen from '../../../assets/premium/PremiumLastSeen.svg';
 import PremiumLimits from '../../../assets/premium/PremiumLimits.svg';
 import PremiumMessagePrivacy from '../../../assets/premium/PremiumMessagePrivacy.svg';
+import PremiumNoforwards from '../../../assets/premium/PremiumNoForwardsPrivacy.svg';
 import PremiumReactions from '../../../assets/premium/PremiumReactions.svg';
 import PremiumSpeed from '../../../assets/premium/PremiumSpeed.svg';
 import PremiumStatus from '../../../assets/premium/PremiumStatus.svg';
@@ -89,6 +90,7 @@ const PREMIUM_FEATURE_COLOR_ICONS: Record<ApiPremiumSection, string> = {
   message_privacy: PremiumMessagePrivacy,
   effects: PremiumEffects,
   todo: PremiumBadge,
+  pm_noforwards: PremiumNoforwards,
 };
 
 export type OwnProps = {
@@ -442,7 +444,7 @@ const PremiumMainModal: FC<OwnProps & StateProps> = ({
             </div>
             <div className={buildClassName(styles.list, isPremium && styles.noButton)}>
               {filteredSections.map((section, index) => {
-                const shouldUseNewLang = section === 'todo';
+                const shouldUseNewLang = section === 'todo' || section === 'pm_noforwards';
                 return (
                   <PremiumFeatureItem
                     key={section}

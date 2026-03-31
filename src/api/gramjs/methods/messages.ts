@@ -438,6 +438,9 @@ export function sendApiMessage(
       }
     }
 
+    if (!media && attachment?.gif) {
+      media = buildInputMediaDocument(attachment.gif, attachment.shouldSendAsSpoiler);
+    }
     if (!media && attachment) {
       try {
         media = await uploadMedia(localMessage, attachment, onProgress!);
@@ -607,26 +610,32 @@ function sendGroupedMedia(
 
   const prevMediaQueue = mediaQueue;
   mediaQueue = (async () => {
-    let media;
-    try {
-      media = await uploadMedia(localMessage, attachment, onProgress!);
-    } catch (err) {
-      if (DEBUG) {
-        // eslint-disable-next-line no-console
-        console.warn(err);
+    let inputMedia: GramJs.TypeInputMedia | undefined;
+
+    if (attachment.gif) {
+      inputMedia = buildInputMediaDocument(attachment.gif, attachment.shouldSendAsSpoiler);
+    } else {
+      let media;
+      try {
+        media = await uploadMedia(localMessage, attachment, onProgress!);
+      } catch (err) {
+        if (DEBUG) {
+          // eslint-disable-next-line no-console
+          console.warn(err);
+        }
+
+        groupedUploads[groupedId].counter--;
+
+        await prevMediaQueue;
+
+        return;
       }
 
-      groupedUploads[groupedId].counter--;
-
-      await prevMediaQueue;
-
-      return;
+      inputMedia = await fetchInputMedia(
+        buildInputPeer(chat.id, chat.accessHash),
+        media,
+      );
     }
-
-    const inputMedia = await fetchInputMedia(
-      buildInputPeer(chat.id, chat.accessHash),
-      media,
-    );
 
     await prevMediaQueue;
 
@@ -1103,6 +1112,24 @@ export async function deleteParticipantHistory({
   }
 }
 
+export function editChatParticipantRank({
+  chat, peer, rank,
+}: {
+  chat: ApiChat;
+  peer: ApiPeer;
+  rank: string;
+}) {
+  const participant = buildInputPeer(peer.id, peer.accessHash);
+
+  return invokeRequest(new GramJs.messages.EditChatParticipantRank({
+    peer: buildInputPeer(chat.id, chat.accessHash),
+    participant,
+    rank,
+  }), {
+    shouldReturnTrue: true,
+  });
+}
+
 export function deleteScheduledMessages({
   chat, messageIds,
 }: {
@@ -1313,6 +1340,12 @@ export async function markMessageListRead({
       '@type': 'updateTopic',
       chatId: chat.id,
       topicId: Number(threadId),
+    });
+  } else {
+    sendApiUpdate({
+      '@type': 'updateDiscussion',
+      chatId: chat.id,
+      threadId: Number(threadId),
     });
   }
 }

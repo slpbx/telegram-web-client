@@ -41,6 +41,7 @@ import {
 import { getSavedGiftKey } from '../../global/helpers/stars';
 import {
   selectActiveDownloads,
+  selectCanEditRank,
   selectCanUpdateMainTab,
   selectChat,
   selectChatFullInfo,
@@ -74,6 +75,7 @@ import { IS_TOUCH_ENV } from '../../util/browser/windowEnvironment';
 import buildClassName from '../../util/buildClassName';
 import { captureEvents, SwipeDirection } from '../../util/captureEvents';
 import { isUserId } from '../../util/entities/ids';
+import { buildCollectionByKey } from '../../util/iteratees.ts';
 import { resolveTransitionName } from '../../util/resolveTransitionName.ts';
 import { LOCAL_TGS_URLS } from '../common/helpers/animatedAssets';
 import renderText from '../common/helpers/renderText';
@@ -117,7 +119,7 @@ import InfiniteScroll from '../ui/InfiniteScroll';
 import Link from '../ui/Link';
 import ListItem, { type MenuItemContextAction } from '../ui/ListItem';
 import Spinner from '../ui/Spinner';
-import TabList, { type TabWithProperties } from '../ui/TabList';
+import SquareTabList, { type TabWithProperties } from '../ui/SquareTabList';
 import Transition from '../ui/Transition';
 import DeleteMemberModal from './DeleteMemberModal';
 import StarGiftCollectionList from './gifts/StarGiftCollectionList';
@@ -301,6 +303,7 @@ const Profile = ({
     resetSelectedStoryAlbum,
     changeProfileTab,
     setMainProfileTab,
+    openEditRankModal,
   } = getActions();
 
   const containerRef = useRef<HTMLDivElement>();
@@ -481,6 +484,10 @@ const Profile = ({
   const { startViewTransition } = useViewTransition();
   const { createVtnStyle } = useVtn();
 
+  const membersById = useMemo(() => {
+    return members && buildCollectionByKey(members, 'userId');
+  }, [members]);
+
   const giftIds = useMemo(() => renderingGifts?.map((gift) => getSavedGiftKey(gift)), [renderingGifts]);
 
   const activeTabIndex = useMemo(() => {
@@ -500,9 +507,10 @@ const Profile = ({
   }, [profileTab, activeTabIndex]);
 
   const tabType = tabs[activeTabIndex].type;
-  const handleLoadCommonChats = useCallback(() => {
+  const handleLoadCommonChats = useLastCallback(() => {
+    if (!isSynced) return;
     loadCommonChats({ userId: chatId });
-  }, [chatId]);
+  });
   const handleLoadPeerStories = useCallback(({ offsetId }: { offsetId: number }) => {
     loadPeerProfileStories({ peerId: chatId, offsetId });
   }, [chatId]);
@@ -513,9 +521,10 @@ const Profile = ({
     loadPeerSavedGifts({ peerId: chatId });
   }, [chatId]);
 
-  const handleLoadMoreMembers = useCallback(() => {
+  const handleLoadMoreMembers = useLastCallback(() => {
+    if (!isSynced) return;
     loadMoreMembers({ chatId });
-  }, [chatId, loadMoreMembers]);
+  });
 
   useEffectWithPrevDeps(([prevGifts]) => {
     if (areDeepEqual(gifts, prevGifts)) {
@@ -722,13 +731,48 @@ const Profile = ({
     activeTabIndex, activeCollectionId, selectedStoryAlbumId], renderingDelay);
 
   function getMemberContextAction(memberId: string): MenuItemContextAction[] | undefined {
-    return memberId === currentUserId || !canDeleteMembers ? undefined : [{
-      title: oldLang('lng_context_remove_from_group'),
-      icon: 'stop',
-      handler: () => {
-        setDeletingUserId(memberId);
-      },
-    }];
+    const global = getGlobal();
+    const member = adminMembersById?.[memberId] || membersById?.[memberId];
+    const canEditRank = member && selectCanEditRank(global, {
+      chatId,
+      userId: memberId,
+      isAdmin: member?.isAdmin,
+      isOwner: member?.isOwner,
+    });
+
+    const actions: MenuItemContextAction[] = [];
+
+    if (memberId !== currentUserId && canDeleteMembers) {
+      actions.push({
+        title: oldLang('lng_context_remove_from_group'),
+        icon: 'stop',
+        handler: () => {
+          setDeletingUserId(memberId);
+        },
+      });
+    }
+
+    if (canEditRank) {
+      actions.push({
+        title: lang('MemberContextEditRank'),
+        icon: 'tag',
+        handler: () => {
+          openEditRankModal({
+            chatId,
+            userId: memberId,
+            isAdmin: member?.isAdmin,
+            isOwner: member?.isOwner,
+            rank: member?.rank,
+          });
+        },
+      });
+    }
+
+    if (actions.length === 0) {
+      return undefined;
+    }
+
+    return actions;
   }
 
   function renderNothingFoundGiftsWithFilter() {
@@ -909,7 +953,7 @@ const Profile = ({
               id={`shared-media${getMessageHtmlId(id)}`}
               document={getMessageDocument(messagesById[id])!}
               datetime={messagesById[id].date}
-              smaller
+              fileSize="small"
               className="scroll-item"
               isDownloading={getIsDownloading(activeDownloads, getMessageDocument(messagesById[id])!)}
               observeIntersection={observeIntersectionForMedia}
@@ -976,8 +1020,15 @@ const Profile = ({
 
               onClick={() => handleMemberClick(id)}
               contextActions={getMemberContextAction(id)}
+              withPortalForMenu
             >
-              <PrivateChatInfo userId={id} adminMember={adminMembersById?.[id]} forceShowSelf withStory />
+              <PrivateChatInfo
+                userId={id}
+                chatMemberOriginId={chatId}
+                chatMember={adminMembersById?.[id] || membersById?.[id]}
+                forceShowSelf
+                withStory
+              />
             </ListItem>
           ))
         ) : resultType === 'commonChats' ? (
@@ -1213,7 +1264,7 @@ const Profile = ({
           >
             {renderContent()}
           </Transition>
-          <TabList activeTab={activeTabIndex} tabs={tabs} onSwitchTab={handleSwitchTab} />
+          <SquareTabList activeTab={activeTabIndex} tabs={tabs} onSwitchTab={handleSwitchTab} />
         </div>
       )}
 

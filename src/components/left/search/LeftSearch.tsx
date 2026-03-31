@@ -13,7 +13,7 @@ import { type AnimationLevel, GlobalSearchContent } from '../../../types';
 
 import { selectTabState } from '../../../global/selectors';
 import { selectSharedSettings } from '../../../global/selectors/sharedState';
-import { parseDateString } from '../../../util/dates/dateFormat';
+import { parseDateString } from '../../../util/dates/oldDateFormat';
 import { resolveTransitionName } from '../../../util/resolveTransitionName';
 
 import useHistoryBack from '../../../hooks/useHistoryBack';
@@ -21,7 +21,7 @@ import useKeyboardListNavigation from '../../../hooks/useKeyboardListNavigation'
 import useLang from '../../../hooks/useLang';
 import useLastCallback from '../../../hooks/useLastCallback';
 
-import TabList from '../../ui/TabList';
+import SquareTabList from '../../ui/SquareTabList';
 import Transition from '../../ui/Transition';
 import AudioResults from './AudioResults';
 import BotAppResults from './BotAppResults';
@@ -122,7 +122,7 @@ const LeftSearch: FC<OwnProps & StateProps> = ({
 
   return (
     <div className="LeftSearch" ref={containerRef} onKeyDown={handleKeyDown}>
-      <TabList activeTab={activeTab} tabs={tabs} onSwitchTab={handleSwitchTab} />
+      <SquareTabList activeTab={activeTab} tabs={tabs} onSwitchTab={handleSwitchTab} />
       <Transition
         name={resolveTransitionName('slideOptimized', animationLevel, undefined, lang.isRtl)}
         renderCount={tabs.length}

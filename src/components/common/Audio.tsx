@@ -29,7 +29,7 @@ import { selectMessageMediaDuration } from '../../global/selectors/media';
 import { makeTrackId } from '../../util/audioPlayer';
 import buildClassName from '../../util/buildClassName';
 import { captureEvents } from '../../util/captureEvents';
-import { formatMediaDateTime, formatMediaDuration, formatPastTimeShort } from '../../util/dates/dateFormat';
+import { formatMediaDateTime, formatMediaDuration, formatPastTimeShort } from '../../util/dates/oldDateFormat';
 import { decodeWaveform, interpolateArray } from '../../util/waveform';
 import { LOCAL_TGS_URLS } from './helpers/animatedAssets';
 import renderText from './helpers/renderText';
@@ -423,7 +423,7 @@ const Audio = ({
     <div className={fullClassName} dir={lang.isRtl ? 'rtl' : 'ltr'}>
       {isSelectable && (
         <div className="message-select-control no-selection">
-          {isSelected && <Icon name="select" />}
+          {isSelected && <Icon name="check" className="message-select-control-icon" />}
         </div>
       )}
       {renderTooglePlayWrapper()}
