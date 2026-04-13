@@ -7,8 +7,10 @@ import {
 import type { WorkerMessageEvent } from '../api/gramjs/worker/types';
 import type { ApiChatFullInfo, ApiSessionData, ApiUserFullInfo } from '../api/types';
 import type { ActionPayloads, GlobalState } from '../global/types';
+import { MAIN_THREAD_ID } from '../api/types';
 
 import { getChatAvatarHash } from '../global/helpers';
+import { selectThreadReadState } from '../global/selectors/threads';
 import { getCurrentTabId } from './establishMultitabRole';
 import * as mediaLoader from './mediaLoader';
 
@@ -36,18 +38,20 @@ const sessionPromise = new Promise<ApiSessionData>(
   },
 );
 
-type CurrentState = Pick<GlobalState, 'currentUserId'> & {
+type CurrentState = {
   authState: GlobalState['auth']['state'];
-  messageList?: GlobalState['byTabId'][number]['messageLists'][number];
+  currentChatId?: string;
+  currentChatUnreadCount?: number;
 };
 const current: CurrentState = {
-  currentUserId: undefined,
   authState: undefined,
-  messageList: undefined,
+  currentChatId: undefined,
+  currentChatUnreadCount: undefined,
 };
 
 addCallback(async () => {
   const global = getGlobal();
+
   if (global.auth.state !== current.authState) {
     current.authState = global.auth.state;
     sendMessage({
@@ -57,13 +61,30 @@ addCallback(async () => {
   }
 
   const messageLists = global.byTabId[getCurrentTabId()]?.messageLists;
-  const currentList = messageLists?.[messageLists.length - 1];
+  const chatId = messageLists?.[messageLists.length - 1]?.chatId;
+  const chat = chatId ? global.chats.byId[chatId] : undefined;
 
-  if (currentList !== current.messageList) {
-    current.messageList = currentList;
-    const chat = currentList?.chatId ? global.chats.byId[currentList.chatId] : undefined;
-    const fullInfo: ApiUserFullInfo | ApiChatFullInfo | undefined = global.users.fullInfoById[currentList?.chatId]
-      ?? global.chats.fullInfoById[currentList?.chatId];
+  const unreadCount = chat
+    ? selectThreadReadState(global, chat.id, MAIN_THREAD_ID)?.unreadCount
+    : undefined;
+
+  if (unreadCount !== current.currentChatUnreadCount) {
+    current.currentChatUnreadCount = unreadCount;
+    sendMessage({
+      type: 'chatUnreadState',
+      peerId: chat?.id,
+      username: chat?.usernames?.[0]?.username,
+      unreadCount,
+      synced: global.isSynced,
+    });
+  }
+
+  // handle opened chat change
+  if (chat?.id !== current.currentChatId) {
+    current.currentChatId = chat?.id;
+    const fullInfo: ApiUserFullInfo | ApiChatFullInfo | undefined = chat
+      ? global.users.fullInfoById[chat.id] ?? global.chats.fullInfoById[chat.id]
+      : undefined;
 
     let type: 'user' | 'group' | 'other' = 'other';
     switch (chat?.type) {
