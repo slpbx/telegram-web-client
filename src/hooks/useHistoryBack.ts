@@ -110,11 +110,17 @@ function processStateOperations(stateOperations: HistoryOperationState[]) {
 }
 
 function deferHistoryOperation(historyOperation: HistoryOperation) {
+  // [CRMchat] embedded in an iframe; an iframe's session history joins the
+  // parent's, so real pushState/replaceState/go would hijack the parent's
+  // back button. The in-memory virtual stack still tracks navigation.
+  return;
+  /*
   if (!deferredHistoryOperations.length) {
     requestMeasure(applyDeferredHistoryOperations);
   }
 
   deferredHistoryOperations.push(historyOperation);
+  */
 }
 
 // Resets history to the `root` state
