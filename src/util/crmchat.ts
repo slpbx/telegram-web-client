@@ -49,7 +49,50 @@ const current: CurrentState = {
   currentChatUnreadCount: undefined,
 };
 
-addCallback(async () => {
+async function sendChatOpened(global: GlobalState, chat: GlobalState['chats']['byId'][string] | undefined) {
+  const fullInfo: ApiUserFullInfo | ApiChatFullInfo | undefined = chat
+    ? global.users.fullInfoById[chat.id] ?? global.chats.fullInfoById[chat.id]
+    : undefined;
+
+  let type: 'user' | 'group' | 'other' = 'other';
+  switch (chat?.type) {
+    case 'chatTypePrivate':
+      type = 'user';
+      break;
+    case 'chatTypeBasicGroup':
+    case 'chatTypeSuperGroup':
+      type = 'group';
+      break;
+  }
+
+  const avatarHash = chat ? getChatAvatarHash(chat) : undefined;
+  const avatarUrl = avatarHash ? mediaLoader.getFromMemory(avatarHash) : undefined;
+  const avatarDataUri = avatarUrl ? await blobUrlToDataURI(avatarUrl) : undefined;
+
+  const info = chat ? {
+    type,
+    peerId: chat.id,
+    username: chat.usernames?.[0]?.username,
+    avatar: avatarDataUri,
+    fullName: chat.title,
+    description: fullInfo && 'bio' in fullInfo
+      ? fullInfo.bio
+      : (fullInfo && 'about' in fullInfo
+        ? fullInfo.about
+        : undefined
+      ),
+  } : undefined;
+
+  sendMessage({
+    type: 'chatOpened',
+    chat,
+    info,
+    userId: chat?.id,
+    username: chat?.usernames?.[0]?.username,
+  });
+}
+
+addCallback(() => {
   const global = getGlobal();
 
   if (global.auth.state !== current.authState) {
@@ -68,7 +111,7 @@ addCallback(async () => {
     ? selectThreadReadState(global, chat.id, MAIN_THREAD_ID)?.unreadCount
     : undefined;
 
-  if (unreadCount !== current.currentChatUnreadCount) {
+  if (global.isSynced && unreadCount !== current.currentChatUnreadCount) {
     current.currentChatUnreadCount = unreadCount;
     sendMessage({
       type: 'chatUnreadState',
@@ -82,46 +125,7 @@ addCallback(async () => {
   // handle opened chat change
   if (chat?.id !== current.currentChatId) {
     current.currentChatId = chat?.id;
-    const fullInfo: ApiUserFullInfo | ApiChatFullInfo | undefined = chat
-      ? global.users.fullInfoById[chat.id] ?? global.chats.fullInfoById[chat.id]
-      : undefined;
-
-    let type: 'user' | 'group' | 'other' = 'other';
-    switch (chat?.type) {
-      case 'chatTypePrivate':
-        type = 'user';
-        break;
-      case 'chatTypeBasicGroup':
-      case 'chatTypeSuperGroup':
-        type = 'group';
-        break;
-    }
-
-    const avatarHash = chat ? getChatAvatarHash(chat) : undefined;
-    const avatarUrl = avatarHash ? mediaLoader.getFromMemory(avatarHash) : undefined;
-    const avatarDataUri = avatarUrl ? await blobUrlToDataURI(avatarUrl) : undefined;
-
-    const info = chat ? {
-      type,
-      peerId: chat.id,
-      username: chat.usernames?.[0]?.username,
-      avatar: avatarDataUri,
-      fullName: chat.title,
-      description: fullInfo && 'bio' in fullInfo
-        ? fullInfo.bio
-        : (fullInfo && 'about' in fullInfo
-          ? fullInfo.about
-          : undefined
-        ),
-    } : undefined;
-
-    sendMessage({
-      type: 'chatOpened',
-      chat,
-      info,
-      userId: chat?.id,
-      username: chat?.usernames?.[0]?.username,
-    });
+    void sendChatOpened(global, chat).catch((e) => console.warn(e));
   }
 });
 
