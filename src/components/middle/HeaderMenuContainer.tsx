@@ -44,7 +44,7 @@ import {
   selectUser,
   selectUserFullInfo,
 } from '../../global/selectors';
-import { CAN_BLOCK_CONTACT, CAN_DELETE_CHAT } from '../../util/crmchat';
+import { CAN_ACCESS_CHANNEL_SETTINGS, CAN_BLOCK_CONTACT, CAN_DELETE_CHAT } from '../../util/crmchat';
 import { isUserId } from '../../util/entities/ids';
 import { disableScrolling } from '../../util/scrollLock';
 
@@ -635,7 +635,7 @@ const HeaderMenuContainer: FC<OwnProps & StateProps> = ({
               {isTopic ? oldLang('lng_context_view_topic') : oldLang('lng_context_view_group')}
             </MenuItem>
           )}
-          {canManage && !canEditTopic && (
+          {canManage && !canEditTopic && CAN_ACCESS_CHANNEL_SETTINGS && (
             <MenuItem
               icon="edit"
               onClick={handleEditClick}

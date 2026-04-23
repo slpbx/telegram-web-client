@@ -10,6 +10,7 @@ import {
 } from '../../../config';
 import { IS_TAURI } from '../../../util/browser/globalEnvironment';
 import { IS_WAVE_TRANSFORM_SUPPORTED } from '../../../util/browser/windowEnvironment';
+import { CAN_ACCESS_CHANNEL_SETTINGS } from '../../../util/crmchat';
 import { getAllMultitabTokens, getCurrentTabId, reestablishMasterToSelf } from '../../../util/establishMultitabRole';
 import { getAllNotificationsCount } from '../../../util/folderManager';
 import getIsAppUpdateNeeded from '../../../util/getIsAppUpdateNeeded';
@@ -85,6 +86,7 @@ addActionHandler('resetLeftColumnWidth', (global): ActionReturnType => {
 });
 
 addActionHandler('toggleManagement', (global, actions, payload): ActionReturnType => {
+  if (!CAN_ACCESS_CHANNEL_SETTINGS) return undefined;
   const { force, tabId = getCurrentTabId() } = payload || {};
   const { chatId } = selectCurrentMessageList(global, tabId) || {};
 
@@ -108,6 +110,7 @@ addActionHandler('toggleManagement', (global, actions, payload): ActionReturnTyp
 });
 
 addActionHandler('requestNextManagementScreen', (global, actions, payload): ActionReturnType => {
+  if (!CAN_ACCESS_CHANNEL_SETTINGS) return undefined;
   const { screen, tabId = getCurrentTabId() } = payload || {};
   const { chatId } = selectCurrentMessageList(global, tabId) || {};
 

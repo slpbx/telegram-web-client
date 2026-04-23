@@ -29,6 +29,7 @@ import {
 import { IS_TAURI } from '../../util/browser/globalEnvironment';
 import { IS_MAC_OS } from '../../util/browser/windowEnvironment';
 import buildClassName from '../../util/buildClassName';
+import { CAN_ACCESS_CHANNEL_SETTINGS } from '../../util/crmchat';
 import { isUserId } from '../../util/entities/ids';
 
 import { useVtn } from '../../hooks/animations/useVtn';
@@ -635,7 +636,7 @@ const RightHeader: FC<OwnProps & StateProps> = ({
                   iconName="add-user"
                 />
               )}
-              {canManage && !isInsideTopic && (
+              {canManage && !isInsideTopic && CAN_ACCESS_CHANNEL_SETTINGS && (
                 <Button
                   round
                   color="translucent"
