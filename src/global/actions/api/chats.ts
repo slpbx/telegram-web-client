@@ -790,7 +790,7 @@ addActionHandler('createChannel', async (global, actions, payload): Promise<void
     if ((error as ApiError).message === 'CHANNELS_TOO_MUCH') {
       actions.openLimitReachedModal({ limit: 'channels', tabId });
     } else {
-      actions.showDialog({ data: { ...(error as ApiError), hasErrorKey: true }, tabId });
+      actions.showDialog({ data: { type: 'error', ...(error as ApiError), hasErrorKey: true }, tabId });
     }
   }
 
@@ -848,7 +848,7 @@ addActionHandler('joinChannel', async (global, actions, payload): Promise<void> 
     if ((error as ApiError).message === 'CHANNELS_TOO_MUCH') {
       actions.openLimitReachedModal({ limit: 'channels', tabId });
     } else {
-      actions.showDialog({ data: { ...(error as ApiError), hasErrorKey: true }, tabId });
+      actions.showDialog({ data: { type: 'error', ...(error as ApiError), hasErrorKey: true }, tabId });
     }
   }
 });
@@ -967,7 +967,6 @@ addActionHandler('leaveChannel', async (global, actions, payload): Promise<void>
     return;
   }
 
-  global = getGlobal();
   await callApi('leaveChannel', { chat });
 
   cleanupAfterLeave(chatId, tabId);
@@ -1483,6 +1482,7 @@ addActionHandler('markChatMessagesRead', async (global, actions, payload): Promi
     await callApi('markMessageListRead', { chat, threadId: MAIN_THREAD_ID });
     actions.readAllMentions({ chatId: id });
     actions.readAllReactions({ chatId: id });
+    actions.readAllPollVotes({ chatId: id });
     if (chatReadState?.hasUnreadMark) {
       actions.markChatRead({ id });
     }
@@ -1509,7 +1509,13 @@ addActionHandler('markChatMessagesRead', async (global, actions, payload): Promi
       global = updateTopicWithState(global, id, topicWithState);
 
       const { readState } = topicWithState;
-      if (readState && !readState.unreadCount && !readState.unreadMentionsCount && !readState.unreadReactionsCount) {
+      if (
+        readState
+        && !readState.unreadCount
+        && !readState.unreadMentionsCount
+        && !readState.unreadReactionsCount
+        && !readState.unreadPollVotesCount
+      ) {
         return;
       }
 
@@ -1552,6 +1558,7 @@ addActionHandler('markTopicRead', (global, actions, payload): ActionReturnType =
   });
   actions.readAllMentions({ chatId, threadId: topicId });
   actions.readAllReactions({ chatId, threadId: topicId });
+  actions.readAllPollVotes({ chatId, threadId: topicId });
 
   global = getGlobal();
   global = replaceThreadReadStateParam(global, chatId, topicId, 'lastReadInboxMessageId', lastTopicMessageId);
@@ -2672,7 +2679,7 @@ addActionHandler('toggleForum', async (global, actions, payload): Promise<void> 
     if ((error as ApiError).message === 'FLOOD') {
       actions.showNotification({ message: langProvider.oldTranslate('FloodWait'), tabId });
     } else {
-      actions.showDialog({ data: { ...(error as ApiError), hasErrorKey: true }, tabId });
+      actions.showDialog({ data: { type: 'error', ...(error as ApiError), hasErrorKey: true }, tabId });
     }
   }
 
@@ -2881,7 +2888,7 @@ addActionHandler('joinChatlistInvite', async (global, actions, payload): Promise
     if ((error as ApiError).message === 'CHATLISTS_TOO_MUCH') {
       actions.openLimitReachedModal({ limit: 'chatlistJoined', tabId });
     } else {
-      actions.showDialog({ data: { ...(error as ApiError), hasErrorKey: true }, tabId });
+      actions.showDialog({ data: { type: 'error', ...(error as ApiError), hasErrorKey: true }, tabId });
     }
   }
 });
@@ -2967,7 +2974,7 @@ addActionHandler('createChatlistInvite', async (global, actions, payload): Promi
       actions.openLimitReachedModal({ limit: 'chatlistInvites', tabId });
       actions.openSettingsScreen({ screen: SettingsScreens.Folders, tabId });
     } else {
-      actions.showDialog({ data: { ...(error as ApiError), hasErrorKey: true }, tabId });
+      actions.showDialog({ data: { type: 'error', ...(error as ApiError), hasErrorKey: true }, tabId });
     }
   }
 
@@ -3052,7 +3059,7 @@ addActionHandler('editChatlistInvite', async (global, actions, payload): Promise
     };
     setGlobal(global);
   } catch (error) {
-    actions.showDialog({ data: { ...(error as ApiError), hasErrorKey: true }, tabId });
+    actions.showDialog({ data: { type: 'error', ...(error as ApiError), hasErrorKey: true }, tabId });
   } finally {
     global = getGlobal();
 
@@ -3373,7 +3380,7 @@ async function loadChats(
   shouldIgnorePagination?: boolean,
 ) {
   let global = getGlobal();
-  let lastLocalServiceMessageId = selectLastServiceNotification(global)?.id;
+  const lastLocalServiceMessageId = selectLastServiceNotification(global)?.id;
 
   const params = !shouldIgnorePagination ? selectChatListLoadingParameters(global, listType) : {};
   const offsetPeer = params.nextOffsetPeerId ? selectPeer(global, params.nextOffsetPeerId) : undefined;
@@ -3409,7 +3416,6 @@ async function loadChats(
   const { chatIds } = result;
 
   global = getGlobal();
-  lastLocalServiceMessageId = selectLastServiceNotification(global)?.id;
 
   const newChats = buildCollectionByKey(result.chats, 'id');
 
@@ -3553,7 +3559,7 @@ export async function migrateChat<T extends GlobalState>(
     if ((error as ApiError).message === 'CHANNELS_TOO_MUCH') {
       actions.openLimitReachedModal({ limit: 'channels', tabId });
     } else {
-      actions.showDialog({ data: { ...(error as ApiError), hasErrorKey: true }, tabId });
+      actions.showDialog({ data: { type: 'error', ...(error as ApiError), hasErrorKey: true }, tabId });
     }
 
     return undefined;

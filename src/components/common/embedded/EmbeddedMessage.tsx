@@ -1,4 +1,4 @@
-import { useMemo, useRef } from '../../../lib/teact/teact';
+import { useMemo } from '../../../lib/teact/teact';
 
 import type {
   ApiChat,
@@ -6,7 +6,7 @@ import type {
   ApiMessage, ApiPeer, ApiReplyInfo, MediaContainer,
 } from '../../../api/types';
 import type { ObserveFn } from '../../../hooks/useIntersectionObserver';
-import type { ChatTranslatedMessages } from '../../../types';
+import type { ChatTranslatedMessages, TranslationTone } from '../../../types';
 import type { IconName } from '../../../types/icons';
 
 import { TON_CURRENCY_CODE } from '../../../config';
@@ -23,21 +23,16 @@ import buildClassName from '../../../util/buildClassName';
 import { formatScheduledDateTime } from '../../../util/dates/oldDateFormat';
 import { isUserId } from '../../../util/entities/ids';
 import { formatStarsAsIcon, formatTonAsIcon } from '../../../util/localization/format';
-import { getPictogramDimensions } from '../helpers/mediaDimensions';
 import renderText from '../helpers/renderText';
 import { renderTextWithEntities } from '../helpers/renderTextWithEntities';
 
-import useMessageMediaHash from '../../../hooks/media/useMessageMediaHash';
-import useThumbnail from '../../../hooks/media/useThumbnail';
-import { useIsIntersecting } from '../../../hooks/useIntersectionObserver';
 import useLang from '../../../hooks/useLang';
-import useMedia from '../../../hooks/useMedia';
 import useOldLang from '../../../hooks/useOldLang';
 import useMessageTranslation from '../../middle/message/hooks/useMessageTranslation';
 
 import RippleEffect from '../../ui/RippleEffect';
+import CompactMediaPreview, { canRenderCompactMediaPreview } from '../CompactMediaPreview';
 import Icon from '../icons/Icon';
-import MediaSpoiler from '../MediaSpoiler';
 import MessageSummary from '../MessageSummary';
 import PeerColorWrapper from '../PeerColorWrapper';
 
@@ -59,6 +54,7 @@ type OwnProps = {
   isInComposer?: boolean;
   chatTranslations?: ChatTranslatedMessages;
   requestedChatTranslationLanguage?: string;
+  requestedChatTranslationTone?: TranslationTone;
   isOpen?: boolean;
   isMediaNsfw?: boolean;
   noCaptions?: boolean;
@@ -88,6 +84,7 @@ const EmbeddedMessage = ({
   noUserColors,
   chatTranslations,
   requestedChatTranslationLanguage,
+  requestedChatTranslationTone,
   isMediaNsfw,
   noCaptions,
   pictogramActionIcon,
@@ -96,9 +93,6 @@ const EmbeddedMessage = ({
   onClick,
   onPictogramClick,
 }: OwnProps) => {
-  const ref = useRef<HTMLDivElement>();
-  const isIntersecting = useIsIntersecting(ref, observeIntersectionForLoading);
-
   const containedMedia: MediaContainer | undefined = useMemo(() => {
     const media = (replyInfo?.type === 'message' && replyInfo.replyMedia) || message?.content;
     if (!media) {
@@ -109,13 +103,7 @@ const EmbeddedMessage = ({
       content: media,
     };
   }, [message, replyInfo]);
-
-  const gif = containedMedia?.content?.video?.isGif ? containedMedia.content.video : undefined;
-  const isVideoThumbnail = Boolean(gif && !gif.previewPhotoSizes?.length);
-
-  const mediaHash = useMessageMediaHash(containedMedia, isVideoThumbnail ? 'full' : 'pictogram');
-  const mediaBlobUrl = useMedia(mediaHash, !isIntersecting);
-  const mediaThumbnail = useThumbnail(containedMedia);
+  const hasPictogram = canRenderCompactMediaPreview(containedMedia?.content);
 
   const isRoundVideo = Boolean(containedMedia && getMessageRoundVideo(containedMedia));
   const isSpoiler = Boolean(containedMedia && getMessageIsSpoiler(containedMedia)) || isMediaNsfw;
@@ -124,7 +112,8 @@ const EmbeddedMessage = ({
 
   const shouldTranslate = message && isMessageTranslatable(message);
   const { translatedText } = useMessageTranslation(
-    chatTranslations, message?.chatId, shouldTranslate ? message?.id : undefined, requestedChatTranslationLanguage,
+    chatTranslations, message?.chatId, shouldTranslate ? message?.id : undefined,
+    requestedChatTranslationLanguage, requestedChatTranslationTone,
   );
 
   const oldLang = useOldLang();
@@ -206,7 +195,7 @@ const EmbeddedMessage = ({
     return (
       <MessageSummary
         message={message}
-        noEmoji={Boolean(mediaThumbnail)}
+        noEmoji={hasPictogram}
         forcedText={translatedText}
         observeIntersectionForLoading={observeIntersectionForLoading}
         observeIntersectionForPlaying={observeIntersectionForPlaying}
@@ -301,7 +290,6 @@ const EmbeddedMessage = ({
     <PeerColorWrapper
       peer={sender}
       emojiIconClassName="EmbeddedMessage--background-icons"
-      ref={ref}
       shouldReset
       isReply={Boolean(replyInfo)}
       noUserColors={noUserColors}
@@ -309,7 +297,7 @@ const EmbeddedMessage = ({
         'EmbeddedMessage',
         className,
         isQuote && 'is-quote',
-        mediaThumbnail && 'with-thumb',
+        hasPictogram && 'with-thumb',
         'no-selection',
         composerForwardSenders && 'is-input-forward',
         suggestedPostInfo && 'is-suggested-post',
@@ -319,16 +307,20 @@ const EmbeddedMessage = ({
     >
       <div className="hover-effect" />
       <RippleEffect />
-      {mediaThumbnail && renderPictogram({
-        thumbDataUri: mediaThumbnail,
-        blobUrl: mediaBlobUrl,
-        isFullVideo: isVideoThumbnail,
-        isRoundVideo,
-        isProtected,
-        isSpoiler,
-        pictogramActionIcon,
-        onPictogramClick,
-      })}
+      {hasPictogram && (
+        <CompactMediaPreview
+          media={containedMedia?.content}
+          className="embedded-thumb"
+          isPictogram
+          isRound={isRoundVideo}
+          isProtected={isProtected}
+          isSpoiler={isSpoiler}
+          actionIcon={pictogramActionIcon}
+          observeIntersectionForLoading={observeIntersectionForLoading}
+          observeIntersectionForPlaying={observeIntersectionForPlaying}
+          onClick={onPictogramClick}
+        />
+      )}
       <div className="message-text">
         <p className={buildClassName('embedded-text-wrapper', isQuote && 'multiline')}>
           {renderTextContent()}
@@ -341,66 +333,5 @@ const EmbeddedMessage = ({
     </PeerColorWrapper>
   );
 };
-
-function renderPictogram({
-  thumbDataUri,
-  blobUrl,
-  isFullVideo,
-  isRoundVideo,
-  isProtected,
-  isSpoiler,
-  pictogramActionIcon,
-  onPictogramClick,
-}: {
-  thumbDataUri: string;
-  blobUrl?: string;
-  isFullVideo?: boolean;
-  isRoundVideo?: boolean;
-  isProtected?: boolean;
-  isSpoiler?: boolean;
-  pictogramActionIcon?: IconName;
-  onPictogramClick?: ((e: React.MouseEvent) => void);
-}) {
-  const { width, height } = getPictogramDimensions();
-
-  const srcUrl = blobUrl || thumbDataUri;
-  const shouldRenderVideo = isFullVideo && blobUrl;
-
-  return (
-    <div
-      className={buildClassName('embedded-thumb', isRoundVideo && 'round', pictogramActionIcon && 'with-action-icon')}
-      onClick={onPictogramClick}
-    >
-      {!isSpoiler && !shouldRenderVideo && (
-        <img
-          src={srcUrl}
-          width={width}
-          height={height}
-          alt=""
-          className="pictogram"
-          draggable={false}
-        />
-      )}
-      {!isSpoiler && shouldRenderVideo && (
-        <video
-          src={blobUrl}
-          width={width}
-          height={height}
-          playsInline
-          disablePictureInPicture
-          className="pictogram"
-        />
-      )}
-      <MediaSpoiler
-        thumbDataUri={shouldRenderVideo ? thumbDataUri : srcUrl}
-        isVisible={Boolean(isSpoiler)}
-        width={width}
-        height={height}
-      />
-      {isProtected && <span className="protector" />}
-      {pictogramActionIcon && <Icon name={pictogramActionIcon} className="pictogram-action-icon" />}
-    </div>
-  );
-}
 
 export default EmbeddedMessage;

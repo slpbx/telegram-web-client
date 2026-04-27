@@ -17,8 +17,8 @@ import type {
   ApiKeyboardButton,
   ApiMessage,
   ApiMessageOutgoingStatus,
+  ApiMessagePoll,
   ApiPeer,
-  ApiPoll,
   ApiReaction,
   ApiReactionKey,
   ApiSavedReactionTag,
@@ -40,6 +40,7 @@ import type {
   TextSummary,
   ThemeKey,
   ThreadId,
+  TranslationTone,
 } from '../../../types';
 import type { Signal } from '../../../util/signals';
 import { MAIN_THREAD_ID } from '../../../api/types';
@@ -106,6 +107,7 @@ import {
   selectPollFromMessage,
   selectReplyMessage,
   selectRequestedChatTranslationLanguage,
+  selectRequestedChatTranslationTone,
   selectRequestedMessageTranslationLanguage,
   selectSender,
   selectSenderFromHeader,
@@ -131,6 +133,7 @@ import buildClassName from '../../../util/buildClassName';
 import buildStyle from '../../../util/buildStyle';
 import { isUserId } from '../../../util/entities/ids';
 import { getMessageKey } from '../../../util/keys/messageKey';
+import { parseTranslationCacheKey } from '../../../util/keys/translationKey';
 import { getServerTime } from '../../../util/serverTime';
 import stopEvent from '../../../util/stopEvent';
 import { isElementInViewport } from '../../../util/visibility/isElementInViewport';
@@ -202,7 +205,7 @@ import MessageMeta from './MessageMeta';
 import MessagePhoneCall from './MessagePhoneCall';
 import PaidMediaOverlay from './PaidMediaOverlay';
 import Photo from './Photo';
-import Poll from './Poll';
+import Poll from './poll/Poll';
 import Reactions from './reactions/Reactions';
 import RoundVideo from './RoundVideo';
 import Sticker from './Sticker';
@@ -301,6 +304,7 @@ type StateProps = {
   defaultReaction?: ApiReaction;
   activeEmojiInteractions?: ActiveEmojiInteraction[];
   hasUnreadReaction?: boolean;
+  hasUnreadPollVote?: boolean;
   isTranscribing?: boolean;
   transcribedText?: string;
   isPremium: boolean;
@@ -312,7 +316,9 @@ type StateProps = {
   shouldDetectChatLanguage?: boolean;
   requestedTranslationLanguage?: string;
   requestedChatTranslationLanguage?: string;
+  requestedTranslationTone?: TranslationTone;
   withAnimatedEffects?: boolean;
+  canAnimateTextStreaming?: boolean;
   webPageStory?: ApiTypeStory;
   isConnected: boolean;
   isLoadingComments?: boolean;
@@ -322,7 +328,7 @@ type StateProps = {
   canTranscribeVoice?: boolean;
   viaBusinessBot?: ApiUser;
   effect?: ApiAvailableEffect;
-  poll?: ApiPoll;
+  poll?: ApiMessagePoll;
   webPage?: ApiWebPage;
   maxTimestamp?: number;
   lastPlaybackTimestamp?: number;
@@ -430,6 +436,7 @@ const Message = ({
   autoLoadFileMaxSizeMb,
   repliesThreadInfo,
   hasUnreadReaction,
+  hasUnreadPollVote,
   memoFirstUnreadIdRef,
   senderChatMember,
   messageTopic,
@@ -439,7 +446,9 @@ const Message = ({
   shouldDetectChatLanguage,
   requestedTranslationLanguage,
   requestedChatTranslationLanguage,
+  requestedTranslationTone,
   withAnimatedEffects,
+  canAnimateTextStreaming,
   webPageStory,
   isConnected,
   getIsMessageListReady,
@@ -476,6 +485,7 @@ const Message = ({
     animateUnreadReaction,
     focusMessage,
     markMentionsRead,
+    markPollVotesRead,
     openThread,
     summarizeMessage,
   } = getActions();
@@ -487,7 +497,7 @@ const Message = ({
   const oldLang = useOldLang();
   const lang = useLang();
 
-  const [isTranscriptionHidden, setTranscriptionHidden] = useState(false);
+  const [isTranscriptionHidden, setIsTranscriptionHidden] = useState(false);
   const [isPlayingSnapAnimation, setIsPlayingSnapAnimation] = useState(false);
   const [isPlayingDeleteAnimation, setIsPlayingDeleteAnimation] = useState(false);
   const [shouldPlayEffect, requestEffect, hideEffect] = useFlag();
@@ -528,8 +538,9 @@ const Message = ({
       return;
     }
 
+    // Message appearance animation works only if this timeout is not cleared. Migrate to `sibling-index()` when baseline widely available.
     setTimeout(markShown, appearanceOrder * MESSAGE_APPEARANCE_DELAY);
-  }, [appearanceOrder, markShown, noAppearanceAnimation]);
+  }, [appearanceOrder, noAppearanceAnimation]);
 
   useShowTransition({
     ref,
@@ -677,7 +688,6 @@ const Message = ({
     handleOpenThread,
     handleReadMedia,
     handleCancelUpload,
-    handleVoteSend,
     handleGroupForward,
     handleForward,
     handleFocus,
@@ -822,12 +832,19 @@ const Message = ({
   useDetectChatLanguage(message, detectedLanguage, !shouldDetectChatLanguage, getIsMessageListReady);
 
   const shouldTranslate = isMessageTranslatable(message, !requestedChatTranslationLanguage);
+
+  const isManualMessageTranslation = !requestedChatTranslationLanguage && requestedTranslationLanguage;
+  const parsedManualTranslation = isManualMessageTranslation
+    ? parseTranslationCacheKey(requestedTranslationLanguage) : undefined;
+  const translationLanguageForHook = parsedManualTranslation?.languageCode || requestedChatTranslationLanguage;
+  const translationToneForHook = parsedManualTranslation?.tone || requestedTranslationTone;
+
   const { isPending: isTranslationPending, translatedText } = useMessageTranslation(
-    chatTranslations, chatId, shouldTranslate ? messageId : undefined, requestedTranslationLanguage,
+    chatTranslations, chatId, shouldTranslate ? messageId : undefined, translationLanguageForHook,
+    translationToneForHook,
   );
   const isSummaryPending = Boolean(summary?.isPending);
   const isNewTextPending = isTranslationPending || isSummaryPending;
-  // Used to display previous result while new one is loading
   const previousTranslatedText = usePreviousDeprecated(translatedText, Boolean(shouldTranslate));
 
   useEffectWithPrevDeps(([prevIsShowingSummary]) => {
@@ -961,6 +978,10 @@ const Message = ({
       animateUnreadReaction({ chatId, messageIds: [messageId] });
     }
 
+    if (hasUnreadPollVote) {
+      markPollVotesRead({ chatId, messageIds: [messageId] });
+    }
+
     let unreadMentionIds: number[] = [];
     if (message.hasUnreadMention) {
       unreadMentionIds = [messageId];
@@ -973,7 +994,16 @@ const Message = ({
     if (unreadMentionIds.length) {
       markMentionsRead({ chatId, messageIds: unreadMentionIds });
     }
-  }, [hasUnreadReaction, album, chatId, messageId, animateUnreadReaction, message.hasUnreadMention]);
+  }, [
+    hasUnreadReaction,
+    hasUnreadPollVote,
+    album,
+    chatId,
+    messageId,
+    animateUnreadReaction,
+    markPollVotesRead,
+    message.hasUnreadMention,
+  ]);
 
   const albumLayout = useMemo(() => {
     return isAlbum
@@ -1073,6 +1103,7 @@ const Message = ({
         maxTimestamp={maxTimestamp}
         threadId={threadId}
         shouldAnimateTyping={isTypingDraft}
+        canAnimateTextStreaming={canAnimateTextStreaming}
       />
     );
   }
@@ -1205,6 +1236,7 @@ const Message = ({
                 chatTranslations={chatTranslations}
                 isMediaNsfw={isReplyMediaNsfw}
                 requestedChatTranslationLanguage={requestedChatTranslationLanguage}
+                requestedChatTranslationTone={requestedTranslationTone}
                 observeIntersectionForLoading={observeIntersectionForLoading}
                 observeIntersectionForPlaying={observeIntersectionForPlaying}
                 onClick={handleReplyClick}
@@ -1217,6 +1249,7 @@ const Message = ({
                 noUserColors={noUserColors}
                 isProtected={isProtected}
                 observeIntersectionForLoading={observeIntersectionForLoading}
+                observeIntersectionForPlaying={observeIntersectionForPlaying}
                 onClick={handleStoryClick}
               />
             )}
@@ -1297,7 +1330,7 @@ const Message = ({
             canAutoLoad={canAutoLoadMedia}
             isDownloading={isDownloading}
             onReadMedia={shouldReadMedia ? handleReadMedia : undefined}
-            onHideTranscription={setTranscriptionHidden}
+            onHideTranscription={setIsTranscriptionHidden}
             isTranscriptionError={isTranscriptionError}
             isTranscribed={Boolean(transcribedText)}
             canTranscribe={canTranscribeVoice && !hasTtl}
@@ -1323,7 +1356,7 @@ const Message = ({
             isTranscribed={Boolean(transcribedText)}
             isTranscriptionError={isTranscriptionError}
             canDownload={!isProtected}
-            onHideTranscription={setTranscriptionHidden}
+            onHideTranscription={setIsTranscriptionHidden}
             canTranscribe={canTranscribeVoice && !hasTtl}
           />
         )}
@@ -1354,7 +1387,17 @@ const Message = ({
           <Contact contact={contact} noUserColors={isOwn} />
         )}
         {poll && (
-          <Poll message={message} poll={poll} onSendVote={handleVoteSend} />
+          <Poll
+            key={poll.summary.id}
+            chatId={chatId}
+            messageId={messageId}
+            poll={poll}
+            messageText={text}
+            theme={theme}
+            isInScheduled={isScheduled}
+            observeIntersectionForLoading={observeIntersectionForLoading}
+            observeIntersectionForPlaying={observeIntersectionForPlaying}
+          />
         )}
         {todo && (
           <TodoList message={message} todoList={todo} />
@@ -1667,7 +1710,6 @@ const Message = ({
     shouldSkipRenderForwardTitle: boolean = false, shouldSkipRenderAdminTitle: boolean = false,
   ) {
     let senderTitle;
-    let senderColor;
     if (senderPeer && !(isCustomShape && viaBotId)) {
       senderTitle = getPeerFullTitle(oldLang, senderPeer);
     } else if (forwardInfo?.hiddenUserName) {
@@ -1686,7 +1728,6 @@ const Message = ({
             className={buildClassName(
               'message-title-name-container',
               forwardInfo?.hiddenUserName ? 'sender-hidden' : 'interactive',
-              senderColor,
             )}
             dir="ltr"
           >
@@ -1836,6 +1877,7 @@ const Message = ({
         data-last-message-id={album ? album.messages[album.messages.length - 1].id : undefined}
         data-album-main-id={album ? album.mainMessage.id : undefined}
         data-has-unread-mention={message.hasUnreadMention || undefined}
+        data-has-unread-poll-vote={hasUnreadPollVote || undefined}
         data-has-unread-reaction={hasUnreadReaction || undefined}
         data-is-pinned={isPinned || undefined}
         data-should-update-views={message.viewsCount !== undefined}
@@ -2111,6 +2153,7 @@ export default memo(withGlobal<OwnProps>(
 
     const readState = selectThreadReadState(global, chatId, threadId);
     const hasUnreadReaction = readState?.unreadReactions?.includes(message.id);
+    const hasUnreadPollVote = readState?.unreadPollVotes?.includes(message.id);
 
     const hasTopicChip = threadId === MAIN_THREAD_ID && chat?.isForum && !chat.isBotForum && isFirstInGroup;
     const messageTopic = selectTopicFromMessage(global, message);
@@ -2119,6 +2162,7 @@ export default memo(withGlobal<OwnProps>(
 
     const requestedTranslationLanguage = selectRequestedMessageTranslationLanguage(global, chatId, message.id);
     const requestedChatTranslationLanguage = selectRequestedChatTranslationLanguage(global, chatId);
+    const requestedTranslationTone = selectRequestedChatTranslationTone(global, chatId);
 
     const areTranslationsEnabled = IS_TRANSLATION_SUPPORTED && global.settings.byKey.canTranslate
       && !requestedChatTranslationLanguage; // Stop separate language detection if chat translation is requested
@@ -2208,6 +2252,7 @@ export default memo(withGlobal<OwnProps>(
       hasActiveReactions,
       activeEmojiInteractions,
       hasUnreadReaction,
+      hasUnreadPollVote,
       isTranscribing: transcriptionId !== undefined && global.transcriptions[transcriptionId]?.isPending,
       transcribedText: transcriptionId !== undefined ? global.transcriptions[transcriptionId]?.text : undefined,
       isPremium,
@@ -2219,8 +2264,10 @@ export default memo(withGlobal<OwnProps>(
       shouldDetectChatLanguage: selectShouldDetectChatLanguage(global, chatId),
       requestedTranslationLanguage,
       requestedChatTranslationLanguage,
+      requestedTranslationTone,
       hasLinkedChat: Boolean(chatFullInfo?.linkedChatId),
       withAnimatedEffects: selectPerformanceSettingsValue(global, 'stickerEffects'),
+      canAnimateTextStreaming: selectPerformanceSettingsValue(global, 'textStreaming'),
       webPageStory,
       isConnected,
       isLoadingComments: repliesThreadInfo?.isCommentsInfo

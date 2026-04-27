@@ -6,10 +6,12 @@ import type {
   ForwardMessagesParams,
   SendMessageParams,
   ThreadId,
+  TranslationTone,
 } from '../../../types';
 import type {
   ApiAttachment,
   ApiChat,
+  ApiComposedMessageWithAI,
   ApiError,
   ApiFormattedText,
   ApiGlobalMessageSearchType,
@@ -17,12 +19,12 @@ import type {
   ApiInputSuggestedPostInfo,
   ApiMessage,
   ApiMessageEntity,
+  ApiMessagePoll,
   ApiMessageSearchContext,
   ApiMessageSearchType,
   ApiNewMediaTodo,
   ApiOnProgress,
   ApiPeer,
-  ApiPoll,
   ApiReaction,
   ApiSearchPostsFlood,
   ApiSendMessageAction,
@@ -44,6 +46,7 @@ import {
   MAX_INT_32,
   MENTION_UNREAD_SLICE,
   MESSAGE_ID_REQUIRED_ERROR,
+  POLL_UNREAD_SLICE,
   REACTION_UNREAD_SLICE,
   SUPPORTED_PHOTO_CONTENT_TYPES,
   SUPPORTED_VIDEO_CONTENT_TYPES,
@@ -60,10 +63,10 @@ import {
   buildApiSponsoredMessageReportResult,
   buildThreadReadState,
 } from '../apiBuilders/chats';
-import { buildApiFormattedText } from '../apiBuilders/common';
+import { buildApiComposedMessageWithAI, buildApiFormattedText } from '../apiBuilders/common';
 import { buildApiTopicWithState } from '../apiBuilders/forums';
 import {
-  buildMessageMediaContent, buildMessageTextContent, buildPollFromMedia,
+  buildMessageMediaContent, buildMessagePollFromMedia, buildMessageTextContent,
   buildWebPageFromMedia,
 } from '../apiBuilders/messageContent';
 import {
@@ -126,6 +129,7 @@ type TranslateTextParams = ({
   messageIds: number[];
 }) & {
   toLanguageCode: string;
+  tone?: TranslationTone;
 };
 
 type SearchResults = {
@@ -459,7 +463,28 @@ export function sendApiMessage(
     } else if (gif) {
       media = buildInputMediaDocument(gif);
     } else if (poll) {
-      media = buildInputPoll(poll, randomId);
+      try {
+        const attachedMedia = poll.attachedMedia
+          ? await uploadMedia(localMessage, poll.attachedMedia, onProgress!)
+          : undefined;
+        const solutionMedia = poll.solutionMedia
+          ? await uploadMedia(localMessage, poll.solutionMedia, onProgress!)
+          : undefined;
+
+        media = buildInputPoll(poll, randomId, {
+          attachedMedia,
+          solutionMedia,
+        });
+      } catch (err) {
+        if (DEBUG) {
+          // eslint-disable-next-line no-console
+          console.warn(err);
+        }
+
+        await mediaQueue;
+
+        return;
+      }
     } else if (todo) {
       media = buildInputTodo(todo);
     } else if (story) {
@@ -1702,7 +1727,7 @@ export async function searchMessagesGlobal({
   const messages = result.messages.map(buildApiMessage).filter(Boolean);
   const topics = result.topics.map(buildApiTopicWithState).filter(Boolean);
 
-  let totalCount = messages.length;
+  let totalCount;
   if (result instanceof GramJs.messages.MessagesSlice || result instanceof GramJs.messages.ChannelMessages) {
     totalCount = result.count;
   } else {
@@ -1761,7 +1786,7 @@ export async function searchPublicPosts({
   const messages = result.messages.map(buildApiMessage).filter(Boolean);
   const topics = result.topics.map(buildApiTopicWithState).filter(Boolean);
 
-  let totalCount = messages.length;
+  let totalCount;
   if (result instanceof GramJs.messages.MessagesSlice || result instanceof GramJs.messages.ChannelMessages) {
     totalCount = result.count;
   } else {
@@ -1854,7 +1879,7 @@ export async function closePoll({
 }: {
   chat: ApiChat;
   messageId: number;
-  poll: ApiPoll;
+  poll: ApiMessagePoll;
 }) {
   const { id, accessHash } = chat;
 
@@ -2275,6 +2300,27 @@ export async function readAllReactions({
   }
 }
 
+export async function readAllPollVotes({
+  chat,
+  threadId,
+}: {
+  chat: ApiChat;
+  threadId?: ThreadId;
+}) {
+  const result = await invokeRequest(new GramJs.messages.ReadPollVotes({
+    peer: buildInputPeer(chat.id, chat.accessHash),
+    topMsgId: threadId ? Number(threadId) : undefined,
+  }));
+
+  if (!result) return;
+
+  processAffectedHistory(chat, result);
+
+  if (result.offset) {
+    await readAllPollVotes({ chat, threadId });
+  }
+}
+
 export async function fetchUnreadMentions({
   chat, threadId, offsetId, addOffset, maxId, minId,
 }: {
@@ -2353,6 +2399,45 @@ export async function fetchUnreadReactions({
   };
 }
 
+export async function fetchUnreadPollVotes({
+  chat, threadId, offsetId, addOffset, maxId, minId,
+}: {
+  chat: ApiChat;
+  threadId?: ThreadId;
+  offsetId?: number;
+  addOffset?: number;
+  maxId?: number;
+  minId?: number;
+}) {
+  const result = await invokeRequest(new GramJs.messages.GetUnreadPollVotes({
+    peer: buildInputPeer(chat.id, chat.accessHash),
+    topMsgId: threadId ? Number(threadId) : undefined,
+    limit: POLL_UNREAD_SLICE,
+    offsetId: offsetId ?? DEFAULT_PRIMITIVES.INT,
+    addOffset: addOffset ?? DEFAULT_PRIMITIVES.INT,
+    maxId: maxId ?? DEFAULT_PRIMITIVES.INT,
+    minId: minId ?? DEFAULT_PRIMITIVES.INT,
+  }));
+
+  if (
+    !result
+    || result instanceof GramJs.messages.MessagesNotModified
+    || !result.messages
+  ) {
+    return undefined;
+  }
+
+  const totalCount = 'count' in result ? result.count : result.messages.length;
+  const messages = result.messages.map(buildApiMessage).filter(Boolean);
+  const topics = result.topics.map(buildApiTopicWithState).filter(Boolean);
+
+  return {
+    totalCount,
+    messages,
+    topics,
+  };
+}
+
 export async function transcribeAudio({
   chat, messageId,
 }: {
@@ -2378,18 +2463,24 @@ export async function transcribeAudio({
 export async function translateText(params: TranslateTextParams) {
   let result;
   const isMessageTranslation = 'chat' in params;
+  const { toLanguageCode, tone } = params;
+  const apiTone = tone === 'neutral' ? undefined : tone;
+
   if (isMessageTranslation) {
-    const { chat, messageIds, toLanguageCode } = params;
+    const { chat, messageIds } = params;
+
     result = await invokeRequest(new GramJs.messages.TranslateText({
       peer: buildInputPeer(chat.id, chat.accessHash),
       id: messageIds,
       toLang: toLanguageCode,
+      tone: apiTone,
     }));
   } else {
-    const { text, toLanguageCode } = params;
+    const { text } = params;
     result = await invokeRequest(new GramJs.messages.TranslateText({
       text: text.map((t) => buildInputTextWithEntities(t)),
       toLang: toLanguageCode,
+      tone: apiTone,
     }));
   }
 
@@ -2400,6 +2491,7 @@ export async function translateText(params: TranslateTextParams) {
         chatId: params.chat.id,
         messageIds: params.messageIds,
         toLanguageCode: params.toLanguageCode,
+        tone,
       });
     }
     return undefined;
@@ -2414,6 +2506,7 @@ export async function translateText(params: TranslateTextParams) {
       messageIds: params.messageIds,
       translations: formattedText,
       toLanguageCode: params.toLanguageCode,
+      tone,
     });
   }
 
@@ -2421,14 +2514,15 @@ export async function translateText(params: TranslateTextParams) {
 }
 
 export async function fetchMessageSummary({
-  chat, id, toLanguageCode,
+  chat, id, toLanguageCode, tone,
 }: {
-  chat: ApiChat; id: number; toLanguageCode?: string;
+  chat: ApiChat; id: number; toLanguageCode?: string; tone?: string;
 }) {
   const result = await invokeRequest(new GramJs.messages.SummarizeText({
     peer: buildInputPeer(chat.id, chat.accessHash),
     id,
     toLang: toLanguageCode,
+    tone,
   }));
 
   if (!result) return undefined;
@@ -2493,7 +2587,7 @@ function handleLocalMessageUpdate(
   }
 
   let newContent: MediaContent | undefined;
-  let poll: ApiPoll | undefined;
+  let poll: ApiMessagePoll | undefined;
   let webPage: ApiWebPage | undefined;
   if (messageUpdate instanceof GramJs.UpdateShortSentMessage) {
     if (localMessage.content.text && messageUpdate.entities) {
@@ -2508,7 +2602,7 @@ function handleLocalMessageUpdate(
           peerId: buildPeer(localMessage.chatId), id: messageUpdate.id,
         }),
       };
-      poll = buildPollFromMedia(messageUpdate.media);
+      poll = buildMessagePollFromMedia(messageUpdate.media);
       webPage = buildWebPageFromMedia(messageUpdate.media);
     }
 
@@ -2660,4 +2754,42 @@ export async function fetchPreparedInlineMessage({
 
 export function incrementLocalMessagesCounter() {
   incrementLocalMessageCounter();
+}
+
+export async function composeMessageWithAI({
+  text,
+  shouldProofread,
+  isEmojify,
+  translateToLang,
+  changeTone,
+}: {
+  text: ApiFormattedText;
+  shouldProofread?: boolean;
+  isEmojify?: boolean;
+  translateToLang?: string;
+  changeTone?: string;
+}): Promise<{ result?: ApiComposedMessageWithAI; error?: 'floodPremium' | 'aiError' | 'generic' }> {
+  try {
+    const result = await invokeRequest(new GramJs.messages.ComposeMessageWithAI({
+      text: buildInputTextWithEntities(text),
+      proofread: shouldProofread || undefined,
+      emojify: isEmojify || undefined,
+      translateToLang,
+      changeTone,
+    }), { shouldThrow: true });
+
+    if (!result) return { error: 'generic' };
+
+    return { result: buildApiComposedMessageWithAI(result) };
+  } catch (err) {
+    if (err instanceof RPCError) {
+      if (err.errorMessage === 'AICOMPOSE_FLOOD_PREMIUM') {
+        return { error: 'floodPremium' };
+      }
+      if (err.errorMessage === 'AICOMPOSE_ERROR_OCCURED') {
+        return { error: 'aiError' };
+      }
+    }
+    return { error: 'generic' };
+  }
 }

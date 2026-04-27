@@ -92,8 +92,9 @@ const SenderGroupContainer: FC<OwnProps & StateProps> = ({
       return;
     }
 
+    // Message appearance animation works only if this timeout is not cleared
     setTimeout(markShown, appearanceOrder * MESSAGE_APPEARANCE_DELAY);
-  }, [appearanceOrder, markShown, noAppearanceAnimation]);
+  }, [appearanceOrder, noAppearanceAnimation]);
 
   const shouldPreferOriginSender = forwardInfo
     && (isChatWithSelf || isRepliesChat || isAnonymousForwards || !messageSender);

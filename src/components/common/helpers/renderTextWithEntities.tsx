@@ -9,6 +9,7 @@ import { ApiMessageEntityTypes } from '../../../api/types';
 
 import buildClassName from '../../../util/buildClassName';
 import { copyTextToClipboard } from '../../../util/clipboard';
+import { buildFormattedDateHtml } from '../../../util/dates/formattedDate';
 import { buildCustomEmojiHtmlFromEntity } from '../../middle/composer/helpers/customEmoji';
 import renderText from './renderText';
 
@@ -684,6 +685,25 @@ function processEntity({
           {renderNestedMessagePart()}
         </FormattedDate>
       );
+    case ApiMessageEntityTypes.DiffInsert:
+      return (
+        <span className="text-entity-diff-insert" data-entity-type={entity.type}>
+          {renderNestedMessagePart()}
+        </span>
+      );
+    case ApiMessageEntityTypes.DiffReplace:
+      return (
+        <span className="text-entity-diff-replace" data-entity-type={entity.type}>
+          <span className="text-entity-diff-replace-old">{entity.oldText}</span>
+          <span className="text-entity-diff-replace-new">{renderNestedMessagePart()}</span>
+        </span>
+      );
+    case ApiMessageEntityTypes.DiffDelete:
+      return (
+        <span className="text-entity-diff-delete" data-entity-type={entity.type}>
+          {renderNestedMessagePart()}
+        </span>
+      );
     default:
       return renderNestedMessagePart();
   }
@@ -733,7 +753,7 @@ function processEntityAsHtml(
     case ApiMessageEntityTypes.TextUrl:
       return `<a
         class="text-entity-link"
-        href=${getLinkUrl(rawEntityText, entity)}
+        href="${getLinkUrl(rawEntityText, entity)}"
         data-entity-type="${entity.type}"
         dir="auto"
       >${renderedContent}</a>`;
@@ -749,6 +769,8 @@ function processEntityAsHtml(
         class="blockquote"
         data-entity-type="${ApiMessageEntityTypes.Blockquote}"
         >${renderedContent}</blockquote>`;
+    case ApiMessageEntityTypes.FormattedDate:
+      return buildFormattedDateHtml(renderedContent, entity);
     default:
       return renderedContent;
   }

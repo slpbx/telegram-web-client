@@ -357,6 +357,10 @@ function unsafeMigrateCache(cached: GlobalState, initialState: GlobalState) {
     cachedSharedSettings.performance.messageBlur = false;
   }
 
+  if (cachedSharedSettings.performance.textStreaming === undefined) {
+    cachedSharedSettings.performance.textStreaming = true;
+  }
+
   if (!cachedSharedSettings.foldersPosition) {
     cachedSharedSettings.foldersPosition = FOLDERS_POSITION_DEFAULT;
   }
@@ -632,12 +636,12 @@ function reduceChats<T extends GlobalState>(global: T): GlobalState['chats'] {
     similarChannelsById: {},
     similarBotsById: {},
     isFullyLoaded: {},
-    notifyExceptionById: pickTruthy(global.chats.notifyExceptionById, unlinkedIdsToSave),
+    notifyExceptionById: pickTruthy(global.chats.notifyExceptionById, idsToSave),
     loadingParameters: INITIAL_GLOBAL_STATE.chats.loadingParameters,
-    byId: pickTruthy(global.chats.byId, unlinkedIdsToSave),
-    fullInfoById: pickTruthy(global.chats.fullInfoById, unlinkedIdsToSave),
+    byId: pickTruthy(global.chats.byId, idsToSave),
+    fullInfoById: pickTruthy(global.chats.fullInfoById, idsToSave),
     lastMessageIds: {
-      all: pickTruthy(global.chats.lastMessageIds.all || {}, unlinkedIdsToSave),
+      all: pickTruthy(global.chats.lastMessageIds.all || {}, idsToSave),
       saved: global.chats.lastMessageIds.saved,
     },
     topicsInfoById: pickTruthy(global.chats.topicsInfoById, currentChatIds),

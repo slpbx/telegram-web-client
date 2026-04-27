@@ -78,6 +78,7 @@ import type {
   CallSound,
   ChatListType,
   ConfettiParams,
+  ForwardTarget,
   GiftProfileFilterOptions,
   GlobalSearchContent,
   IAnchorPosition,
@@ -106,6 +107,7 @@ import type {
   StoryViewerOrigin,
   ThemeKey,
   ThreadId,
+  TranslationTone,
   WebPageMediaSize,
 } from '../../types';
 import type { WebApp, WebAppModalStateType, WebAppOutboundEvent } from '../../types/webapp';
@@ -1416,6 +1418,17 @@ export interface ActionPayloads {
     isEnabled: boolean;
   };
 
+  setChatTranslationTone: {
+    chatId: string;
+    tone: TranslationTone;
+  } & WithTabId;
+
+  setMessageTranslationTone: {
+    chatId: string;
+    messageId: number;
+    tone: TranslationTone;
+  } & WithTabId;
+
   // Messages
   setEditingDraft: {
     text?: ApiFormattedText;
@@ -1429,6 +1442,11 @@ export interface ActionPayloads {
     offsetId?: number;
   };
   loadUnreadReactions: {
+    chatId: string;
+    threadId?: ThreadId;
+    offsetId?: number;
+  };
+  loadUnreadPollVotes: {
     chatId: string;
     threadId?: ThreadId;
     offsetId?: number;
@@ -1467,6 +1485,10 @@ export interface ActionPayloads {
     chatId: string;
     threadId?: ThreadId;
   } & WithTabId;
+  focusNextPollVote: {
+    chatId: string;
+    threadId?: ThreadId;
+  } & WithTabId;
   readAllReactions: {
     chatId: string;
     threadId?: ThreadId;
@@ -1475,7 +1497,15 @@ export interface ActionPayloads {
     chatId: string;
     threadId?: ThreadId;
   };
+  readAllPollVotes: {
+    chatId: string;
+    threadId?: ThreadId;
+  };
   markMentionsRead: {
+    chatId: string;
+    messageIds: number[];
+  };
+  markPollVotesRead: {
     chatId: string;
     messageIds: number[];
   };
@@ -1522,6 +1552,7 @@ export interface ActionPayloads {
     chatId: string;
     id: number;
     toLanguageCode?: string;
+    tone?: TranslationTone;
   } & WithTabId;
 
   showOriginalMessage: {
@@ -1533,11 +1564,13 @@ export interface ActionPayloads {
     chatId: string;
     messageIds: number[];
     toLanguageCode?: string;
+    tone?: TranslationTone;
   };
   translateMessages: {
     chatId: string;
     messageIds: number[];
     toLanguageCode?: string;
+    tone?: TranslationTone;
   };
   summarizeMessage: {
     chatId: string;
@@ -2024,7 +2057,7 @@ export interface ActionPayloads {
   exitForwardMode: WithTabId | undefined;
   changeRecipient: WithTabId | undefined;
   forwardToMultipleChats: {
-    toChatIds: string[];
+    targets: ForwardTarget[];
     comment?: string;
   } & WithTabId;
   forwardToSavedMessages: {
@@ -2598,6 +2631,41 @@ export interface ActionPayloads {
     gift?: ApiStarGift;
   } & WithTabId) | undefined;
   closePremiumModal: WithTabId | undefined;
+
+  openAiMessageEditorModal: {
+    chatId: string;
+    text: ApiFormattedText;
+    initialTab?: 'translate' | 'style' | 'fix';
+    isFromAttachment?: boolean;
+  } & WithTabId;
+  closeAiMessageEditorModal: WithTabId | undefined;
+  setAiMessageEditorTab: {
+    tab: 'translate' | 'style' | 'fix';
+  } & WithTabId;
+  setAiMessageEditorTranslateOptions: {
+    selectedLanguage?: string;
+    selectedTone?: string;
+    shouldEmojify?: boolean;
+    clearResult?: boolean;
+  } & WithTabId;
+  setAiMessageEditorStyleOptions: {
+    selectedTone?: string;
+    shouldEmojify?: boolean;
+    clearResult?: boolean;
+  } & WithTabId;
+  composeWithAiMessageEditor: {
+    shouldProofread?: boolean;
+    isEmojify?: boolean;
+    translateToLang?: string;
+    changeTone?: string;
+  } & WithTabId;
+  applyAiMessageEditorResult: WithTabId | undefined;
+  sendAiMessageEditorResult: ({
+    isSilent?: boolean;
+    scheduledAt?: number;
+    scheduleRepeatPeriod?: number;
+  } & WithTabId) | undefined;
+  clearAiMessageEditorPendingResult: WithTabId | undefined;
 
   openGiveawayModal: ({
     chatId: string;

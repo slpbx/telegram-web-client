@@ -50,11 +50,18 @@
   display: flex;
 }
 
+.onAvatar {
+  position: absolute;
+  z-index: 1;
+  top: 0.0625rem;
+  right: 0.3125rem;
+}
+
 .mention,
 .unread,
 .unopened {
   color: var(--color-white);
-  background: var(--color-green);
+  background: var(--color-active);
 }
 
 .unopened {
@@ -81,6 +88,10 @@
 
 .reaction {
   background-color: #ed504f;
+}
+
+.poll {
+  background-color: var(--color-primary);
 }
 
 .round {

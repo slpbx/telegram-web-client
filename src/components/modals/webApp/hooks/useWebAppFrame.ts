@@ -6,6 +6,7 @@ import type { WebApp, WebAppInboundEvent, WebAppOutboundEvent } from '../../../.
 
 import { VERIFY_AGE_MIN_DEFAULT } from '../../../../config';
 import { getWebAppKey } from '../../../../global/helpers';
+import { isMessageFromIframe } from '../../../../util/browser/iframe';
 import { extractCurrentThemeParams } from '../../../../util/themeStyle';
 import { REM } from '../../../common/helpers/mediaDimensions';
 
@@ -54,8 +55,8 @@ const useWebAppFrame = (
     updateContentSettings,
   } = getActions();
 
-  const isReloadSupported = useRef<boolean>(false);
-  const reloadTimeout = useRef<ReturnType<typeof setTimeout>>();
+  const isReloadSupportedRef = useRef<boolean>(false);
+  const reloadTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const ignoreEventsRef = useRef<boolean>(false);
   const lastFrameSizeRef = useRef<{ width: number; height: number; isResizing?: boolean }>();
   const windowSize = useWindowSize();
@@ -98,11 +99,11 @@ const useWebAppFrame = (
   });
 
   const reloadFrame = useCallback((url: string) => {
-    if (isReloadSupported.current) {
+    if (isReloadSupportedRef.current) {
       sendEvent({
         eventType: 'reload_iframe',
       });
-      reloadTimeout.current = setTimeout(() => {
+      reloadTimeoutRef.current = setTimeout(() => {
         forceReloadFrame(url);
       }, RELOAD_TIMEOUT);
       return;
@@ -172,10 +173,8 @@ const useWebAppFrame = (
     if (ignoreEventsRef.current) {
       return;
     }
-    const contentWindow = ref.current?.contentWindow;
-    const sourceWindow = event.source as Window;
 
-    if (contentWindow !== sourceWindow) {
+    if (!isMessageFromIframe(event, ref.current)) {
       return;
     }
 
@@ -213,11 +212,11 @@ const useWebAppFrame = (
       if (eventType === 'iframe_ready') {
         const scrollbarColor = getComputedStyle(document.body).getPropertyValue('--color-scrollbar');
         sendCustomStyle(SCROLLBAR_STYLE.replace(/%SCROLLBAR_COLOR%/g, scrollbarColor));
-        isReloadSupported.current = Boolean(eventData.reload_supported);
+        isReloadSupportedRef.current = Boolean(eventData.reload_supported);
       }
 
       if (eventType === 'iframe_will_reload') {
-        clearTimeout(reloadTimeout.current);
+        clearTimeout(reloadTimeoutRef.current);
       }
 
       if (eventType === 'web_app_data_send') {

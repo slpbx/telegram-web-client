@@ -35,6 +35,7 @@ export const INITIAL_PERFORMANCE_STATE_MAX: PerformanceType = {
   stickerEffects: true,
   storyRibbonAnimations: true,
   snapEffect: true,
+  textStreaming: true,
 };
 
 export const INITIAL_PERFORMANCE_STATE_MED: PerformanceType = {
@@ -54,6 +55,7 @@ export const INITIAL_PERFORMANCE_STATE_MED: PerformanceType = {
   stickerEffects: true,
   storyRibbonAnimations: true,
   snapEffect: false,
+  textStreaming: true,
 };
 
 export const INITIAL_PERFORMANCE_STATE_MIN: PerformanceType = {
@@ -73,6 +75,7 @@ export const INITIAL_PERFORMANCE_STATE_MIN: PerformanceType = {
   stickerEffects: false,
   storyRibbonAnimations: false,
   snapEffect: false,
+  textStreaming: false,
 };
 
 export const INITIAL_SHARED_STATE: SharedState = {
@@ -310,6 +313,7 @@ export const INITIAL_GLOBAL_STATE: GlobalState = {
       canTranslate: false,
       canTranslateChats: true,
       doNotTranslate: [],
+      translationTone: 'neutral',
     },
     privacy: {},
     botVerificationShownPeerIds: [],

@@ -49,6 +49,7 @@ import PremiumSubscriptionOption from './PremiumSubscriptionOption';
 import styles from './PremiumMainModal.module.scss';
 
 import PremiumAds from '../../../assets/premium/PremiumAds.svg';
+import PremiumAi from '../../../assets/premium/PremiumAi.svg';
 import PremiumBadge from '../../../assets/premium/PremiumBadge.svg';
 import PremiumChats from '../../../assets/premium/PremiumChats.svg';
 import PremiumEffects from '../../../assets/premium/PremiumEffects.svg';
@@ -89,6 +90,7 @@ const PREMIUM_FEATURE_COLOR_ICONS: Record<ApiPremiumSection, string> = {
   last_seen: PremiumLastSeen,
   message_privacy: PremiumMessagePrivacy,
   effects: PremiumEffects,
+  ai_compose: PremiumAi,
   todo: PremiumBadge,
   pm_noforwards: PremiumNoforwards,
 };
@@ -150,13 +152,13 @@ const PremiumMainModal: FC<OwnProps & StateProps> = ({
 
   const oldLang = useOldLang();
   const lang = useLang();
-  const [isHeaderHidden, setHeaderHidden] = useState(true);
+  const [isHeaderHidden, setIsHeaderHidden] = useState(true);
   const [currentSection, setCurrentSection] = useState<ApiPremiumSection | undefined>(initialSection);
-  const [selectedSubscriptionOption, setSubscriptionOption] = useState<ApiPremiumSubscriptionOption>();
+  const [selectedSubscriptionOption, setSelectedSubscriptionOption] = useState<ApiPremiumSubscriptionOption>();
 
   useEffect(() => {
     if (!isOpen) {
-      setHeaderHidden(true);
+      setIsHeaderHidden(true);
       setCurrentSection(undefined);
     } else if (initialSection) {
       setCurrentSection(initialSection);
@@ -174,7 +176,7 @@ const PremiumMainModal: FC<OwnProps & StateProps> = ({
   function handleScroll(e: React.UIEvent<HTMLDivElement>) {
     const { scrollTop } = e.currentTarget;
 
-    setHeaderHidden(scrollTop <= 150);
+    setIsHeaderHidden(scrollTop <= 150);
   }
 
   const handleClickWithStartParam = useLastCallback((startParam?: string) => {
@@ -204,7 +206,7 @@ const PremiumMainModal: FC<OwnProps & StateProps> = ({
 
   const handleChangeSubscriptionOption = useLastCallback((months: number) => {
     const foundOption = promo?.options.find((option) => option.months === months);
-    setSubscriptionOption(foundOption);
+    setSelectedSubscriptionOption(foundOption);
   });
 
   const showConfetti = useLastCallback(() => {
@@ -250,7 +252,7 @@ const PremiumMainModal: FC<OwnProps & StateProps> = ({
 
   useEffect(() => {
     const [defaultOption] = promo?.options ?? [];
-    setSubscriptionOption(defaultOption);
+    setSelectedSubscriptionOption(defaultOption);
   }, [promo]);
 
   const handleOpenStatusSet = useLastCallback(() => {
@@ -444,7 +446,7 @@ const PremiumMainModal: FC<OwnProps & StateProps> = ({
             </div>
             <div className={buildClassName(styles.list, isPremium && styles.noButton)}>
               {filteredSections.map((section, index) => {
-                const shouldUseNewLang = section === 'todo' || section === 'pm_noforwards';
+                const shouldUseNewLang = section === 'todo' || section === 'pm_noforwards' || section === 'ai_compose';
                 return (
                   <PremiumFeatureItem
                     key={section}

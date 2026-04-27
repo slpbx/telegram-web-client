@@ -19,7 +19,7 @@ import buildStyle from '../../../util/buildStyle';
 import { formatCountdown } from '../../../util/dates/oldDateFormat';
 import { HOUR } from '../../../util/dates/units';
 import { formatCurrency } from '../../../util/formatCurrency';
-import { formatStarsAsIcon, getNextArrowReplacement } from '../../../util/localization/format';
+import { formatStarsAsIcon, NEXT_ARROW_REPLACEMENT } from '../../../util/localization/format';
 import { getServerTime } from '../../../util/serverTime';
 
 import useCustomBackground from '../../../hooks/useCustomBackground';
@@ -279,7 +279,7 @@ function GiftComposer({
             </span>
             <Switcher
               checked={shouldPayByStars}
-              onChange={toggleShouldPayByStars}
+              inactive
               label={lang('GiftPremiumPayWithStarsAcc')}
             />
           </ListItem>
@@ -293,7 +293,7 @@ function GiftComposer({
                 <Link isPrimary onClick={handleGetMoreStars}>
                   {lang('GetMoreStarsLinkText', undefined, {
                     withNodes: true,
-                    specialReplacement: getNextArrowReplacement(),
+                    specialReplacement: NEXT_ARROW_REPLACEMENT,
                   })}
                 </Link>
               ),
@@ -319,7 +319,7 @@ function GiftComposer({
             </span>
             <Switcher
               checked={shouldPayForUpgrade}
-              onChange={handleShouldPayForUpgradeChange}
+              inactive
               label={lang('GiftMakeUniqueAcc')}
             />
           </ListItem>
@@ -332,7 +332,7 @@ function GiftComposer({
                 link: (
                   <Link isPrimary onClick={handleOpenUpgradePreview}>
                     {lang('GiftMakeUniqueLink', undefined, { withNodes: true,
-                      specialReplacement: getNextArrowReplacement() })}
+                      specialReplacement: NEXT_ARROW_REPLACEMENT })}
                   </Link>
                 ),
               }, {
@@ -344,7 +344,7 @@ function GiftComposer({
                   <Link isPrimary onClick={handleOpenUpgradePreview}>
                     {lang('GiftMakeUniqueLink', undefined, {
                       withNodes: true,
-                      specialReplacement: getNextArrowReplacement() })}
+                      specialReplacement: NEXT_ARROW_REPLACEMENT })}
                   </Link>
                 ),
               }, {
@@ -358,7 +358,7 @@ function GiftComposer({
             <span>{lang('GiftHideMyName')}</span>
             <Switcher
               checked={shouldHideName}
-              onChange={handleShouldHideNameChange}
+              inactive
               label={lang('GiftHideMyName')}
             />
           </ListItem>

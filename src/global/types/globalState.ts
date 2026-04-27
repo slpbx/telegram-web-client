@@ -14,6 +14,7 @@ import type {
   ApiEmojiStatusType,
   ApiGroupCall,
   ApiMessage,
+  ApiMessagePoll,
   ApiNotifyPeerType,
   ApiPaidReactionPrivacyType,
   ApiPasskey,
@@ -23,7 +24,6 @@ import type {
   ApiPeerPhotos,
   ApiPeerStories,
   ApiPhoneCall,
-  ApiPoll,
   ApiPrivacyKey,
   ApiPrivacySettings,
   ApiPromoData,
@@ -254,7 +254,7 @@ export type GlobalState = {
       byId: Record<number, number>;
     }>;
     sponsoredByChatId: Record<string, ApiSponsoredMessage>;
-    pollById: Record<string, ApiPoll>;
+    pollById: Record<string, ApiMessagePoll>;
     webPageById: Record<string, ApiWebPage>;
   };
 

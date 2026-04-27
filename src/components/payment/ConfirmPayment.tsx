@@ -1,8 +1,8 @@
-import type { FC } from '../../lib/teact/teact';
-import { memo, useCallback, useEffect } from '../../lib/teact/teact';
+import { memo, useCallback, useEffect, useRef } from '../../lib/teact/teact';
 import { getActions } from '../../global';
 
 import { TME_LINK_PREFIX } from '../../config';
+import { isMessageFromIframe } from '../../util/browser/iframe';
 
 import useOldLang from '../../hooks/useOldLang';
 
@@ -35,14 +35,19 @@ interface WebAppOpenTgLinkEvent {
 
 type IframeCallbackEvent = PaymentFormSubmitEvent | WebAppOpenTgLinkEvent;
 
-const ConfirmPayment: FC<OwnProps> = ({
+const ConfirmPayment = ({
   url, noRedirect, onClose, onPaymentFormSubmit,
-}) => {
+}: OwnProps) => {
   const { openTelegramLink } = getActions();
 
   const lang = useOldLang();
+  const frameRef = useRef<HTMLIFrameElement>();
 
   const handleMessage = useCallback((event: MessageEvent<string>) => {
+    if (!isMessageFromIframe(event, frameRef.current)) {
+      return;
+    }
+
     try {
       const data = JSON.parse(event.data) as IframeCallbackEvent;
       const { eventType, eventData } = data;
@@ -76,10 +81,11 @@ const ConfirmPayment: FC<OwnProps> = ({
   return (
     <div className="ConfirmPayment">
       <iframe
+        ref={frameRef}
         src={url}
         title={lang('Checkout.WebConfirmation.Title')}
         allow="payment"
-        sandbox="allow-modals allow-forms allow-scripts allow-same-origin allow-top-navigation"
+        sandbox="allow-modals allow-forms allow-scripts allow-top-navigation allow-same-origin"
         className="ConfirmPayment__content"
       />
     </div>

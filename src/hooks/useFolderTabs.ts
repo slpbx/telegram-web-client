@@ -1,10 +1,15 @@
 import { type TeactNode, useMemo } from '../lib/teact/teact';
 import { getActions, getGlobal } from '../global';
 
-import type { ApiMessageEntity, ApiMessageEntityCustomEmoji } from '../api/types';
 import type { MenuItemContextAction } from '../components/ui/ListItem';
 import type { TabWithProperties } from '../components/ui/SquareTabList';
-import { type ApiChatFolder, type ApiChatlistExportedInvite, ApiMessageEntityTypes } from '../api/types';
+import {
+  type ApiChatFolder,
+  type ApiChatlistExportedInvite,
+  type ApiMessageEntity,
+  type ApiMessageEntityCustomEmoji,
+  ApiMessageEntityTypes,
+} from '../api/types';
 import { SettingsScreens } from '../types';
 
 import { ALL_FOLDER_ID } from '../config';
@@ -28,6 +33,7 @@ type Params = {
   orderedFolderIds?: number[];
   chatFoldersById: Record<number, ApiChatFolder>;
   maxFolders: number;
+  noEmoticons?: boolean;
 } & ({
   isReadOnly?: false;
   maxChatLists: number;
@@ -43,6 +49,7 @@ const useFolderTabs = (params: Params) => {
     orderedFolderIds,
     chatFoldersById,
     maxFolders,
+    noEmoticons,
     isReadOnly,
   } = params;
 
@@ -231,13 +238,13 @@ const useFolderTabs = (params: Params) => {
         isBadgeActive: Boolean(folderCountersById[id]?.notificationsCount),
         isBlocked,
         contextActions: contextActions.length ? contextActions : undefined,
-        emoticon: folderIcon,
+        emoticon: noEmoticons ? undefined : folderIcon,
         noTitleAnimations: folder.noTitleAnimations,
       } satisfies TabWithProperties;
     });
   }, [
     displayedFolders, maxFolders, folderCountersById, lang, chatFoldersById, maxChatLists, folderInvitesById,
-    maxFolderInvites, folderUnreadChatsCountersById, isReadOnly, sidebarMode, isMobile,
+    maxFolderInvites, folderUnreadChatsCountersById, isReadOnly, sidebarMode, isMobile, noEmoticons,
   ]);
 
   return {
