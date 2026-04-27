@@ -2,6 +2,7 @@ import { addCallback } from '../../../lib/teact/teactn';
 
 import type { ActionReturnType, GlobalState } from '../../types';
 import { type ApiError } from '../../../api/types';
+import { ManagementScreens } from '../../../types';
 
 import {
   ANIMATION_WAVE_MIN_INTERVAL,
@@ -110,8 +111,8 @@ addActionHandler('toggleManagement', (global, actions, payload): ActionReturnTyp
 });
 
 addActionHandler('requestNextManagementScreen', (global, actions, payload): ActionReturnType => {
-  if (!CAN_ACCESS_CHANNEL_SETTINGS) return undefined;
   const { screen, tabId = getCurrentTabId() } = payload || {};
+  if (!CAN_ACCESS_CHANNEL_SETTINGS && screen !== undefined && screen !== ManagementScreens.JoinRequests) return undefined;
   const { chatId } = selectCurrentMessageList(global, tabId) || {};
 
   if (!chatId) {

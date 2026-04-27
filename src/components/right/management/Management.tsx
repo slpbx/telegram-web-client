@@ -1,11 +1,12 @@
 import type { FC } from '../../../lib/teact/teact';
-import { memo } from '../../../lib/teact/teact';
-import { withGlobal } from '../../../global';
+import { memo, useEffect } from '../../../lib/teact/teact';
+import { getActions, getGlobal, withGlobal } from '../../../global';
 
 import type { ManagementType } from '../../../types';
 import { ManagementScreens } from '../../../types';
 
-import { selectCurrentManagementType } from '../../../global/selectors';
+import { selectCurrentManagementType, selectTabState } from '../../../global/selectors';
+import { CAN_ACCESS_CHANNEL_SETTINGS } from '../../../util/crmchat';
 
 import ManageBot from './ManageBot';
 import ManageChannel from './ManageChannel';
@@ -53,6 +54,15 @@ const Management: FC<OwnProps & StateProps> = ({
   isActive,
   managementType,
 }) => {
+  // [CRMchat] hide all admin screens from chatters except JoinRequests
+  const isForbiddenScreen = !CAN_ACCESS_CHANNEL_SETTINGS && currentScreen !== ManagementScreens.JoinRequests;
+  useEffect(() => {
+    if (!isForbiddenScreen) return;
+    if (selectTabState(getGlobal()).management.byChatId[chatId]?.nextScreen === ManagementScreens.JoinRequests) return;
+    getActions().closeManagement();
+  }, [isForbiddenScreen, chatId]);
+  if (isForbiddenScreen) return undefined;
+
   switch (currentScreen) {
     case ManagementScreens.Initial: {
       switch (managementType) {
