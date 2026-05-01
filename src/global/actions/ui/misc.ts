@@ -86,7 +86,6 @@ addActionHandler('resetLeftColumnWidth', (global): ActionReturnType => {
 });
 
 addActionHandler('toggleManagement', (global, actions, payload): ActionReturnType => {
-  if (!CAN_ACCESS_CHANNEL_SETTINGS) return undefined;
   const { force, tabId = getCurrentTabId() } = payload || {};
   const { chatId } = selectCurrentMessageList(global, tabId) || {};
 
