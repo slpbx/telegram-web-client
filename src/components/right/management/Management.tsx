@@ -54,11 +54,14 @@ const Management: FC<OwnProps & StateProps> = ({
   isActive,
   managementType,
 }) => {
-  // [CRMchat] hide all admin screens from chatters except JoinRequests
-  const isForbiddenScreen = !CAN_ACCESS_CHANNEL_SETTINGS && currentScreen !== ManagementScreens.JoinRequests;
+  // [CRMchat] hide all admin screens from chatters except JoinRequests and ChannelSubscribers
+  const isAllowedForChatter = (screen: ManagementScreens | undefined) => (
+    screen === ManagementScreens.JoinRequests || screen === ManagementScreens.ChannelSubscribers
+  );
+  const isForbiddenScreen = !CAN_ACCESS_CHANNEL_SETTINGS && !isAllowedForChatter(currentScreen);
   useEffect(() => {
     if (!isForbiddenScreen) return;
-    if (selectTabState(getGlobal()).management.byChatId[chatId]?.nextScreen === ManagementScreens.JoinRequests) return;
+    if (isAllowedForChatter(selectTabState(getGlobal()).management.byChatId[chatId]?.nextScreen)) return;
     getActions().closeManagement();
   }, [isForbiddenScreen, chatId]);
   if (isForbiddenScreen) return undefined;

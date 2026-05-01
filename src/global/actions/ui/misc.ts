@@ -111,7 +111,12 @@ addActionHandler('toggleManagement', (global, actions, payload): ActionReturnTyp
 
 addActionHandler('requestNextManagementScreen', (global, actions, payload): ActionReturnType => {
   const { screen, tabId = getCurrentTabId() } = payload || {};
-  if (!CAN_ACCESS_CHANNEL_SETTINGS && screen !== undefined && screen !== ManagementScreens.JoinRequests) return undefined;
+  if (
+    !CAN_ACCESS_CHANNEL_SETTINGS
+    && screen !== undefined
+    && screen !== ManagementScreens.JoinRequests
+    && screen !== ManagementScreens.ChannelSubscribers
+  ) return undefined;
   const { chatId } = selectCurrentMessageList(global, tabId) || {};
 
   if (!chatId) {
