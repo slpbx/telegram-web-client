@@ -11,6 +11,7 @@ import { MAIN_THREAD_ID } from '../api/types';
 
 import { getChatAvatarHash } from '../global/helpers';
 import { selectThreadReadState } from '../global/selectors/threads';
+import { callApi } from '../api/gramjs';
 import { getCurrentTabId } from './establishMultitabRole';
 import * as mediaLoader from './mediaLoader';
 
@@ -160,7 +161,9 @@ window.addEventListener('message', (event) => {
     return;
   }
 
-  crmChatLog('Got message from CRMchat', event.data);
+  if (event.data.type !== 'telegramUpdate') {
+    crmChatLog('Got message from CRMchat', event.data);
+  }
 
   if (event.data.type === 'sessionResponse') {
     dcAuthParams = event.data.authParams;
@@ -183,6 +186,12 @@ window.addEventListener('message', (event) => {
       crmchatDisplayedProperties: event.data.displayedProperties,
     };
     setGlobal(global);
+  }
+  if (event.data.type === 'telegramUpdate') {
+    void callApi('handleCrmTelegramUpdate', event.data.envelope)
+      .catch((err) => {
+        console.warn('[CRMchat] Failed to forward Telegram update to worker', err);
+      });
   }
 });
 

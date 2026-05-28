@@ -51,6 +51,7 @@ import {
   processUpdate,
   reset as resetUpdatesManager,
   scheduleGetChannelDifference,
+  scheduleGetDifference,
   updateChannelState,
 } from '../updates/updateManager';
 import {
@@ -65,6 +66,12 @@ import {
   onRequestRegistration,
   onWebAuthTokenFailed,
 } from './auth';
+import {
+  buildGramJsUpdateFromCrmEnvelope,
+  type CrmTelegramUpdateEnvelope,
+  isDuplicateTelegramUpdate,
+  rememberTelegramUpdate,
+} from './crmTelegramUpdates';
 import downloadMediaWithClient, { parseMediaUrl } from './media';
 
 import { ChatAbortController } from '../ChatAbortController';
@@ -226,7 +233,11 @@ function onSessionUpdate(sessionData?: ApiSessionData) {
 type UpdateConfig = GramJs.UpdateConfig & { _entities?: (GramJs.TypeUser | GramJs.TypeChat)[] };
 
 export function handleGramJsUpdate(update: any) {
+  if (isDuplicateTelegramUpdate(update)) {
+    return;
+  }
   processUpdate(update);
+  rememberTelegramUpdate(update);
 
   if (update instanceof GramJs.UpdatesTooLong) {
     void handleTerminatedSession();
@@ -241,6 +252,16 @@ export function handleGramJsUpdate(update: any) {
 
       setIsPremium({ isPremium: Boolean(currentUser.premium) });
     });
+  }
+}
+
+export function handleCrmTelegramUpdate(envelope: CrmTelegramUpdateEnvelope) {
+  try {
+    handleGramJsUpdate(buildGramJsUpdateFromCrmEnvelope(envelope));
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[CRMchat] Failed to apply broadcast Telegram update, scheduling difference', err);
+    scheduleGetDifference();
   }
 }
 
