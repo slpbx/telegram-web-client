@@ -20,6 +20,13 @@ import {
   APP_CODE_NAME,
   DEBUG, DEBUG_GRAMJS, IS_TEST, LANG_PACK, UPLOAD_WORKERS,
 } from '../../../config';
+import {
+  clearCrmTelegramUpdateDifferenceFallback,
+  type CrmTelegramUpdateEnvelope,
+  handleCrmTelegramUpdateEnvelope,
+  isDuplicateNoStateTelegramUpdate,
+  rememberNoStateTelegramUpdate,
+} from '../../../util/crmchat/gramjs/telegramUpdates';
 import { pause } from '../../../util/schedulers';
 import { buildWebPage } from '../apiBuilders/messageContent';
 import {
@@ -51,6 +58,7 @@ import {
   processUpdate,
   reset as resetUpdatesManager,
   scheduleGetChannelDifference,
+  scheduleGetDifference,
   updateChannelState,
 } from '../updates/updateManager';
 import {
@@ -193,6 +201,8 @@ export function setIsPremium({ isPremium }: { isPremium: boolean }) {
 
 const LOG_OUT_TIMEOUT = 2500;
 export async function destroy(noLogOut = false, noClearLocalDb = false) {
+  clearCrmTelegramUpdateDifferenceFallback();
+
   if (!noLogOut && client.isConnected()) {
     await Promise.race([
       invokeRequest(new GramJs.auth.LogOut()),
@@ -226,7 +236,11 @@ function onSessionUpdate(sessionData?: ApiSessionData) {
 type UpdateConfig = GramJs.UpdateConfig & { _entities?: (GramJs.TypeUser | GramJs.TypeChat)[] };
 
 export function handleGramJsUpdate(update: any) {
+  if (isDuplicateNoStateTelegramUpdate(update)) {
+    return;
+  }
   processUpdate(update);
+  rememberNoStateTelegramUpdate(update);
 
   if (update instanceof GramJs.UpdatesTooLong) {
     void handleTerminatedSession();
@@ -242,6 +256,10 @@ export function handleGramJsUpdate(update: any) {
       setIsPremium({ isPremium: Boolean(currentUser.premium) });
     });
   }
+}
+
+export function handleCrmTelegramUpdate(envelope: CrmTelegramUpdateEnvelope) {
+  handleCrmTelegramUpdateEnvelope(envelope, handleGramJsUpdate, scheduleGetDifference);
 }
 
 type InvokeRequestParams = {

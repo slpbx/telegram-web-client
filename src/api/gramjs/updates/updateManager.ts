@@ -242,12 +242,20 @@ export function scheduleGetChannelDifference(channelId: string) {
   PTS_TIMEOUTS.set(channelId, timeout);
 }
 
-function scheduleGetDifference() {
+export function scheduleGetDifference() {
   if (seqTimeout) return;
 
-  seqTimeout = setTimeout(async () => {
-    await getDifference();
-    seqTimeout = undefined;
+  seqTimeout = setTimeout(() => {
+    void getDifference()
+      .catch((err) => {
+        if (DEBUG) {
+          // eslint-disable-next-line no-console
+          console.warn('[UpdateManager] Failed to get difference', err);
+        }
+      })
+      .finally(() => {
+        seqTimeout = undefined;
+      });
   }, UPDATE_WAIT_TIMEOUT);
 }
 
