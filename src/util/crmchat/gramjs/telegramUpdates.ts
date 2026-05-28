@@ -36,12 +36,19 @@ export type CrmTelegramUpdateEnvelope = {
 type ConstructorArgs = Record<string, unknown>;
 type GramJsConstructor = new (args?: ConstructorArgs) => object;
 type DedupEntry = { key: string; expiresAt: number };
+type HandleUpdate = (update: Update) => void;
+type ScheduleDifference = () => void;
 
 const DEDUP_TTL_MS = 2_000;
 const DEDUP_MAX_SIZE = 2000;
+const DIFFERENCE_INITIAL_DELAY_MS = 1_000;
+const DIFFERENCE_MAX_DELAY_MS = 30_000;
+
 const dedupKeys = new Map<string, number>();
 
 let entryCache: Map<string, GenerationEntryConfig> | undefined;
+let differenceTimeout: ReturnType<typeof setTimeout> | undefined;
+let differenceDelayMs = DIFFERENCE_INITIAL_DELAY_MS;
 
 function getEntryCache() {
   if (!entryCache) {
@@ -293,7 +300,7 @@ function pruneDedupKeys(now: number) {
   oldest.forEach(([key]) => dedupKeys.delete(key));
 }
 
-export function rememberTelegramUpdate(update: unknown) {
+export function rememberNoStateTelegramUpdate(update: unknown) {
   if (!isNoStateTelegramUpdate(update)) return;
   const now = Date.now();
   pruneDedupKeys(now);
@@ -302,7 +309,7 @@ export function rememberTelegramUpdate(update: unknown) {
   }
 }
 
-export function isDuplicateTelegramUpdate(update: unknown) {
+export function isDuplicateNoStateTelegramUpdate(update: unknown) {
   if (!isNoStateTelegramUpdate(update)) return false;
   const now = Date.now();
   const keys = getTelegramUpdateDedupKeys(update);
@@ -313,6 +320,51 @@ export function isDuplicateTelegramUpdate(update: unknown) {
   return duplicate;
 }
 
+function resetDifferenceBackoff() {
+  differenceDelayMs = DIFFERENCE_INITIAL_DELAY_MS;
+}
+
+export function clearCrmTelegramUpdateDifferenceFallback() {
+  if (differenceTimeout) {
+    clearTimeout(differenceTimeout);
+    differenceTimeout = undefined;
+  }
+  resetDifferenceBackoff();
+}
+
+function scheduleDifferenceFallback(scheduleDifference: ScheduleDifference) {
+  if (differenceTimeout) return;
+
+  const delayMs = differenceDelayMs;
+  differenceDelayMs = Math.min(differenceDelayMs * 2, DIFFERENCE_MAX_DELAY_MS);
+
+  differenceTimeout = setTimeout(() => {
+    differenceTimeout = undefined;
+    scheduleDifference();
+  }, delayMs);
+}
+
+export function handleCrmTelegramUpdateEnvelope(
+  envelope: CrmTelegramUpdateEnvelope,
+  handleUpdate: HandleUpdate,
+  scheduleDifference: ScheduleDifference,
+) {
+  try {
+    handleUpdate(buildGramJsUpdateFromCrmEnvelope(envelope));
+    resetDifferenceBackoff();
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.warn('[CRMchat] Failed to apply broadcast Telegram update, scheduling difference', {
+      workspaceId: envelope.workspaceId,
+      accountId: envelope.accountId,
+      sourceLayer: envelope.sourceLayer,
+      updateType: envelope.update._,
+    }, err);
+    scheduleDifferenceFallback(scheduleDifference);
+  }
+}
+
 export function clearTelegramUpdateDedupForTests() {
   dedupKeys.clear();
+  clearCrmTelegramUpdateDifferenceFallback();
 }

@@ -20,6 +20,13 @@ import {
   APP_CODE_NAME,
   DEBUG, DEBUG_GRAMJS, IS_TEST, LANG_PACK, UPLOAD_WORKERS,
 } from '../../../config';
+import {
+  clearCrmTelegramUpdateDifferenceFallback,
+  type CrmTelegramUpdateEnvelope,
+  handleCrmTelegramUpdateEnvelope,
+  isDuplicateNoStateTelegramUpdate,
+  rememberNoStateTelegramUpdate,
+} from '../../../util/crmchat/gramjs/telegramUpdates';
 import { pause } from '../../../util/schedulers';
 import { buildWebPage } from '../apiBuilders/messageContent';
 import {
@@ -66,12 +73,6 @@ import {
   onRequestRegistration,
   onWebAuthTokenFailed,
 } from './auth';
-import {
-  buildGramJsUpdateFromCrmEnvelope,
-  type CrmTelegramUpdateEnvelope,
-  isDuplicateTelegramUpdate,
-  rememberTelegramUpdate,
-} from './crmTelegramUpdates';
 import downloadMediaWithClient, { parseMediaUrl } from './media';
 
 import { ChatAbortController } from '../ChatAbortController';
@@ -200,6 +201,8 @@ export function setIsPremium({ isPremium }: { isPremium: boolean }) {
 
 const LOG_OUT_TIMEOUT = 2500;
 export async function destroy(noLogOut = false, noClearLocalDb = false) {
+  clearCrmTelegramUpdateDifferenceFallback();
+
   if (!noLogOut && client.isConnected()) {
     await Promise.race([
       invokeRequest(new GramJs.auth.LogOut()),
@@ -233,11 +236,11 @@ function onSessionUpdate(sessionData?: ApiSessionData) {
 type UpdateConfig = GramJs.UpdateConfig & { _entities?: (GramJs.TypeUser | GramJs.TypeChat)[] };
 
 export function handleGramJsUpdate(update: any) {
-  if (isDuplicateTelegramUpdate(update)) {
+  if (isDuplicateNoStateTelegramUpdate(update)) {
     return;
   }
   processUpdate(update);
-  rememberTelegramUpdate(update);
+  rememberNoStateTelegramUpdate(update);
 
   if (update instanceof GramJs.UpdatesTooLong) {
     void handleTerminatedSession();
@@ -256,18 +259,7 @@ export function handleGramJsUpdate(update: any) {
 }
 
 export function handleCrmTelegramUpdate(envelope: CrmTelegramUpdateEnvelope) {
-  try {
-    handleGramJsUpdate(buildGramJsUpdateFromCrmEnvelope(envelope));
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.warn('[CRMchat] Failed to apply broadcast Telegram update, scheduling difference', {
-      workspaceId: envelope.workspaceId,
-      accountId: envelope.accountId,
-      sourceLayer: envelope.sourceLayer,
-      updateType: envelope.update._,
-    }, err);
-    scheduleGetDifference();
-  }
+  handleCrmTelegramUpdateEnvelope(envelope, handleGramJsUpdate, scheduleGetDifference);
 }
 
 type InvokeRequestParams = {

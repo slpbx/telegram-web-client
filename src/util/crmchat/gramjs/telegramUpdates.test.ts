@@ -5,10 +5,10 @@ import {
   buildGramJsUpdateFromCrmEnvelope,
   clearTelegramUpdateDedupForTests,
   type CrmTelegramUpdateEnvelope,
-  isDuplicateTelegramUpdate,
-  rememberTelegramUpdate,
+  isDuplicateNoStateTelegramUpdate,
+  rememberNoStateTelegramUpdate,
   reviveTlObject,
-} from './crmTelegramUpdates';
+} from './telegramUpdates';
 
 function envelope(
   update: CrmTelegramUpdateEnvelope['update'],
@@ -91,33 +91,33 @@ describe('CRM Telegram updates', () => {
     const nativeUpdate = readInboxUpdate();
     const broadcastUpdate = readInboxUpdate();
 
-    expect(isDuplicateTelegramUpdate(nativeUpdate)).toBe(false);
-    rememberTelegramUpdate(nativeUpdate);
-    expect(isDuplicateTelegramUpdate(broadcastUpdate)).toBe(false);
+    expect(isDuplicateNoStateTelegramUpdate(nativeUpdate)).toBe(false);
+    rememberNoStateTelegramUpdate(nativeUpdate);
+    expect(isDuplicateNoStateTelegramUpdate(broadcastUpdate)).toBe(false);
   });
 
   it('does not custom-deduplicate channel updates with pts', () => {
     const first = channelMessageUpdate();
     const second = channelMessageUpdate();
 
-    rememberTelegramUpdate(first);
-    expect(isDuplicateTelegramUpdate(second)).toBe(false);
+    rememberNoStateTelegramUpdate(first);
+    expect(isDuplicateNoStateTelegramUpdate(second)).toBe(false);
   });
 
   it('does not collapse channel read updates with the same pts but different counters', () => {
     const first = channelReadInboxUpdate(1, 2);
     const second = channelReadInboxUpdate(2, 1);
 
-    rememberTelegramUpdate(first);
-    expect(isDuplicateTelegramUpdate(second)).toBe(false);
+    rememberNoStateTelegramUpdate(first);
+    expect(isDuplicateNoStateTelegramUpdate(second)).toBe(false);
   });
 
   it('does not custom-deduplicate channel read updates without ptsCount', () => {
     const first = channelReadInboxUpdate(1, 2);
     const second = channelReadInboxUpdate(1, 2);
 
-    rememberTelegramUpdate(first);
-    expect(isDuplicateTelegramUpdate(second)).toBe(false);
+    rememberNoStateTelegramUpdate(first);
+    expect(isDuplicateNoStateTelegramUpdate(second)).toBe(false);
   });
 
   it('deduplicates no-state updates by short-lived fingerprint', () => {
@@ -130,7 +130,7 @@ describe('CRM Telegram updates', () => {
       status: new GramJs.UserStatusRecently({}),
     });
 
-    rememberTelegramUpdate(first);
-    expect(isDuplicateTelegramUpdate(second)).toBe(true);
+    rememberNoStateTelegramUpdate(first);
+    expect(isDuplicateNoStateTelegramUpdate(second)).toBe(true);
   });
 });
