@@ -181,6 +181,32 @@ function assignEntities(update: Update, entities: Array<GramJs.TypeUser | GramJs
   return update;
 }
 
+function isGramJsUser(value: object): value is GramJs.TypeUser {
+  return value instanceof GramJs.User || value instanceof GramJs.UserEmpty;
+}
+
+function isGramJsChat(value: object): value is GramJs.TypeChat {
+  return (
+    value instanceof GramJs.Chat
+    || value instanceof GramJs.ChatEmpty
+    || value instanceof GramJs.ChatForbidden
+    || value instanceof GramJs.Channel
+    || value instanceof GramJs.ChannelForbidden
+  );
+}
+
+function revivePeerContext<T extends object>(values: CrmTlJsonObject[], isExpected: (value: object) => value is T): T[] {
+  return values.flatMap((value) => {
+    try {
+      const revived = reviveTlObject(value);
+      return isExpected(revived) ? [revived] : [];
+    } catch {
+      // Peer context is auxiliary; unknown layer peers should not discard the update itself.
+      return [];
+    }
+  });
+}
+
 function buildMessageUpdate(message: GramJs.Message | GramJs.MessageService): GramJs.UpdateNewMessage {
   const update = new GramJs.UpdateNewMessage({ message, pts: 0, ptsCount: 0 });
   delete (update as Partial<GramJs.UpdateNewMessage>).pts;
@@ -190,20 +216,8 @@ function buildMessageUpdate(message: GramJs.Message | GramJs.MessageService): Gr
 
 export function buildGramJsUpdateFromCrmEnvelope(envelope: CrmTelegramUpdateEnvelope): Update {
   const revivedUpdate = reviveTlObject(envelope.update);
-  const users = envelope.users
-    .map((user) => reviveTlObject(user))
-    .filter((user): user is GramJs.TypeUser => (
-      user instanceof GramJs.User || user instanceof GramJs.UserEmpty
-    ));
-  const chats = envelope.chats
-    .map((chat) => reviveTlObject(chat))
-    .filter((chat): chat is GramJs.TypeChat => (
-      chat instanceof GramJs.Chat
-      || chat instanceof GramJs.ChatEmpty
-      || chat instanceof GramJs.ChatForbidden
-      || chat instanceof GramJs.Channel
-      || chat instanceof GramJs.ChannelForbidden
-    ));
+  const users = revivePeerContext(envelope.users, isGramJsUser);
+  const chats = revivePeerContext(envelope.chats, isGramJsChat);
 
   if (revivedUpdate instanceof GramJs.Message || revivedUpdate instanceof GramJs.MessageService) {
     return assignEntities(buildMessageUpdate(revivedUpdate), [...users, ...chats]);

@@ -55,6 +55,33 @@ describe('CRM Telegram updates', () => {
     expect(() => reviveTlObject({ _: 'updateDoesNotExist' })).toThrow(/Unknown Telegram constructor/);
   });
 
+  it('ignores unknown peer context constructors without dropping the update', () => {
+    const update = buildGramJsUpdateFromCrmEnvelope({
+      ...envelope({
+        _: 'updateNewMessage',
+        message: {
+          _: 'message',
+          id: 8,
+          peerId: { _: 'peerUser', userId: '123' },
+          message: 'hello',
+          date: 1,
+        },
+        pts: 11,
+        ptsCount: 1,
+      }),
+      users: [
+        { _: 'userDoesNotExist', id: '999' },
+        { _: 'user', id: '123', self: true, firstName: 'Ada' },
+      ],
+      chats: [{ _: 'chatDoesNotExist', id: '456' }],
+    });
+
+    expect(update).toBeInstanceOf(GramJs.UpdateNewMessage);
+    const entities = (update as GramJs.UpdateNewMessage & { _entities?: Array<GramJs.TypeUser | GramJs.TypeChat> })._entities;
+    expect(entities).toHaveLength(1);
+    expect(entities?.[0]).toBeInstanceOf(GramJs.User);
+  });
+
   function readInboxUpdate(pts = 10) {
     return new GramJs.UpdateReadHistoryInbox({
       peer: new GramJs.PeerUser({ userId: 123n }),
