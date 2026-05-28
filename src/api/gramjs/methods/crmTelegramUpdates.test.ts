@@ -78,21 +78,46 @@ describe('CRM Telegram updates', () => {
     });
   }
 
-  it('deduplicates separate account updates by pts', () => {
+  function channelReadInboxUpdate(maxId = 1, stillUnreadCount = 0) {
+    return new GramJs.UpdateReadChannelInbox({
+      channelId: 123n,
+      maxId,
+      stillUnreadCount,
+      pts: 10,
+    });
+  }
+
+  it('does not custom-deduplicate account updates with pts', () => {
     const nativeUpdate = readInboxUpdate();
     const broadcastUpdate = readInboxUpdate();
 
     expect(isDuplicateTelegramUpdate(nativeUpdate)).toBe(false);
     rememberTelegramUpdate(nativeUpdate);
-    expect(isDuplicateTelegramUpdate(broadcastUpdate)).toBe(true);
+    expect(isDuplicateTelegramUpdate(broadcastUpdate)).toBe(false);
   });
 
-  it('deduplicates channel updates by channel pts', () => {
+  it('does not custom-deduplicate channel updates with pts', () => {
     const first = channelMessageUpdate();
     const second = channelMessageUpdate();
 
     rememberTelegramUpdate(first);
-    expect(isDuplicateTelegramUpdate(second)).toBe(true);
+    expect(isDuplicateTelegramUpdate(second)).toBe(false);
+  });
+
+  it('does not collapse channel read updates with the same pts but different counters', () => {
+    const first = channelReadInboxUpdate(1, 2);
+    const second = channelReadInboxUpdate(2, 1);
+
+    rememberTelegramUpdate(first);
+    expect(isDuplicateTelegramUpdate(second)).toBe(false);
+  });
+
+  it('does not custom-deduplicate channel read updates without ptsCount', () => {
+    const first = channelReadInboxUpdate(1, 2);
+    const second = channelReadInboxUpdate(1, 2);
+
+    rememberTelegramUpdate(first);
+    expect(isDuplicateTelegramUpdate(second)).toBe(false);
   });
 
   it('deduplicates no-state updates by short-lived fingerprint', () => {

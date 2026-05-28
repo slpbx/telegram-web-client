@@ -260,7 +260,12 @@ export function handleCrmTelegramUpdate(envelope: CrmTelegramUpdateEnvelope) {
     handleGramJsUpdate(buildGramJsUpdateFromCrmEnvelope(envelope));
   } catch (err) {
     // eslint-disable-next-line no-console
-    console.warn('[CRMchat] Failed to apply broadcast Telegram update, scheduling difference', err);
+    console.warn('[CRMchat] Failed to apply broadcast Telegram update, scheduling difference', {
+      workspaceId: envelope.workspaceId,
+      accountId: envelope.accountId,
+      sourceLayer: envelope.sourceLayer,
+      updateType: envelope.update._,
+    }, err);
     scheduleGetDifference();
   }
 }

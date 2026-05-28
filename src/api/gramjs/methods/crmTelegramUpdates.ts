@@ -9,8 +9,6 @@ import {
 } from '../../../lib/gramjs/tl/generationHelpers';
 import schemaTl from '../../../lib/gramjs/tl/schemaTl';
 
-import { CHANNEL_ID_BASE } from '../../../config';
-
 export type CrmTlJsonValue =
   | string
   | number
@@ -39,7 +37,7 @@ type ConstructorArgs = Record<string, unknown>;
 type GramJsConstructor = new (args?: ConstructorArgs) => object;
 type DedupEntry = { key: string; expiresAt: number };
 
-const DEDUP_TTL_MS = 60_000;
+const DEDUP_TTL_MS = 2_000;
 const DEDUP_MAX_SIZE = 2000;
 const dedupKeys = new Map<string, number>();
 
@@ -176,10 +174,6 @@ function assignEntities(update: Update, entities: Array<GramJs.TypeUser | GramJs
   return update;
 }
 
-function buildChannelPeerId(id: bigint) {
-  return ((id + CHANNEL_ID_BASE) * -1n).toString();
-}
-
 function buildMessageUpdate(message: GramJs.Message | GramJs.MessageService): GramJs.UpdateNewMessage {
   const update = new GramJs.UpdateNewMessage({ message, pts: 0, ptsCount: 0 });
   delete (update as Partial<GramJs.UpdateNewMessage>).pts;
@@ -221,21 +215,6 @@ export function buildGramJsUpdateFromCrmEnvelope(envelope: CrmTelegramUpdateEnve
   return assignEntities(revivedUpdate, [...users, ...chats]);
 }
 
-function getChannelId(update: Update) {
-  if ('channelId' in update && typeof update.channelId === 'bigint' && 'pts' in update) {
-    return buildChannelPeerId(update.channelId);
-  }
-
-  if (
-    (update instanceof GramJs.UpdateNewChannelMessage || update instanceof GramJs.UpdateEditChannelMessage)
-    && update.message.peerId instanceof GramJs.PeerChannel
-  ) {
-    return buildChannelPeerId(update.message.peerId.channelId);
-  }
-
-  return undefined;
-}
-
 function stringifyForFingerprint(value: unknown) {
   return JSON.stringify(value, (_key, nestedValue: unknown) => (
     typeof nestedValue === 'bigint' ? nestedValue.toString() : nestedValue
@@ -275,24 +254,27 @@ function isDedupCandidate(update: unknown): update is Update {
   );
 }
 
-export function getTelegramUpdateDedupKeys(update: Update): string[] {
-  const keys: string[] = [];
-
-  if (update instanceof GramJs.UpdatesCombined) {
-    keys.push(`seq:${update.seqStart}:${update.seq}`);
-    update.updates.forEach((nestedUpdate) => keys.push(...getTelegramUpdateDedupKeys(nestedUpdate)));
-  } else if (update instanceof GramJs.Updates) {
-    keys.push(`seq:${update.seq}:${update.seq}`);
-    update.updates.forEach((nestedUpdate) => keys.push(...getTelegramUpdateDedupKeys(nestedUpdate)));
-  } else if ('pts' in update && typeof update.pts === 'number') {
-    const ptsCount = 'ptsCount' in update && typeof update.ptsCount === 'number' ? update.ptsCount : 0;
-    const channelId = getChannelId(update);
-    keys.push(channelId ? `channel-pts:${channelId}:${update.pts}:${ptsCount}` : `pts:${update.pts}:${ptsCount}`);
-  } else {
-    keys.push(buildNoStateFingerprint(update));
+export function isNoStateTelegramUpdate(update: unknown): update is Update {
+  if (!isDedupCandidate(update)) return false;
+  if (
+    update instanceof GramJs.Updates
+    || update instanceof GramJs.UpdatesCombined
+    || update instanceof GramJs.UpdatesTooLong
+    || update instanceof GramJs.UpdateShort
+  ) {
+    return false;
   }
 
-  return keys;
+  return !(
+    'pts' in update
+    || 'qts' in update
+    || 'seq' in update
+    || 'seqStart' in update
+  );
+}
+
+export function getTelegramUpdateDedupKeys(update: Update): string[] {
+  return isNoStateTelegramUpdate(update) ? [buildNoStateFingerprint(update)] : [];
 }
 
 function pruneDedupKeys(now: number) {
@@ -312,7 +294,7 @@ function pruneDedupKeys(now: number) {
 }
 
 export function rememberTelegramUpdate(update: unknown) {
-  if (!isDedupCandidate(update)) return;
+  if (!isNoStateTelegramUpdate(update)) return;
   const now = Date.now();
   pruneDedupKeys(now);
   for (const key of getTelegramUpdateDedupKeys(update)) {
@@ -321,7 +303,7 @@ export function rememberTelegramUpdate(update: unknown) {
 }
 
 export function isDuplicateTelegramUpdate(update: unknown) {
-  if (!isDedupCandidate(update)) return false;
+  if (!isNoStateTelegramUpdate(update)) return false;
   const now = Date.now();
   const keys = getTelegramUpdateDedupKeys(update);
   const duplicate = keys.length > 0 && keys.every((key) => {
