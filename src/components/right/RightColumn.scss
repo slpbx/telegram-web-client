@@ -10,7 +10,7 @@
   padding-right: env(safe-area-inset-right);
   border-left: 1px solid var(--color-borders);
 
-  background: var(--color-background);
+  background: var(--color-background-secondary);
 
   transition: transform var(--layer-transition);
 
@@ -20,6 +20,8 @@
   }
 
   > .Transition {
+    --slide-background-color: var(--color-background-secondary);
+
     overflow: hidden;
     height: calc(100% - var(--header-height));
   }
@@ -33,7 +35,9 @@
     }
   }
 
-  .Management .section > .ChatInfo {
+  .Management .section > .ChatInfo,
+  .Management > .custom-scroll > .ChatInfo,
+  .Management > .panel-content > .ChatInfo {
     margin: 1rem 0;
     padding: 0 1.5rem;
     text-align: center;

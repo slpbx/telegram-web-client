@@ -1,4 +1,6 @@
 import type {
+  ApiAiComposeTone,
+  ApiAiComposeToneExample,
   ApiAttachBot,
   ApiBirthday,
   ApiBoost,
@@ -17,6 +19,7 @@ import type {
   ApiGeoPoint,
   ApiGlobalMessageSearchType,
   ApiGroupStatistics,
+  ApiInputAiComposeTone,
   ApiInputInvoice,
   ApiLimitTypeWithModal,
   ApiMessage,
@@ -82,6 +85,7 @@ import type {
   MediaViewerMedia,
   MediaViewerOrigin,
   MessageList,
+  MessageListType,
   MiddleSearchParams,
   NewChatMembersProgress,
   PaymentStep,
@@ -567,8 +571,10 @@ export type TabState = {
     filter?: ApiChatType[];
   };
 
-  pollModal: {
-    isOpen: boolean;
+  pollModal?: {
+    chatId: string;
+    threadId?: ThreadId;
+    messageListType: MessageListType;
     isQuiz?: boolean;
   };
 
@@ -676,18 +682,30 @@ export type TabState = {
     isFromAttachment?: boolean;
     translateTab?: AiEditorTabBase & {
       selectedLanguage?: string;
-      selectedTone?: string;
+      selectedTone?: ApiInputAiComposeTone;
       shouldEmojify?: boolean;
       cache?: Record<string, ApiComposedMessageWithAI>;
     };
     styleTab?: AiEditorTabBase & {
-      selectedTone?: string;
+      selectedTone?: ApiInputAiComposeTone;
       shouldEmojify?: boolean;
       cache?: Record<string, ApiComposedMessageWithAI>;
     };
     fixTab?: AiEditorTabBase & {
       cache?: ApiComposedMessageWithAI;
     };
+  };
+
+  aiToneEditorModal?: {
+    toneToEdit?: ApiAiComposeTone;
+  };
+
+  aiTonePreviewModal?: {
+    slug: string;
+    tone?: ApiAiComposeTone;
+    example?: ApiAiComposeToneExample;
+    isAlreadyAdded?: boolean;
+    hasExampleError?: boolean;
   };
 
   aiMessageEditorPendingResult?: {

@@ -1,6 +1,8 @@
 import type { ElementRef, TeactNode } from '../../lib/teact/teact';
 import type React from '../../lib/teact/teact';
-import { beginHeavyAnimation, useEffect, useRef } from '../../lib/teact/teact';
+import {
+  beginHeavyAnimation, useEffect, useLayoutEffect, useRef,
+} from '../../lib/teact/teact';
 
 import type { TextPart } from '../../types';
 
@@ -41,6 +43,8 @@ export type OwnProps = {
   isBackButton?: boolean;
   noBackdrop?: boolean;
   noBackdropClose?: boolean;
+  isNativeDialog?: boolean;
+  noTitleAutoFocus?: boolean;
   children: React.ReactNode;
   style?: string;
   dialogStyle?: string;
@@ -64,6 +68,8 @@ const Modal = (props: OwnProps) => {
     isOpen,
     noBackdropClose,
     noFreezeOnClose,
+    isNativeDialog,
+    noTitleAutoFocus,
     onClose,
     onCloseAnimationEnd,
     onEnter,
@@ -72,7 +78,7 @@ const Modal = (props: OwnProps) => {
   const {
     ref: modalRef,
     shouldRender,
-  } = useShowTransition({
+  } = useShowTransition<HTMLElement>({
     isOpen,
     withShouldRender: true,
     onCloseAnimationEnd,
@@ -117,6 +123,8 @@ const Modal = (props: OwnProps) => {
   } = useContextMenuHandlers(moreButtonRef);
 
   const actualDialogRef = dialogRef || localDialogRef;
+  const divModalRef = modalRef as ElementRef<HTMLDivElement>;
+  const nativeDialogRef = modalRef as ElementRef<HTMLDialogElement>;
 
   const getRootElement = useLastCallback(() => actualDialogRef.current);
   const getTriggerElement = useLastCallback(() => moreButtonRef.current);
@@ -149,6 +157,52 @@ const Modal = (props: OwnProps) => {
     isOpen ? captureKeyboardListeners({ onEsc: onClose, onEnter: handleEnter }) : undefined
   ), [isOpen, onClose, handleEnter]);
   useEffect(() => (isOpen && modalRef.current ? trapFocus(modalRef.current) : undefined), [isOpen, modalRef]);
+
+  useLayoutEffect(() => {
+    if (!isNativeDialog || !shouldRender) {
+      return undefined;
+    }
+
+    const dialog = nativeDialogRef.current;
+    if (!dialog) {
+      return undefined;
+    }
+
+    if (!dialog.open) {
+      dialog.showModal();
+    }
+
+    return () => {
+      if (dialog.open) {
+        dialog.close();
+      }
+    };
+  }, [isNativeDialog, nativeDialogRef, shouldRender]);
+
+  useEffect(() => {
+    if (!isNativeDialog || !shouldRender) {
+      return undefined;
+    }
+
+    const dialog = nativeDialogRef.current;
+    if (!dialog) {
+      return undefined;
+    }
+
+    const handleCancel = (event: Event) => {
+      event.preventDefault();
+
+      if (isOpen) {
+        onClose();
+      }
+    };
+
+    dialog.addEventListener('cancel', handleCancel);
+
+    return () => {
+      dialog.removeEventListener('cancel', handleCancel);
+    };
+  }, [isNativeDialog, isOpen, nativeDialogRef, onClose, shouldRender]);
 
   useHistoryBack({
     isActive: isOpen,
@@ -199,7 +253,7 @@ const Modal = (props: OwnProps) => {
     return title ? (
       <div className={buildClassName('modal-header', headerClassName, isCondensedHeader && 'modal-header-condensed')}>
         {closeButton}
-        <div className="modal-title">{title}</div>
+        <div className="modal-title" autoFocus={!noTitleAutoFocus}>{title}</div>
       </div>
     ) : closeButton;
   }
@@ -218,14 +272,9 @@ const Modal = (props: OwnProps) => {
     dialogClassName,
   );
 
-  return (
-    <Portal>
-      <div
-        ref={modalRef}
-        className={fullClassName}
-        tabIndex={-1}
-        role="dialog"
-      >
+  function renderContent() {
+    return (
+      <>
         <div className="modal-container">
           <div className="modal-backdrop" onClick={!noBackdropClose ? onClose : undefined} />
           {withBalanceBar && (
@@ -274,7 +323,30 @@ const Modal = (props: OwnProps) => {
             </div>
           </div>
         </div>
-      </div>
+      </>
+    );
+  }
+
+  return (
+    <Portal>
+      {isNativeDialog ? (
+        <dialog
+          ref={nativeDialogRef}
+          className={fullClassName}
+          aria-modal="true"
+        >
+          {renderContent()}
+        </dialog>
+      ) : (
+        <div
+          ref={divModalRef}
+          className={fullClassName}
+          tabIndex={-1}
+          role="dialog"
+        >
+          {renderContent()}
+        </div>
+      )}
     </Portal>
   );
 };

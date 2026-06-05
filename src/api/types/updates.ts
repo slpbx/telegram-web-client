@@ -5,7 +5,7 @@ import type {
   GroupCallParticipant,
   VideoRotation,
   VideoState,
-} from '../../lib/secret-sauce';
+} from '../../lib/vibecalls';
 import type { ThreadId, ThreadReadState, TranslationTone } from '../../types';
 import type { RegularLangFnParameters } from '../../util/localization';
 import type { ApiBotCommand, ApiBotMenuButton } from './bots';
@@ -145,6 +145,7 @@ export type ApiUpdateChatLeave = {
 export type ApiUpdateChatTypingStatus = {
   '@type': 'updateChatTypingStatus';
   id: string;
+  peerId: string;
   threadId?: ThreadId;
   typingStatus: ApiTypingStatus | undefined;
 };
@@ -388,6 +389,14 @@ export type ApiUpdateMessagePoll = {
   pollUpdate: Partial<ApiMessagePoll>;
 };
 
+export type ApiUpdateMessagePollUnread = {
+  '@type': 'updateMessagePollUnread';
+  chatId: string;
+  messageId: number;
+  threadId: ThreadId;
+  pollId: string;
+};
+
 export type ApiUpdateMessagePollVote = {
   '@type': 'updateMessagePollVote';
   pollId: string;
@@ -532,6 +541,10 @@ export type ApiUpdateConfig = {
   '@type': 'updateConfig';
 };
 
+export type ApiUpdateAiComposeTones = {
+  '@type': 'updateAiComposeTones';
+};
+
 export type ApiUpdateResetContacts = {
   '@type': 'updateResetContactList';
 };
@@ -608,11 +621,6 @@ export type ApiUpdatePeerBlocked = {
   id: string;
   isBlocked?: boolean;
   isBlockedFromStories?: boolean;
-};
-
-export type ApiUpdatePaymentVerificationNeeded = {
-  '@type': 'updatePaymentVerificationNeeded';
-  url: string;
 };
 
 export type ApiUpdatePaymentStateCompleted = {
@@ -937,7 +945,8 @@ export type ApiUpdate = (
   | ApiUpdateChatPinned | ApiUpdatePinnedMessageIds |
   ApiUpdateChatListType | ApiUpdateChatFolder | ApiUpdateChatFoldersOrder | ApiUpdateRecommendedChatFolders |
   ApiUpdateNewMessage | ApiUpdateMessage | ApiUpdateThreadInfo | ApiUpdateCommonBoxMessages | ApiUpdatePasskeyOption |
-  ApiUpdateDeleteMessages | ApiUpdateMessagePoll | ApiUpdateMessagePollVote | ApiUpdateDeleteHistory |
+  ApiUpdateDeleteMessages | ApiUpdateMessagePoll | ApiUpdateMessagePollUnread | ApiUpdateMessagePollVote |
+  ApiUpdateDeleteHistory |
   ApiDeleteParticipantHistory | ApiUpdateMessageSendSucceeded | ApiUpdateMessageSendFailed |
   ApiUpdateServiceNotification | ApiDeleteContact | ApiUpdateUser | ApiUpdateUserStatus |
   ApiUpdateUserFullInfo | ApiUpdateVideoProcessingPending | ApiUpdatePeerSettings | ApiUpdateUserAlreadyAuthorized |
@@ -953,7 +962,7 @@ export type ApiUpdate = (
   ApiUpdateServerTimeOffset | ApiUpdateMessageReactions | ApiUpdateSavedReactionTags |
   ApiUpdateGroupCallParticipants | ApiUpdateGroupCallConnection | ApiUpdateGroupCall | ApiUpdateGroupCallStreams |
   ApiUpdateGroupCallConnectionState | ApiUpdateGroupCallLeavePresentation | ApiUpdateGroupCallChatId |
-  ApiUpdatePendingJoinRequests | ApiUpdatePaymentVerificationNeeded | ApiUpdatePaymentStateCompleted |
+  ApiUpdatePendingJoinRequests | ApiUpdatePaymentStateCompleted |
   ApiUpdatePhoneCall | ApiUpdatePhoneCallSignalingData | ApiUpdatePhoneCallMediaState |
   ApiUpdatePhoneCallConnectionState | ApiUpdateBotMenuButton | ApiUpdateTranscribedAudio | ApiUpdateUserEmojiStatus |
   ApiUpdateMessageExtendedMedia | ApiUpdateConfig | ApiUpdateTopicNotifySettings | ApiUpdatePinnedTopic |
@@ -968,6 +977,7 @@ export type ApiUpdate = (
   | ApiDeleteQuickReply | ApiUpdateDeleteQuickReplyMessages | ApiUpdateDeleteProfilePhoto | ApiUpdateNewProfilePhoto
   | ApiUpdateEntities | ApiUpdatePaidReactionPrivacy | ApiUpdateLangPackTooLong | ApiUpdateLangPack
   | ApiUpdateNotSupportedInFrozenAccountError
+  | ApiUpdateAiComposeTones
 );
 
 export type OnApiUpdate = (update: ApiUpdate) => void;

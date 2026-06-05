@@ -31,6 +31,7 @@ export default function useScrollHooks({
   isViewportNewest,
   isUnread,
   isReady,
+  isReplacingHistoryRef,
   onScrollDownToggle,
   onNotchToggle,
 }: {
@@ -41,6 +42,7 @@ export default function useScrollHooks({
   isViewportNewest: boolean;
   isUnread: boolean;
   isReady: boolean;
+  isReplacingHistoryRef: { current: boolean };
   onScrollDownToggle: BooleanToVoidFunction | undefined;
   onNotchToggle: AnyToVoidFunction | undefined;
 }) {
@@ -105,6 +107,10 @@ export default function useScrollHooks({
     margin: MESSAGE_LIST_SENSITIVE_AREA,
   }, (entries) => {
     if (!loadMoreForwards || !loadMoreBackwards) {
+      return;
+    }
+
+    if (isReplacingHistoryRef.current) {
       return;
     }
 

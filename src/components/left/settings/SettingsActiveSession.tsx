@@ -11,10 +11,10 @@ import getSessionIcon from './helpers/getSessionIcon';
 import useCurrentOrPrev from '../../../hooks/useCurrentOrPrev';
 import useLang from '../../../hooks/useLang';
 
+import Switch from '../../gili/primitives/Switch';
 import Button from '../../ui/Button';
 import ListItem from '../../ui/ListItem';
 import Modal from '../../ui/Modal';
-import Switcher from '../../ui/Switcher';
 
 import styles from './SettingsActiveSession.module.scss';
 
@@ -71,16 +71,10 @@ const SettingsActiveSession: FC<OwnProps & StateProps> = ({
           iconName="close"
         />
         <div className="modal-title">{lang('SessionPreviewTitle')}</div>
-        <Button
-          color="danger"
-          onClick={handleTerminateSessionClick}
-          className={buildClassName('modal-action-button', styles.headerButton)}
-        >
-          {lang('SessionPreviewTerminateSession')}
-        </Button>
       </div>
     );
   }
+
   return (
     <Modal
       header={renderHeader()}
@@ -128,20 +122,28 @@ const SettingsActiveSession: FC<OwnProps & StateProps> = ({
 
       <ListItem onClick={handleSecretChatsStateChange}>
         <span className={styles.actionName}>{lang('SessionPreviewAcceptSecret')}</span>
-        <Switcher
+        <Switch
           id="accept_secrets"
-          label="On"
           checked={renderingSession.areSecretChatsEnabled}
         />
       </ListItem>
       <ListItem onClick={handleCallsStateChange}>
         <span className={styles.actionName}>{lang('SessionPreviewAcceptCalls')}</span>
-        <Switcher
+        <Switch
           id="accept_calls"
-          label="On"
           checked={renderingSession.areCallsEnabled}
         />
       </ListItem>
+      <div className="dialog-buttons mt-2">
+        <Button
+          color="danger"
+          className="confirm-dialog-button"
+          isText
+          onClick={handleTerminateSessionClick}
+        >
+          {lang('SessionPreviewTerminateSession')}
+        </Button>
+      </div>
     </Modal>
   );
 };

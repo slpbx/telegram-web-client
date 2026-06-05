@@ -20,6 +20,7 @@ import useOldLang from '../../hooks/useOldLang';
 
 import CustomEmojiPicker from '../common/CustomEmojiPicker';
 import TopicIcon from '../common/TopicIcon';
+import Island from '../gili/layout/Island';
 import FloatingActionButton from '../ui/FloatingActionButton';
 import InputText from '../ui/InputText';
 import Loading from '../ui/Loading';
@@ -95,6 +96,15 @@ const EditTopic: FC<OwnProps & StateProps> = ({
     });
   }, [chat, editTopic, iconEmojiId, title, topic]);
 
+  const handleTitleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== 'Enter' || e.isComposing || isLoading || !isTouched) {
+      return;
+    }
+
+    e.preventDefault();
+    handleEditTopic();
+  }, [handleEditTopic, isLoading, isTouched]);
+
   const handleCustomEmojiSelect = useCallback((emoji: ApiSticker) => {
     if (!emoji.isFree && !isCurrentUserPremium && emoji.id !== DEFAULT_TOPIC_ICON_STICKER_ID) {
       openPremiumModal({ initialSection: 'animated_emoji' });
@@ -127,7 +137,7 @@ const EditTopic: FC<OwnProps & StateProps> = ({
         {!topic && <Loading />}
         {topic && (
           <>
-            <div className={buildClassName(styles.section, styles.top, isGeneral && styles.general)}>
+            <Island className={buildClassName(styles.top, isGeneral && styles.general)}>
               <span className={styles.heading}>{lang(isGeneral ? 'CreateGeneralTopicTitle' : 'CreateTopicTitle')}</span>
               <Transition
                 name="zoomFade"
@@ -146,13 +156,14 @@ const EditTopic: FC<OwnProps & StateProps> = ({
               <InputText
                 value={title}
                 onChange={handleTitleChange}
+                onKeyDown={handleTitleKeyDown}
                 label={lang('lng_forum_topic_title')}
                 disabled={isLoading}
                 teactExperimentControlled
               />
-            </div>
+            </Island>
             {!isGeneral && (
-              <div className={buildClassName(styles.section, styles.bottom)}>
+              <Island className={styles.bottom}>
                 <CustomEmojiPicker
                   idPrefix="edit-topic-icons-set-"
                   isHidden={!isActive}
@@ -162,7 +173,7 @@ const EditTopic: FC<OwnProps & StateProps> = ({
                   pickerListClassName="fab-padding-bottom"
                   withDefaultTopicIcons
                 />
-              </div>
+              </Island>
             )}
           </>
         )}

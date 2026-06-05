@@ -82,7 +82,9 @@ import {
 import {
   addPhotoToLocalDb,
 } from '../helpers/localDb';
-import { checkErrorType, isChatFolder, wrapError } from '../helpers/misc';
+import {
+  buildApiError, checkErrorType, isChatFolder, wrapError,
+} from '../helpers/misc';
 import { scheduleMutedChatUpdate } from '../scheduleUnmute';
 import { sendApiUpdate } from '../updates/apiUpdateEmitter';
 import {
@@ -190,7 +192,8 @@ export async function fetchChats({
     const chat = buildApiChatFromDialog(dialog, peerEntity);
     lastMessageByChatId[chat.id] = dialog.topMessage;
 
-    if (dialog.pts) {
+    const isChannel = getEntityTypeById(chat.id) === 'channel';
+    if (dialog.pts && isChannel) {
       updateChannelState(chat.id, dialog.pts);
     }
 
@@ -522,6 +525,11 @@ export async function requestChatUpdate({
     : lastRemoteMessage;
 
   const chatUpdate = buildApiChatFromDialog(dialog, peerEntity);
+
+  const isChannel = getEntityTypeById(chat.id) === 'channel';
+  if (dialog.pts && isChannel) {
+    updateChannelState(chat.id, dialog.pts);
+  }
 
   const readState = buildThreadReadState(dialog);
   const threadInfo = buildApiThreadInfoFromDialog(chat.id, dialog);
@@ -1676,12 +1684,10 @@ export async function addChatMembers(chat: ApiChat, users: ApiUser[]) {
       return addChatUsersResult.flat().filter(Boolean);
     }
   } catch (err: unknown) {
-    const message = err instanceof RPCError ? err.errorMessage : (err as Error).message;
+    const apiError = buildApiError(err as Error);
     sendApiUpdate({
       '@type': 'error',
-      error: {
-        message,
-      },
+      error: apiError,
     });
   }
   return undefined;

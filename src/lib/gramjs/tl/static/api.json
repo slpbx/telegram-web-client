@@ -250,6 +250,7 @@
     "messages.deleteTopicHistory",
     "messages.toggleTodoCompleted",
     "messages.appendTodoList",
+    "messages.addPollAnswer",
     "messages.summarizeText",
     "messages.editChatCreator",
     "messages.getFutureChatCreatorAfterLeave",
@@ -386,6 +387,7 @@
     "phone.toggleGroupCallStartSubscription",
     "phone.joinGroupCallPresentation",
     "phone.leaveGroupCallPresentation",
+    "phone.getCallConfig",
     "phone.requestCall",
     "phone.acceptCall",
     "phone.confirmCall",
@@ -444,5 +446,12 @@
     "premium.applyBoost",
     "premium.getMyBoosts",
     "premium.getBoostsList",
-    "fragment.getCollectibleInfo"
+    "fragment.getCollectibleInfo",
+    "aicompose.createTone",
+    "aicompose.updateTone",
+    "aicompose.saveTone",
+    "aicompose.deleteTone",
+    "aicompose.getTone",
+    "aicompose.getTones",
+    "aicompose.getToneExample"
 ]

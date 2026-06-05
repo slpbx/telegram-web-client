@@ -18,17 +18,19 @@ import { copyTextToClipboard } from '../../../util/clipboard';
 import { getUsernameFromDeepLink } from '../../../util/deepLinkParser';
 import { getCurrentTabId } from '../../../util/establishMultitabRole';
 import { pick } from '../../../util/iteratees.ts';
-import { getTranslationFn } from '../../../util/localization';
+import { type AdvancedLangFnParameters, getTranslationFn } from '../../../util/localization';
 import { formatStarsAsText } from '../../../util/localization/format';
 import { oldTranslate } from '../../../util/oldLangProvider';
 import requestActionTimeout from '../../../util/requestActionTimeout';
 import { debounce } from '../../../util/schedulers';
-import { getServerTime } from '../../../util/serverTime';
 import { extractCurrentThemeParams } from '../../../util/themeStyle';
 import { callApi } from '../../../api/gramjs';
 import {
   getMainUsername,
   getWebAppKey,
+  isChatAdmin,
+  isUserBot,
+  isUserRightBanned,
   prepareMessageReplyInfo,
 } from '../../helpers';
 import {
@@ -52,6 +54,7 @@ import { updateTabState } from '../../reducers/tabs';
 import {
   selectBot,
   selectChat,
+  selectChatFullInfo,
   selectChatLastMessageId,
   selectChatMessage,
   selectCurrentChat,
@@ -73,9 +76,12 @@ import { getPeerStarsForMessage } from './messages';
 
 import { getIsWebAppsFullscreenSupported } from '../../../hooks/useAppLayout';
 
-const TOP_PEERS_REQUEST_COOLDOWN = 60; // 1 min
 const runDebouncedForSearch = debounce((cb) => cb(), 500, false);
 let botFatherId: string | null;
+
+function canUseInlineBots<T extends GlobalState>(global: T, chat: ApiChat) {
+  return isChatAdmin(chat) || !isUserRightBanned(chat, 'sendInline', selectChatFullInfo(global, chat.id));
+}
 
 addActionHandler('clickSuggestedMessageButton', (global, actions, payload): ActionReturnType => {
   const {
@@ -126,9 +132,16 @@ addActionHandler('clickBotInlineButton', (global, actions, payload): ActionRetur
       break;
     }
 
-    case 'requestPoll':
-      actions.openPollModal({ isQuiz: button.isQuiz, tabId });
+    case 'requestPoll': {
+      actions.openPollModal({
+        chatId,
+        threadId,
+        messageListType: 'thread',
+        isQuiz: button.isQuiz,
+        tabId,
+      });
       break;
+    }
 
     case 'requestPhone': {
       const user = global.currentUserId ? selectUser(global, global.currentUserId) : undefined;
@@ -278,61 +291,16 @@ addActionHandler('restartBot', async (global, actions, payload): Promise<void> =
   void sendBotCommand(chat, MAIN_THREAD_ID, '/start', undefined, selectSendAs(global, chatId), lastMessageId);
 });
 
-addActionHandler('loadTopInlineBots', async (global): Promise<void> => {
-  const { lastRequestedAt } = global.topInlineBots;
-  if (lastRequestedAt && getServerTime() - lastRequestedAt < TOP_PEERS_REQUEST_COOLDOWN) {
-    return;
-  }
-
-  const result = await callApi('fetchTopInlineBots');
-  if (!result) {
-    return;
-  }
-
-  const { ids } = result;
-
-  global = getGlobal();
-  global = {
-    ...global,
-    topInlineBots: {
-      ...global.topInlineBots,
-      userIds: ids,
-      lastRequestedAt: getServerTime(),
-    },
-  };
-  setGlobal(global);
-});
-
-addActionHandler('loadTopBotApps', async (global): Promise<void> => {
-  const { lastRequestedAt } = global.topBotApps;
-  if (lastRequestedAt && getServerTime() - lastRequestedAt < TOP_PEERS_REQUEST_COOLDOWN) {
-    return;
-  }
-
-  const result = await callApi('fetchTopBotApps');
-  if (!result) {
-    return;
-  }
-
-  const { ids } = result;
-
-  global = getGlobal();
-  global = {
-    ...global,
-    topBotApps: {
-      ...global.topBotApps,
-      userIds: ids,
-      lastRequestedAt: getServerTime(),
-    },
-  };
-  setGlobal(global);
-});
-
 addActionHandler('queryInlineBot', async (global, actions, payload): Promise<void> => {
   const {
     chatId, username, query, offset,
     tabId = getCurrentTabId(),
   } = payload;
+
+  const chat = selectChat(global, chatId);
+  if (!chat || !canUseInlineBots(global, chat)) {
+    return;
+  }
 
   let inlineBotData = selectTabState(global, tabId).inlineBots.byUsername[username];
   if (inlineBotData === false) {
@@ -340,9 +308,9 @@ addActionHandler('queryInlineBot', async (global, actions, payload): Promise<voi
   }
 
   if (inlineBotData === undefined) {
-    const { user: inlineBot, chat } = await callApi('fetchInlineBot', { username }) || {};
+    const { user: inlineBot } = await callApi('getChatByUsername', username) || {};
     global = getGlobal();
-    if (!inlineBot || !chat) {
+    if (!inlineBot || !isUserBot(inlineBot) || !inlineBot.botPlaceholder) {
       global = replaceInlineBotSettings(global, username, false, tabId);
       setGlobal(global);
       return;
@@ -703,6 +671,42 @@ addActionHandler('requestWebView', async (global, actions, payload): Promise<voi
   }
 });
 
+addActionHandler('requestAgeVerification', async (global, actions, payload): Promise<void> => {
+  const { tabId = getCurrentTabId() } = payload || {};
+  const { verifyAgeBotUsername } = global.appConfig;
+
+  if (!verifyAgeBotUsername) {
+    actions.showNotification({
+      message: { key: 'MiniAppUnavailableError' },
+      tabId,
+    });
+    return;
+  }
+
+  const chat = await fetchChatByUsername(global, verifyAgeBotUsername);
+  global = getGlobal();
+  const bot = chat && selectUser(global, chat.id);
+
+  if (!bot?.hasMainMiniApp) {
+    actions.showNotification({
+      message: { key: 'MiniAppUnavailableError' },
+      tabId,
+    });
+    return;
+  }
+
+  const theme = extractCurrentThemeParams();
+  actions.requestMainWebView({
+    botId: bot.id,
+    peerId: bot.id,
+    theme,
+    shouldMarkBotTrusted: true,
+    tabId,
+  });
+
+  actions.closeAgeVerificationModal({ tabId });
+});
+
 addActionHandler('requestMainWebView', async (global, actions, payload): Promise<void> => {
   const {
     botId, peerId, theme, startParam, mode, shouldMarkBotTrusted,
@@ -717,7 +721,14 @@ addActionHandler('requestMainWebView', async (global, actions, payload): Promise
   if (checkIfOpenOrActivate(global, botId, tabId)) return;
 
   const bot = selectUser(global, botId);
-  if (!bot) return;
+  if (!bot) {
+    actions.showNotification({
+      message: { key: 'MiniAppUnavailableError' },
+      tabId,
+    });
+    return;
+  }
+
   const peer = selectPeer(global, peerId);
   if (!peer) return;
 
@@ -748,6 +759,10 @@ addActionHandler('requestMainWebView', async (global, actions, payload): Promise
     mode,
   });
   if (!result) {
+    actions.showNotification({
+      message: { key: 'MiniAppUnavailableError' },
+      tabId,
+    });
     return;
   }
 
@@ -764,6 +779,7 @@ addActionHandler('requestMainWebView', async (global, actions, payload): Promise
   };
   global = addWebAppToOpenList(global, newActiveApp, true, true, tabId);
   setGlobal(global);
+  actions.bumpTopPeerRating({ category: 'botsApp', peerId: botId });
 
   if (isFullscreen && getIsWebAppsFullscreenSupported()) {
     actions.changeWebAppModalState({ state: 'fullScreen', tabId });
@@ -1298,41 +1314,28 @@ function handleUrlAuthResult<T extends GlobalState>(
   }
 
   if (result.type === 'accepted' && !result.url) {
-    if (!wasPhoneShared && tabState.urlAuth?.request?.shouldRequestPhoneNumber) {
-      actions.showNotification({
-        message: {
-          key: 'BotAuthSuccessTextNoPhone',
-          variables: {
-            url: tabState.urlAuth.request?.domain || result.url,
-          },
-          options: {
-            withMarkdown: true,
-            withNodes: true,
-          },
-        },
-        title: {
-          key: 'BotAuthSuccessTitle',
-        },
-        tabId,
-      });
-    } else {
-      actions.showNotification({
-        message: {
-          key: 'BotAuthSuccessText',
-          variables: {
-            url: tabState.urlAuth?.request?.domain || result.url,
-          },
-          options: {
-            withMarkdown: true,
-            withNodes: true,
-          },
-        },
-        title: {
-          key: 'BotAuthSuccessTitle',
-        },
-        tabId,
-      });
-    }
+    const request = tabState.urlAuth?.request;
+    const requestDisplayName = request?.isApp
+      ? (request.verifiedAppName || getTranslationFn()('BotAuthUnverifiedApp'))
+      : (request?.domain || url);
+    const successMessage: AdvancedLangFnParameters = {
+      key: !wasPhoneShared && request?.shouldRequestPhoneNumber ? 'BotAuthSuccessTextNoPhone' : 'BotAuthSuccessText',
+      variables: {
+        url: requestDisplayName,
+      },
+      options: {
+        withMarkdown: true,
+        withNodes: true,
+      },
+    };
+
+    actions.showNotification({
+      message: successMessage,
+      title: {
+        key: 'BotAuthSuccessTitle',
+      },
+      tabId,
+    });
     actions.closeUrlAuthModal({ tabId });
     return;
   }

@@ -1,7 +1,7 @@
 export {
   destroy, disconnect, downloadMedia, fetchCurrentUser, repairFileReference, abortChatRequests, abortRequestGroup,
   setForceHttpTransport, setShouldDebugExportedSenders, setAllowHttpTransport, requestChannelDifference,
-  handleCrmTelegramUpdate,
+  handleCrmTelegramUpdate, setOpenedChannelIds,
 } from './client';
 
 export {
@@ -20,6 +20,8 @@ export * from './chats';
 export * from './messages';
 
 export * from './users';
+
+export * from './topPeers';
 
 export * from './symbols';
 

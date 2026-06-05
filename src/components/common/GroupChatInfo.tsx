@@ -45,7 +45,7 @@ type OwnProps = {
   threadId?: ThreadId;
   className?: string;
   statusIcon?: IconName;
-  typingStatus?: ApiTypingStatus;
+  typingStatusByPeerId?: Record<string, ApiTypingStatus>;
   avatarSize?: 'tiny' | 'small' | 'medium' | 'large' | 'jumbo';
   status?: string;
   withDots?: boolean;
@@ -78,7 +78,7 @@ type StateProps = {
 };
 
 const GroupChatInfo = ({
-  typingStatus,
+  typingStatusByPeerId,
   className,
   statusIcon,
   avatarSize = 'medium',
@@ -184,8 +184,8 @@ const GroupChatInfo = ({
       return undefined;
     }
 
-    if (typingStatus) {
-      return <TypingStatus typingStatus={typingStatus} />;
+    if (typingStatusByPeerId) {
+      return <TypingStatus typingStatusByPeerId={typingStatusByPeerId} />;
     }
 
     if (isTopic) {
@@ -287,10 +287,14 @@ const GroupChatInfo = ({
 };
 
 export default memo(withGlobal<OwnProps>(
-  (global, { chatId, threadId }): Complete<StateProps> => {
+  (global, { chatId, threadId, isSavedDialog }): Complete<StateProps> => {
     const chat = selectChat(global, chatId);
     const onlineCount = chat ? selectChatOnlineCount(global, chat) : undefined;
-    const areMessagesLoaded = Boolean(selectChatMessages(global, chatId));
+    const areMessagesLoaded = Boolean(
+      isSavedDialog
+        ? selectChatMessages(global, global.currentUserId!)
+        : selectChatMessages(global, chatId),
+    );
     const topic = threadId ? selectTopic(global, chatId, threadId) : undefined;
     const messagesCount = topic && selectThreadMessagesCount(global, chatId, threadId!);
     const self = selectUser(global, global.currentUserId!);

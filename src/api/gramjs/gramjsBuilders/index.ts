@@ -12,6 +12,7 @@ import type {
   ApiEmojiStatusType,
   ApiFormattedText,
   ApiGroupCall,
+  ApiInputAiComposeTone,
   ApiInputPrivacyRules,
   ApiInputReplyInfo,
   ApiInputStorePaymentPurpose,
@@ -235,18 +236,24 @@ export function buildInputPoll(
       });
     }),
     quiz: poll.isQuiz,
+    closeDate: poll.closeDate,
+    closePeriod: poll.closePeriod,
+    hideResultsUntilClose: poll.shouldHideResultsUntilClose,
+    revotingDisabled: poll.isRevoteDisabled,
+    shuffleAnswers: poll.shouldShuffleAnswers,
+    openAnswers: poll.canAddAnswers,
     multipleChoice: poll.isMultipleChoice,
     hash: DEFAULT_PRIMITIVES.BIGINT,
   });
 
-  const inputSolutionEntities = solutionEntities?.map(buildMtpMessageEntity);
+  const inputSolutionEntities = solutionEntities?.map(buildMtpMessageEntity) || [];
 
   return new GramJs.InputMediaPoll({
     poll: inputPoll,
     correctAnswers,
     attachedMedia: media?.attachedMedia,
     solution,
-    solutionEntities: inputSolutionEntities,
+    solutionEntities: solution ? inputSolutionEntities : undefined,
     solutionMedia: media?.solutionMedia,
   });
 }
@@ -975,6 +982,17 @@ export function buildInputEmojiStatus(emojiStatus: ApiEmojiStatusType) {
     documentId: BigInt(emojiStatus.documentId),
     until: emojiStatus.until,
   });
+}
+
+export function buildInputAiComposeTone(tone: ApiInputAiComposeTone): GramJs.TypeInputAiComposeTone {
+  switch (tone.type) {
+    case 'default':
+      return new GramJs.InputAiComposeToneDefault({ tone: tone.tone });
+    case 'id':
+      return new GramJs.InputAiComposeToneID({ id: BigInt(tone.id), accessHash: BigInt(tone.accessHash) });
+    case 'slug':
+      return new GramJs.InputAiComposeToneSlug({ slug: tone.slug });
+  }
 }
 
 export function buildInputTextWithEntities(formatted: ApiFormattedText) {

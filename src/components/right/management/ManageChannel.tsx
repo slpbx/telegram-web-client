@@ -21,12 +21,13 @@ import useLastCallback from '../../../hooks/useLastCallback';
 import useMedia from '../../../hooks/useMedia';
 import useOldLang from '../../../hooks/useOldLang';
 
+import Island from '../../gili/layout/Island';
+import Switch from '../../gili/primitives/Switch';
 import AvatarEditable from '../../ui/AvatarEditable';
 import ConfirmDialog from '../../ui/ConfirmDialog';
 import FloatingActionButton from '../../ui/FloatingActionButton';
 import InputText from '../../ui/InputText';
 import ListItem from '../../ui/ListItem';
-import Switcher from '../../ui/Switcher';
 import TextArea from '../../ui/TextArea';
 
 import './Management.scss';
@@ -225,12 +226,12 @@ const ManageChannel: FC<OwnProps & StateProps> = ({
   return (
     <div className="Management">
       <div className="panel-content custom-scroll">
-        <div className="section">
-          <AvatarEditable
-            currentAvatarBlobUrl={currentAvatarBlobUrl}
-            onChange={handleSetPhoto}
-            disabled={!canChangeInfo}
-          />
+        <AvatarEditable
+          currentAvatarBlobUrl={currentAvatarBlobUrl}
+          onChange={handleSetPhoto}
+          disabled={!canChangeInfo}
+        />
+        <Island>
           <div className="settings-edit">
             <InputText
               id="channel-title"
@@ -311,15 +312,14 @@ const ManageChannel: FC<OwnProps & StateProps> = ({
               onClick={handleAutoTranslationChange}
             >
               <span>{lang('AutomaticTranslation')}</span>
-              <Switcher
+              <Switch
                 id="auto-translation"
-                label={lang('AutomaticTranslation')}
-                checked={hasAutoTranslation}
+                checked={Boolean(hasAutoTranslation)}
               />
             </ListItem>
           )}
-        </div>
-        <div className="section">
+        </Island>
+        <Island>
           <ListItem
             icon="admin"
             multiline
@@ -344,12 +344,12 @@ const ManageChannel: FC<OwnProps & StateProps> = ({
             <span className="title">{lang('ChannelBlockedUsers')}</span>
             <span className="subtitle">{removedUsersCount}</span>
           </ListItem>
-        </div>
-        <div className="section">
+        </Island>
+        <Island>
           <ListItem icon="delete" ripple destructive onClick={openDeleteDialog}>
             {chat.isCreator ? lang('ChannelDelete') : lang('LeaveChannel')}
           </ListItem>
-        </div>
+        </Island>
       </div>
       <FloatingActionButton
         isShown={isProfileFieldsTouched}

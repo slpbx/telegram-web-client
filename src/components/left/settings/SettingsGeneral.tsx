@@ -19,6 +19,7 @@ import useAppLayout from '../../../hooks/useAppLayout';
 import useHistoryBack from '../../../hooks/useHistoryBack';
 import useLang from '../../../hooks/useLang';
 
+import Island, { IslandTitle } from '../../gili/layout/Island';
 import ListItem from '../../ui/ListItem';
 import RadioGroup from '../../ui/RadioGroup';
 import RangeSlider from '../../ui/RangeSlider';
@@ -87,7 +88,7 @@ const SettingsGeneral: FC<OwnProps & StateProps> = ({
     document.documentElement.style.setProperty(
       '--composer-text-size', `${Math.max(newSize, IS_IOS ? 16 : 15)}px`,
     );
-    document.documentElement.style.setProperty('--message-meta-height', `${Math.floor(newSize * 1.3125)}px`);
+    document.documentElement.style.setProperty('--message-meta-height', `${Math.floor(newSize * 1.25)}px`);
     document.documentElement.style.setProperty('--message-text-size', `${newSize}px`);
     document.documentElement.setAttribute('data-message-text-size', newSize.toString());
 
@@ -117,9 +118,8 @@ const SettingsGeneral: FC<OwnProps & StateProps> = ({
 
   return (
     <div className="settings-content custom-scroll">
-      <div className="settings-item">
-        <h4 className="settings-item-header" dir={lang.isRtl ? 'rtl' : undefined}>{lang('Settings')}</h4>
-
+      <IslandTitle dir={lang.isRtl ? 'rtl' : undefined}>{lang('Settings')}</IslandTitle>
+      <Island>
         <RangeSlider
           label={lang('TextSize')}
           min={12}
@@ -127,52 +127,47 @@ const SettingsGeneral: FC<OwnProps & StateProps> = ({
           value={messageTextSize}
           onChange={handleMessageTextSizeChange}
         />
-
         <ListItem
           icon="photo"
           narrow
-
           onClick={() => openSettingsScreen({ screen: SettingsScreens.GeneralChatBackground })}
         >
           {lang('ChatBackground')}
         </ListItem>
-      </div>
+      </Island>
 
-      <div className="settings-item">
-        <h4 className="settings-item-header" dir={lang.isRtl ? 'rtl' : undefined}>
-          {lang('Theme')}
-        </h4>
+      <IslandTitle dir={lang.isRtl ? 'rtl' : undefined}>{lang('Theme')}</IslandTitle>
+      <Island>
         <RadioGroup
           name="theme"
           options={appearanceThemeOptions}
           selected={shouldUseSystemTheme ? 'auto' : theme}
           onChange={handleAppearanceThemeChange}
         />
-      </div>
+      </Island>
 
-      <div className="settings-item">
-        <h4 className="settings-item-header" dir={lang.isRtl ? 'rtl' : undefined}>
-          {lang('SettingsTimeFormat')}
-        </h4>
+      <IslandTitle dir={lang.isRtl ? 'rtl' : undefined}>{lang('SettingsTimeFormat')}</IslandTitle>
+      <Island>
         <RadioGroup
           name="timeformat"
           options={timeFormatOptions}
           selected={timeFormat}
           onChange={handleTimeFormatChange}
         />
-      </div>
+      </Island>
 
       {keyboardSendOptions && (
-        <div className="settings-item">
-          <h4 className="settings-item-header" dir={lang.isRtl ? 'rtl' : undefined}>{lang('SettingsKeyboard')}</h4>
-
-          <RadioGroup
-            name="keyboard-send-settings"
-            options={keyboardSendOptions}
-            onChange={handleMessageSendComboChange}
-            selected={messageSendKeyCombo}
-          />
-        </div>
+        <>
+          <IslandTitle dir={lang.isRtl ? 'rtl' : undefined}>{lang('SettingsKeyboard')}</IslandTitle>
+          <Island>
+            <RadioGroup
+              name="keyboard-send-settings"
+              options={keyboardSendOptions}
+              onChange={handleMessageSendComboChange}
+              selected={messageSendKeyCombo}
+            />
+          </Island>
+        </>
       )}
     </div>
   );

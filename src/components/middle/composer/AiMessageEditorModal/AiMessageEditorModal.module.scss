@@ -27,31 +27,16 @@
   padding: 0;
 }
 
-.tabListWrapper {
+.fadeMask {
+
+  --fade-mask-color: var(--color-background-secondary);
+
   position: absolute;
   z-index: 2;
   width: 100%;
-
-  &::after {
-    pointer-events: none;
-    content: "";
-
-    position: absolute;
-    z-index: 0;
-    top: calc(100% - 2rem);
-    left: 0;
-
-    width: calc(100% - 2rem);
-    height: 3.5rem;
-    margin-inline: 1rem;
-
-    background: linear-gradient(to bottom, var(--color-background-secondary) 0%, transparent 100%);
-  }
 }
 
 .tabList {
-  position: relative;
-  z-index: 1;
   margin: 0.5rem 1rem;
   margin-bottom: 0;
 }
@@ -92,6 +77,7 @@
   padding: 0 1rem 1rem;
 
   &::before {
+    pointer-events: none;
     content: "";
 
     position: absolute;

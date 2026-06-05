@@ -335,6 +335,7 @@
 
     .sender-title {
       overflow: hidden;
+      line-height: normal;
       text-overflow: ellipsis;
     }
 
@@ -351,6 +352,12 @@
       unicode-bidi: plaintext;
       overflow: hidden;
       text-overflow: ellipsis;
+    }
+
+    .via-sender {
+      display: flex;
+      align-items: center;
+      line-height: normal;
     }
 
     .sender-hidden {
@@ -414,6 +421,10 @@
 
     .admin-title-badge:last-child {
       margin-right: -0.1875rem;
+    }
+
+    .admin-title-plain {
+      padding-inline: 0.25rem;
     }
 
     .admin-title {
@@ -634,6 +645,9 @@
     .MessageList.no-avatars & {
       max-width: min(29rem, calc(100vw - 3.75rem));
     }
+    .has-guest-avatar & {
+      max-width: min(29rem, calc(100vw - 6.25rem));
+    }
     .Message.own & {
       max-width: min(30rem, calc(100vw - 3.75rem));
     }
@@ -643,6 +657,9 @@
 
       .MessageList.no-avatars & {
         max-width: min(29rem, calc(100vw - 4.5rem));
+      }
+      .has-guest-avatar & {
+        max-width: min(29rem, calc(100vw - 7rem));
       }
 
       .Message.own & {

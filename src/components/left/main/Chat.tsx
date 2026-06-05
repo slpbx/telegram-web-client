@@ -18,7 +18,7 @@ import type {
 import type { ObserveFn } from '../../../hooks/useIntersectionObserver';
 import type { ChatAnimationTypes } from './hooks';
 import { MAIN_THREAD_ID } from '../../../api/types';
-import { StoryViewerOrigin } from '../../../types';
+import { StoryViewerOrigin, type TopicsInfo } from '../../../types';
 
 import { ALL_FOLDER_ID, CHAT_HEIGHT_PX, SERVICE_NOTIFICATIONS_USER_ID, UNMUTE_TIMESTAMP } from '../../../config';
 import {
@@ -107,7 +107,7 @@ type StateProps = {
   chat?: ApiChat;
   monoforumChannel?: ApiChat;
   lastMessageStory?: ApiTypeStory;
-  listedTopicIds?: number[];
+  topicsInfo?: TopicsInfo;
   isMuted?: boolean;
   user?: ApiUser;
   userStatus?: ApiUserStatus;
@@ -120,7 +120,7 @@ type StateProps = {
   canScrollDown?: boolean;
   canChangeFolder?: boolean;
   lastMessageTopic?: ApiTopic;
-  typingStatus?: ApiTypingStatus;
+  typingStatusByPeerId?: Record<string, ApiTypingStatus>;
   withInterfaceAnimations?: boolean;
   lastMessageId?: number;
   lastMessage?: ApiMessage;
@@ -141,7 +141,7 @@ const Chat: FC<OwnProps & StateProps> = ({
   shiftDiff,
   animationType,
   isPinned,
-  listedTopicIds,
+  topicsInfo,
   observeIntersection,
   chat,
   monoforumChannel,
@@ -160,7 +160,7 @@ const Chat: FC<OwnProps & StateProps> = ({
   canScrollDown,
   canChangeFolder,
   lastMessageTopic,
-  typingStatus,
+  typingStatusByPeerId,
   lastMessageId,
   lastMessage,
   isSavedDialog,
@@ -207,6 +207,7 @@ const Chat: FC<OwnProps & StateProps> = ({
 
   const { isForum, isForumAsMessages, isMonoforum } = chat || {};
 
+  const listedTopicIds = topicsInfo?.listedTopicIds;
   const shouldForceNonForumView = chat?.isBotForum && listedTopicIds && !listedTopicIds.length;
 
   useEnsureMessage(isSavedDialog ? currentUserId : chatId, lastMessageId, lastMessage);
@@ -234,7 +235,7 @@ const Chat: FC<OwnProps & StateProps> = ({
     chat,
     chatId,
     lastMessage,
-    typingStatus,
+    typingStatusByPeerId,
     draft,
     statefulMediaContent: groupStatefulContent({ story: lastMessageStory }),
     lastMessageTopic,
@@ -376,10 +377,10 @@ const Chat: FC<OwnProps & StateProps> = ({
 
   // Load the forum topics to display unread count badge
   useEffect(() => {
-    if (isIntersecting && isForum && isSynced && listedTopicIds === undefined) {
+    if (isIntersecting && isForum && isSynced && (!topicsInfo || topicsInfo.isCache)) {
       loadTopics({ chatId });
     }
-  }, [chatId, listedTopicIds, isSynced, isForum, isIntersecting]);
+  }, [chatId, topicsInfo, isSynced, isForum, isIntersecting]);
 
   const isOnline = user && userStatus && isUserOnline(user, userStatus);
   const { hasShownClass: isAvatarOnlineShown } = useShowTransitionDeprecated(isOnline);
@@ -418,7 +419,7 @@ const Chat: FC<OwnProps & StateProps> = ({
       ref={ref}
       className={chatClassName}
       href={href}
-      style={`top: ${offsetTop}px`}
+      style={offsetTop !== undefined ? `top: ${offsetTop}px` : undefined}
       buttonStyle={`height: ${CHAT_HEIGHT_PX}px; padding-top: 4px; padding-bottom: 4px;`}
       ripple={!isForum && !isMobile}
       contextActions={contextActions}
@@ -576,7 +577,7 @@ export default memo(withGlobal<OwnProps>(
     const userStatus = selectUserStatus(global, chatId);
     const lastMessageTopic = lastMessage && selectTopicFromMessage(global, lastMessage);
 
-    const typingStatus = selectThreadLocalStateParam(global, chatId, MAIN_THREAD_ID, 'typingStatus');
+    const typingStatusByPeerId = selectThreadLocalStateParam(global, chatId, MAIN_THREAD_ID, 'typingStatusByPeerId');
 
     const topicsInfo = selectTopicsInfo(global, chatId);
 
@@ -605,12 +606,12 @@ export default memo(withGlobal<OwnProps>(
       user,
       userStatus,
       lastMessageTopic,
-      typingStatus,
+      typingStatusByPeerId,
       withInterfaceAnimations: selectCanAnimateInterface(global),
       lastMessage,
       lastMessageId,
       currentUserId: global.currentUserId!,
-      listedTopicIds: topicsInfo?.listedTopicIds,
+      topicsInfo,
       isSynced: global.isSynced,
       lastMessageStory,
       isAccountFrozen,

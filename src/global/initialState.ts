@@ -268,10 +268,7 @@ export const INITIAL_GLOBAL_STATE: GlobalState = {
     saved: {},
   },
 
-  topPeers: {},
-
-  topInlineBots: {},
-  topBotApps: {},
+  topPeerCategories: {},
 
   activeSessions: {
     byHash: {},
@@ -300,6 +297,7 @@ export const INITIAL_GLOBAL_STATE: GlobalState = {
       autoLoadFileMaxSizeMb: 10,
       hasWebNotifications: true,
       hasPushNotifications: true,
+      shouldNotifyAboutPinnedMessages: true,
       notificationSoundVolume: 5,
       shouldSuggestStickers: true,
       shouldSuggestCustomEmoji: true,
@@ -461,10 +459,6 @@ export const INITIAL_TAB_STATE: TabState = {
 
   statistics: {
     byChatId: {},
-  },
-
-  pollModal: {
-    isOpen: false,
   },
 
   requestedTranslations: {

@@ -4,6 +4,8 @@ import buildClassName from '../../../util/buildClassName';
 
 import useLastCallback from '../../../hooks/useLastCallback';
 
+import Icon from '../../common/icons/Icon';
+import ShowTransition from '../../ui/ShowTransition';
 import { useControlContext } from '../layout/Control';
 import { useInteractiveContext } from '../layout/Interactive';
 
@@ -17,9 +19,10 @@ type InputProps = React.DetailedHTMLProps<
 type OwnProps = {
   checked: boolean;
   disabled?: boolean;
+  locked?: boolean;
   withPermissionColors?: boolean;
   className?: string;
-  onChange: (checked: boolean) => void;
+  onChange?: (checked: boolean) => void;
 };
 
 type Props = OwnProps & Omit<InputProps, keyof OwnProps | 'type'>;
@@ -27,6 +30,7 @@ type Props = OwnProps & Omit<InputProps, keyof OwnProps | 'type'>;
 const Switch = ({
   checked,
   disabled,
+  locked,
   withPermissionColors,
   className,
   onChange,
@@ -40,27 +44,43 @@ const Switch = ({
   const isDisabled = disabled || interactive?.isDisabled || interactive?.isLoading;
 
   const handleChange = useLastCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange(e.currentTarget.checked);
+    if (locked) return;
+
+    onChange?.(e.currentTarget.checked);
   });
 
   if (interactive?.isLoading) return undefined;
 
   return (
-    <input
-      {...restProps}
-      type="checkbox"
-      role="switch"
-      id={resolvedId}
-      checked={checked}
-      disabled={isDisabled}
+    <span
       className={buildClassName(
+        'Switch',
         styles.root,
+        isDisabled && styles.disabled,
+        locked && styles.locked,
         withPermissionColors && styles.permissionColors,
         control?.inputClassName,
         className,
       )}
-      onChange={handleChange}
-    />
+    >
+      <input
+        {...restProps}
+        type="checkbox"
+        role="switch"
+        id={resolvedId}
+        checked={checked}
+        disabled={isDisabled || locked}
+        className={styles.input}
+        onChange={handleChange}
+      />
+      <span className={styles.track} aria-hidden>
+        <span className={styles.thumb}>
+          <ShowTransition isOpen={Boolean(locked)} className={styles.lockIconTransition}>
+            <Icon name="lock-badge" className={styles.lockIcon} />
+          </ShowTransition>
+        </span>
+      </span>
+    </span>
   );
 };
 

@@ -18,6 +18,7 @@ export interface LangPair {
   'AccDescrGroup': undefined;
   'AccDescrChannel': undefined;
   'Nothing': undefined;
+  'Typing': undefined;
   'SendActionRecordVideo': undefined;
   'SendActionUploadVideo': undefined;
   'SendActionRecordAudio': undefined;
@@ -27,7 +28,6 @@ export interface LangPair {
   'PlayingGame': undefined;
   'SendActionRecordRound': undefined;
   'SendActionUploadRound': undefined;
-  'SendActionChooseSticker': undefined;
   'SetUrlInUse': undefined;
   'UsernameInUse': undefined;
   'CreateGroupError': undefined;
@@ -549,6 +549,7 @@ export interface LangPair {
   'AboutPremiumDescription2': undefined;
   'OpenUrlTitle': undefined;
   'OpenUrlConfirm': undefined;
+  'BotAuthAppSubtitle': undefined;
   'BotAuthSiteSubtitle': undefined;
   'BotAuthAllowMessages': undefined;
   'BotAuthInfo': undefined;
@@ -596,10 +597,23 @@ export interface LangPair {
   'CreatePollAddOption': undefined;
   'PollsChooseCorrect': undefined;
   'AskAQuestion': undefined;
-  'PollOptions': undefined;
-  'PollAnonymous': undefined;
+  'PollAnswersVisible': undefined;
+  'PollAnswersVisibleDescription': undefined;
   'PollMultiple': undefined;
+  'PollMultipleDescription': undefined;
   'PollQuiz': undefined;
+  'PollQuizDescription': undefined;
+  'PollAllowAddingAnswers': undefined;
+  'PollAllowAddingAnswersDescription': undefined;
+  'PollAllowVoteChanges': undefined;
+  'PollAllowVoteChangesDescription': undefined;
+  'PollRandomOrder': undefined;
+  'PollRandomOrderDescription': undefined;
+  'PollLimitedDuration': undefined;
+  'PollLimitedDurationDescription': undefined;
+  'PollDuration': undefined;
+  'PollHideResultsUntilClose': undefined;
+  'PollSelectCloseDate': undefined;
   'PollsSolutionTitle': undefined;
   'CreatePollExplanationInfo': undefined;
   'VoipGroupPersonalAccount': undefined;
@@ -686,6 +700,8 @@ export interface LangPair {
   'PinnedMessageTitleSingle': undefined;
   'AccPinnedMessages': undefined;
   'AccUnpinMessage': undefined;
+  'CommentsTitle': undefined;
+  'RepliesTitle': undefined;
   'LeaveAComment': undefined;
   'PollsStopWarning': undefined;
   'PollsStopSure': undefined;
@@ -693,6 +709,7 @@ export interface LangPair {
   'PaymentInvoiceNotFound': undefined;
   'NoWordsRecognized': undefined;
   'ViaBot': undefined;
+  'ForBot': undefined;
   'DiscussChannel': undefined;
   'ForwardedMessage': undefined;
   'ContextForwardMsg': undefined;
@@ -1516,6 +1533,7 @@ export interface LangPair {
   'ViewButtonStickerset': undefined;
   'ViewButtonEmojiset': undefined;
   'ViewButtonGiftUnique': undefined;
+  'ViewButtonAiStyle': undefined;
   'AuthContinueOnThisLanguage': undefined;
   'Share': undefined;
   'GiftSortByDate': undefined;
@@ -1540,6 +1558,7 @@ export interface LangPair {
   'ActionFallbackSomeone': undefined;
   'ActionUnsupported': undefined;
   'ActionPinnedNotFoundYou': undefined;
+  'PinnedMessagesNotifications': undefined;
   'ActionPinnedMediaPhoto': undefined;
   'ActionPinnedMediaVideo': undefined;
   'ActionPinnedMediaAudio': undefined;
@@ -1587,6 +1606,7 @@ export interface LangPair {
   'NoForwardsRequestSaving': undefined;
   'NoForwardsRequestCopying': undefined;
   'ActionBotAppPlaceholder': undefined;
+  'BotAuthUnverifiedApp': undefined;
   'ActionGiftTextUnknown': undefined;
   'ActionGiftTextUnknownYou': undefined;
   'ActionGiftUniqueSent': undefined;
@@ -1792,6 +1812,7 @@ export interface LangPair {
   'TitleAgeCheckFailed': undefined;
   'TitleAgeCheckSuccess': undefined;
   'ButtonAgeVerification': undefined;
+  'MiniAppUnavailableError': undefined;
   'GiftRibbonPremium': undefined;
   'PremiumGiftHeader': undefined;
   'PriceInStars': undefined;
@@ -2083,30 +2104,86 @@ export interface LangPair {
   'AiMessageEditorSelectStyle': undefined;
   'AiMessageEditorDailyLimitReachedPremium': undefined;
   'AiMessageEditorGenericError': undefined;
-  'AiMessageEditorStyleFormal': undefined;
-  'AiMessageEditorStyleShort': undefined;
-  'AiMessageEditorStyleTribal': undefined;
-  'AiMessageEditorStyleCorp': undefined;
-  'AiMessageEditorStyleBiblical': undefined;
-  'AiMessageEditorStyleViking': undefined;
-  'AiMessageEditorStyleZen': undefined;
   'AiMessageEditorResult': undefined;
   'AiMessageEditorOriginal': undefined;
   'AiMessageEditorApply': undefined;
   'AiMessageEditorEmojify': undefined;
   'AiMessageEditorTranslation': undefined;
+  'AiToneEditorNewStyle': undefined;
+  'AiToneEditorTitle': undefined;
+  'AiToneEditorNamePlaceholder': undefined;
+  'AiToneEditorPromptPlaceholder': undefined;
+  'AiToneEditorDisplayAuthor': undefined;
+  'AiToneEditorSelectEmoji': undefined;
+  'AiToneCreatedHint': undefined;
+  'AiToneEditStyle': undefined;
+  'AiToneShareStyle': undefined;
+  'AiToneDeleteStyle': undefined;
+  'AiToneDeleteStyleConfirmOwn': undefined;
+  'AiToneDeleteStyleConfirm': undefined;
+  'AiToneEditorEditTitle': undefined;
+  'AiTonePreviewSubtitle': undefined;
+  'AiTonePreviewBefore': undefined;
+  'AiTonePreviewAnotherExample': undefined;
+  'AiTonePreviewAfter': undefined;
+  'AiTonePreviewAddStyle': undefined;
+  'AiTonePreviewRemoveStyle': undefined;
+  'AiTonePreviewStyleAdded': undefined;
+  'AiToneLimitReached': undefined;
   'TextShowMore': undefined;
   'TextShowLess': undefined;
   'AiMessageEditorFrom': undefined;
   'AiMessageEditorTo': undefined;
   'ButtonHelp': undefined;
+  'PollModalQuestionTitle': undefined;
+  'PollModalOptionsTitle': undefined;
+  'PollModalSettingsTitle': undefined;
+  'PollModalAddNoMore': undefined;
+  'PollDurationOther': undefined;
 }
 
 export interface LangPairWithVariables<V = LangVariable> {
   'UserTyping': {
     'user': V;
   };
-  'UserActionWatchingAnimations': {
+  'UserTypingSeveral': {
+    'users': V;
+  };
+  'UserActionRecordVideo': {
+    'user': V;
+  };
+  'UserActionUploadVideo': {
+    'user': V;
+  };
+  'UserActionRecordAudio': {
+    'user': V;
+  };
+  'UserActionUploadAudio': {
+    'user': V;
+  };
+  'UserActionUploadPhoto': {
+    'user': V;
+  };
+  'UserActionUploadFile': {
+    'user': V;
+  };
+  'UserPlayingGame': {
+    'user': V;
+  };
+  'UserActionRecordRound': {
+    'user': V;
+  };
+  'UserActionUploadRound': {
+    'user': V;
+  };
+  'SendActionChooseSticker': {
+    'eyes': V;
+  };
+  'UserActionChooseSticker': {
+    'user': V;
+    'eyes': V;
+  };
+  'ActionWatchingAnimations': {
     'emoji': V;
   };
   'SetUrlAvailable': {
@@ -3686,6 +3763,22 @@ export interface LangPairWithVariables<V = LangVariable> {
   'AiMessageEditorDailyLimitReached': {
     'link': V;
   };
+  'AiToneCreated': {
+    'title': V;
+  };
+  'AiToneLimitReachedPremium': {
+    'limit': V;
+  };
+  'AiTonePreviewUsedBy': {
+    'count': V;
+  };
+  'AiTonePreviewCreatedBy': {
+    'author': V;
+  };
+  'AiTonePreviewUsedByCreatedBy': {
+    'usedBy': V;
+    'createdBy': V;
+  };
   'UnofficialSecurityRisk': {
     'peer': V;
   };
@@ -3698,6 +3791,10 @@ export interface LangPairPlural {
 }
 
 export interface LangPairPluralWithVariables<V = LangVariable> {
+  'UserTypingMany': {
+    'user': V;
+    'count': V;
+  };
   'Participants': {
     'count': V;
   };
@@ -3747,6 +3844,9 @@ export interface LangPairPluralWithVariables<V = LangVariable> {
     'index': V;
   };
   'Comments': {
+    'count': V;
+  };
+  'Replies': {
     'count': V;
   };
   'ChatContextReactionCount': {
@@ -4172,6 +4272,9 @@ export interface LangPairPluralWithVariables<V = LangVariable> {
     'count': V;
   };
   'FwdMessagesToChats': {
+    'count': V;
+  };
+  'PollModalAddMoreText': {
     'count': V;
   };
 }

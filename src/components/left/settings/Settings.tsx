@@ -156,6 +156,7 @@ export type OwnProps = {
   foldersDispatch: FolderEditDispatch;
   animationLevel: AnimationLevel;
   shouldSkipTransition?: boolean;
+  hasProfileBackground?: boolean;
   onReset: (forceReturnToChatList?: true | Event) => void;
 };
 
@@ -167,6 +168,7 @@ const Settings: FC<OwnProps> = ({
   onReset,
   animationLevel,
   shouldSkipTransition,
+  hasProfileBackground,
 }) => {
   const { closeShareChatFolderModal, openSettingsScreen } = getActions();
 
@@ -177,7 +179,8 @@ const Settings: FC<OwnProps> = ({
 
   useScrollNotch({
     containerRef,
-    selector: '.settings-content',
+    selector: '.Transition_slide-active .settings-content,'
+      + ' .Transition_slide-active .settings-main-scroll',
   }, [currentScreen]);
 
   const handleReset = useLastCallback((forceReturnToChatList?: true | Event) => {
@@ -514,6 +517,7 @@ const Settings: FC<OwnProps> = ({
           currentScreen={currentScreen}
           onReset={handleReset}
           editedFolderId={foldersState.folderId}
+          hasProfileBackground={hasProfileBackground}
         />
         {renderCurrentSectionContent(isScreenActive, activeKey)}
       </>

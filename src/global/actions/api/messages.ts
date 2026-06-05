@@ -1287,6 +1287,7 @@ addActionHandler('reportChannelSpam', (global, actions, payload): ActionReturnTy
 addActionHandler('markMessageListRead', (global, actions, payload): ActionReturnType => {
   if (selectIsCurrentUserFrozen(global)) return undefined;
   const { maxId, tabId = getCurrentTabId() } = payload;
+  if (isLocalMessageId(maxId)) return undefined;
 
   const currentMessageList = selectCurrentMessageList(global, tabId);
   if (!currentMessageList) {
@@ -1314,9 +1315,11 @@ addActionHandler('markMessageListRead', (global, actions, payload): ActionReturn
     };
   }
 
+  const threadReadState = selectThreadReadState(global, chatId, threadId);
+  global = replaceThreadReadStateParam(global, chatId, threadId, 'hasUnreadMark', undefined);
+
   const viewportIds = selectViewportIds(global, chatId, threadId, tabId);
   const minId = selectFirstUnreadId(global, chatId, threadId);
-  const threadReadState = selectThreadReadState(global, chatId, threadId);
 
   if (!viewportIds || !minId || !threadReadState?.unreadCount) {
     return global;
@@ -1378,6 +1381,19 @@ addActionHandler('sendPollVote', (global, actions, payload): ActionReturnType =>
   if (chat) {
     void callApi('sendPollVote', { chat, messageId, options });
   }
+});
+
+addActionHandler('appendPollAnswer', async (global, actions, payload): Promise<void> => {
+  const {
+    chatId, messageId, text,
+  } = payload;
+  const chat = selectChat(global, chatId);
+
+  if (!chat) {
+    return;
+  }
+
+  await callApi('appendPollAnswer', { chat, messageId, text });
 });
 
 addActionHandler('toggleTodoCompleted', (global, actions, payload): ActionReturnType => {

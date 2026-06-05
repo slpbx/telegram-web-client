@@ -50,6 +50,8 @@ export type WebAppButtonOptions = {
   color: string;
   text_color: string;
   is_progress_visible: boolean;
+  icon_custom_emoji_id?: string;
+  has_shine_effect?: boolean;
   position?: 'left' | 'right' | 'top' | 'bottom';
 };
 
@@ -237,14 +239,14 @@ interface WebAppOutboundEventMap {
   location_checked:
     | { available: false }
     | {
-      available: boolean;
+      available: true;
       access_requested: boolean;
       access_granted?: boolean;
     };
   location_requested:
-    | { available: boolean }
+    | { available: false }
     | {
-      available: boolean;
+      available: true;
       latitude: number;
       longitude: number;
       altitude: number | null;

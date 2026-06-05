@@ -1,5 +1,4 @@
 import type { ActionReturnType } from '../../types';
-import { PaymentStep } from '../../../types';
 
 import { SERVICE_NOTIFICATIONS_USER_ID } from '../../../config';
 import { applyLangPackDifference, getTranslationFn, requestLangPackDifference } from '../../../util/localization';
@@ -13,8 +12,6 @@ import {
   removeBlockedUser,
   removePeerStory,
   replaceWebPage,
-  setConfirmPaymentUrl,
-  setPaymentStep,
   updateFullWebPage,
   updateLastReadStoryForPeer,
   updatePeerStory,
@@ -85,6 +82,10 @@ addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
       actions.loadConfig();
       break;
 
+    case 'updateAiComposeTones':
+      actions.loadAiComposeTones();
+      break;
+
     case 'updateNewAuthorization': {
       // Load more info about this session
       actions.loadAuthorizations();
@@ -146,14 +147,6 @@ addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
           },
         },
       };
-      setGlobal(global);
-      break;
-
-    case 'updatePaymentVerificationNeeded':
-      Object.values(global.byTabId).forEach(({ id: tabId }) => {
-        global = setConfirmPaymentUrl(global, update.url, tabId);
-        global = setPaymentStep(global, PaymentStep.ConfirmPayment, tabId);
-      });
       setGlobal(global);
       break;
 

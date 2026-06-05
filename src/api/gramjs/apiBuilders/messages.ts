@@ -199,7 +199,7 @@ export function buildApiMessageWithChatId(
   const isPrivateChat = getEntityTypeById(chatId) === 'user';
   // Server can return `fromId` for our own messages in private chats, but not for incoming ones
   // This can break grouping logic, as we do not fill `fromId` for `UpdateShortMessage` case
-  const fromId = mtpMessage.fromId && !isPrivateChat
+  const fromId = mtpMessage.fromId && (!isPrivateChat || mtpMessage.guestchatViaFrom)
     ? getApiChatIdFromMtpPeer(mtpMessage.fromId) : undefined;
 
   const isChatWithSelf = !fromId && chatId === currentUserId;
@@ -299,6 +299,7 @@ export function buildApiMessageWithChatId(
     restrictionReasons,
     summaryLanguageCode: mtpMessage.summaryFromLanguage,
     fromRank: mtpMessage.fromRank,
+    guestChatViaId: mtpMessage.guestchatViaFrom && getApiChatIdFromMtpPeer(mtpMessage.guestchatViaFrom),
   };
 }
 
@@ -800,7 +801,11 @@ export function buildApiThreadInfo(
     channelId, replies, maxId = messageId, recentRepliers, comments, readMaxId,
   } = messageReplies;
 
-  const { fromId, channelPost } = messageForwardInfo || {};
+  const {
+    fromId, channelPost, savedFromPeer, savedFromMsgId,
+  } = messageForwardInfo || {};
+  const fromChannelPeer = savedFromPeer || fromId;
+  const fromMessageId = savedFromMsgId || channelPost;
 
   const apiChannelId = channelId ? buildApiPeerId(channelId, 'channel') : undefined;
   if (apiChannelId === DELETED_COMMENTS_CHANNEL_ID) {
@@ -829,8 +834,8 @@ export function buildApiThreadInfo(
     isCommentsInfo: false,
     chatId,
     threadId: messageId,
-    fromChannelId: fromId && channelPost ? getApiChatIdFromMtpPeer(fromId) : undefined,
-    fromMessageId: channelPost,
+    fromChannelId: fromChannelPeer && fromMessageId ? getApiChatIdFromMtpPeer(fromChannelPeer) : undefined,
+    fromMessageId,
   });
 }
 

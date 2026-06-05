@@ -1,5 +1,6 @@
 import {
   Api as GramJs,
+  errors,
   sessions,
   type Update,
 } from '../../../lib/gramjs';
@@ -47,6 +48,7 @@ import {
   addWebPageMediaToLocalDb,
 } from '../helpers/localDb';
 import {
+  buildApiError,
   isResponseUpdate, log,
 } from '../helpers/misc';
 import localDb, { clearLocalDb, type RepairInfo } from '../localDb';
@@ -56,9 +58,10 @@ import {
   getDifference,
   init as initUpdatesManager,
   processUpdate,
+  requestChannelDifference as requestChannelDifferenceFromUpdates,
   reset as resetUpdatesManager,
-  scheduleGetChannelDifference,
   scheduleGetDifference,
+  setOpenedChannelIds as setOpenedChannelIdsInUpdates,
   updateChannelState,
 } from '../updates/updateManager';
 import {
@@ -469,9 +472,9 @@ export async function fetchCurrentUser() {
 }
 
 export function dispatchErrorUpdate<T extends GramJs.AnyRequest>(err: Error, request: T) {
-  const message = err instanceof RPCError ? err.errorMessage : err.message;
+  const { message, code } = buildApiError(err);
 
-  const isSlowMode = message === 'FLOOD' && (
+  const isSlowMode = err instanceof errors.FloodError && (
     request instanceof GramJs.messages.SendMessage
     || request instanceof GramJs.messages.SendMedia
     || request instanceof GramJs.messages.SendMultiMedia
@@ -481,6 +484,7 @@ export function dispatchErrorUpdate<T extends GramJs.AnyRequest>(err: Error, req
     '@type': 'error',
     error: {
       message,
+      code,
       isSlowMode,
       hasErrorKey: true,
     },
@@ -675,5 +679,9 @@ export function setShouldDebugExportedSenders(value: boolean) {
 }
 
 export function requestChannelDifference(channelId: string) {
-  scheduleGetChannelDifference(channelId);
+  requestChannelDifferenceFromUpdates(channelId);
+}
+
+export function setOpenedChannelIds(channelIds: string[]) {
+  setOpenedChannelIdsInUpdates(channelIds);
 }

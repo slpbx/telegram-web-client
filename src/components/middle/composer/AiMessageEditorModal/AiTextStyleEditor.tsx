@@ -1,22 +1,29 @@
-import { memo, useMemo } from '../../../../lib/teact/teact';
+import { memo, useMemo, useState } from '../../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../../global';
 
-import type { ApiAiComposeStyle, ApiComposedMessageWithAI, ApiFormattedText } from '../../../../api/types';
+import type {
+  ApiAiComposeToneType, ApiComposedMessageWithAI, ApiFormattedText, ApiInputAiComposeTone,
+} from '../../../../api/types';
+import type { MenuItemContextAction } from '../../../ui/ListItem';
 import type { TabWithProperties } from '../../../ui/TabList';
-import { ApiMessageEntityTypes } from '../../../../api/types';
 
-import EMOJI_REGEX from '../../../../lib/twemojiRegex';
+import { TME_LINK_PREFIX } from '../../../../config';
+import { selectTabState } from '../../../../global/selectors';
+import { compareAiTones, getInputTone } from '../../../../util/aiComposeTones';
 import buildClassName from '../../../../util/buildClassName';
+import { MEMO_EMPTY_ARRAY } from '../../../../util/memo';
 import { renderTextWithEntities } from '../../../common/helpers/renderTextWithEntities';
-import { getStyleTitle } from './helpers';
 
 import useLang from '../../../../hooks/useLang';
 import useLastCallback from '../../../../hooks/useLastCallback';
 
 import CheckboxField from '../../../gili/templates/CheckboxField';
+import ConfirmDialog from '../../../ui/ConfirmDialog';
+import Skeleton from '../../../ui/placeholder/Skeleton';
 import TabList from '../../../ui/TabList';
 import Transition from '../../../ui/Transition';
 import { AiEditorCopyButton, AiEditorErrorMessage, AiEditorResultArea } from './AiEditorShared';
+import AiToneEditorModal from './AiToneEditorModal';
 
 import sharedStyles from './AiEditorShared.module.scss';
 import modalStyles from './AiMessageEditorModal.module.scss';
@@ -24,7 +31,7 @@ import styles from './AiTextStyleEditor.module.scss';
 
 type OwnProps = {
   text?: ApiFormattedText;
-  selectedTone?: string;
+  selectedTone?: ApiInputAiComposeTone;
   shouldEmojify?: boolean;
   isLoading?: boolean;
   result?: ApiComposedMessageWithAI;
@@ -33,7 +40,8 @@ type OwnProps = {
 };
 
 type StateProps = {
-  aiComposeStyles: ApiAiComposeStyle[];
+  tones: ApiAiComposeToneType[];
+  isAiToneEditorOpen?: boolean;
 };
 
 const AiTextStyleEditor = ({
@@ -44,40 +52,101 @@ const AiTextStyleEditor = ({
   result,
   error,
   isPremium,
-  aiComposeStyles,
+  tones,
+  isAiToneEditorOpen,
 }: OwnProps & StateProps) => {
   const {
     setAiMessageEditorStyleOptions,
     composeWithAiMessageEditor,
+    openAiToneEditorModal,
+    closeAiMessageEditorModal,
+    deleteAiTone,
+    openChatWithDraft,
   } = getActions();
 
   const lang = useLang();
+
+  const [toneToDelete, setToneToDelete] = useState<ApiInputAiComposeTone>();
+  const [isCreatorDelete, setIsCreatorDelete] = useState(false);
+
+  const handleConfirmDelete = useLastCallback(() => {
+    if (!toneToDelete) return;
+    deleteAiTone({ tone: toneToDelete });
+    setToneToDelete(undefined);
+  });
+
+  const handleCloseDeleteConfirm = useLastCallback(() => {
+    setToneToDelete(undefined);
+  });
 
   const hasResult = Boolean(result?.resultText);
   const hasRequest = Boolean(selectedTone) || shouldEmojify;
   const shouldShowError = Boolean(error) && hasRequest;
 
-  const styleTabs = useMemo((): TabWithProperties[] => aiComposeStyles.map(({ documentId, title, tone }) => {
-    const emojiMatch = title.match(EMOJI_REGEX);
-    const localizedTitle = getStyleTitle(lang, tone, title);
+  const buildContextActions = useLastCallback((entry: ApiAiComposeToneType): MenuItemContextAction[] | undefined => {
+    if (!('id' in entry)) return undefined;
 
-    return {
-      emoticon: documentId ? {
-        type: ApiMessageEntityTypes.CustomEmoji,
-        offset: 0,
-        length: emojiMatch?.[0].length || 2,
-        documentId,
-      } : undefined,
-      title: localizedTitle,
-    };
-  }), [aiComposeStyles, lang]);
+    const tone = getInputTone(entry);
+    const actions: MenuItemContextAction[] = [];
 
-  const activeStyleIndex = aiComposeStyles.findIndex(({ tone }) => tone === selectedTone);
+    if (entry.isCreator) {
+      actions.push({
+        title: lang('AiToneEditStyle'),
+        icon: 'edit',
+        handler: () => {
+          openAiToneEditorModal({ toneToEdit: entry });
+        },
+      });
+    }
+
+    actions.push({
+      title: lang('AiToneShareStyle'),
+      icon: 'forward',
+      handler: () => {
+        closeAiMessageEditorModal();
+        openChatWithDraft({ text: { text: `${TME_LINK_PREFIX}addstyle/${entry.slug}` } });
+      },
+    });
+
+    actions.push({
+      title: lang('AiToneDeleteStyle'),
+      icon: 'delete',
+      destructive: true,
+      handler: () => {
+        setToneToDelete(tone);
+        setIsCreatorDelete(Boolean(entry.isCreator));
+      },
+    });
+
+    return actions;
+  });
+
+  const styleTabs = useMemo((): TabWithProperties[] => {
+    const tabs: TabWithProperties[] = tones.map((entry) => ({
+      customEmojiDocumentId: entry.emojiId,
+      title: entry.title,
+      contextActions: buildContextActions(entry),
+    }));
+
+    if (tones.length) {
+      tabs.push({ icon: 'add', title: lang('AiToneEditorNewStyle') });
+    }
+
+    return tabs;
+  }, [tones, lang, buildContextActions]);
+
+  const activeStyleIndex = tones.findIndex(
+    (entry) => compareAiTones(selectedTone, getInputTone(entry)),
+  );
 
   const handleStyleSelect = useLastCallback((index: number) => {
-    const styleId = aiComposeStyles[index].tone;
-    setAiMessageEditorStyleOptions({ selectedTone: styleId });
-    composeWithAiMessageEditor({ changeTone: styleId, isEmojify: shouldEmojify });
+    if (index === tones.length) {
+      openAiToneEditorModal();
+      return;
+    }
+    const tone = getInputTone(tones[index]);
+    setAiMessageEditorStyleOptions({ selectedTone: tone });
+    composeWithAiMessageEditor({ tone, isEmojify: shouldEmojify });
   });
 
   const handleEmojifyChange = useLastCallback((newEmojify: boolean) => {
@@ -85,7 +154,7 @@ const AiTextStyleEditor = ({
       setAiMessageEditorStyleOptions({ shouldEmojify: newEmojify, clearResult: true });
     } else {
       setAiMessageEditorStyleOptions({ shouldEmojify: newEmojify });
-      composeWithAiMessageEditor({ changeTone: selectedTone, isEmojify: newEmojify });
+      composeWithAiMessageEditor({ tone: selectedTone, isEmojify: newEmojify });
     }
   });
 
@@ -93,7 +162,7 @@ const AiTextStyleEditor = ({
   const showResultLabel = hasRequest || isLoading;
   const displayLabel = showResultLabel ? lang('AiMessageEditorResult') : lang('AiMessageEditorOriginal');
 
-  const transitionKey = (activeStyleIndex >= 0 ? activeStyleIndex : 0) + (shouldEmojify ? aiComposeStyles.length : 0);
+  const transitionKey = (activeStyleIndex >= 0 ? activeStyleIndex : 0) + (shouldEmojify ? tones.length : 0);
 
   function renderPreviewText() {
     if (shouldShowError) {
@@ -112,15 +181,26 @@ const AiTextStyleEditor = ({
 
   return (
     <div className={buildClassName(modalStyles.editorBlock, styles.styleBlock)}>
-      <TabList
-        tabs={styleTabs}
-        activeTab={activeStyleIndex}
-        onSwitchTab={handleStyleSelect}
-        className={styles.tabList}
-        tabClassName={styles.tab}
-        indicatorClassName={styles.tabListIndicator}
-        itemAlignment="vertical"
-      />
+      <div className={styles.tabListWrapper}>
+        {styleTabs.length > 0 && (
+          <TabList
+            tabs={styleTabs}
+            activeTab={activeStyleIndex}
+            onSwitchTab={handleStyleSelect}
+            className={styles.tabList}
+            tabClassName={styles.tab}
+            indicatorClassName={styles.tabListIndicator}
+            itemAlignment="vertical"
+          />
+        )}
+        <div className={buildClassName(styles.tabListSkeleton, styleTabs.length && styles.tabListSkeletonHidden)}>
+          <Skeleton className={styles.tabSkeleton} variant="round" animation="wave" />
+          <Skeleton className={styles.tabSkeleton} variant="round" animation="wave" />
+          <Skeleton className={styles.tabSkeleton} variant="round" animation="wave" />
+          <Skeleton className={styles.tabSkeleton} variant="round" animation="wave" />
+          <Skeleton className={styles.tabSkeleton} variant="round" animation="wave" />
+        </div>
+      </div>
 
       <div className={sharedStyles.separator} />
 
@@ -151,6 +231,16 @@ const AiTextStyleEditor = ({
         textToCopy={displayText?.text}
         isHidden={isLoading || shouldShowError || !displayText?.text}
       />
+      <AiToneEditorModal isOpen={Boolean(isAiToneEditorOpen)} />
+      <ConfirmDialog
+        isOpen={Boolean(toneToDelete)}
+        title={lang('AiToneDeleteStyle')}
+        text={lang(isCreatorDelete ? 'AiToneDeleteStyleConfirmOwn' : 'AiToneDeleteStyleConfirm')}
+        confirmLabel={lang('Delete')}
+        confirmIsDestructive
+        onClose={handleCloseDeleteConfirm}
+        confirmHandler={handleConfirmDelete}
+      />
     </div>
   );
 };
@@ -158,7 +248,8 @@ const AiTextStyleEditor = ({
 export default memo(withGlobal<OwnProps>(
   (global): Complete<StateProps> => {
     return {
-      aiComposeStyles: global.appConfig?.aiComposeStyles ?? [],
+      tones: global.aiComposeTones?.tones ?? MEMO_EMPTY_ARRAY,
+      isAiToneEditorOpen: Boolean(selectTabState(global).aiToneEditorModal),
     };
   },
 )(AiTextStyleEditor));

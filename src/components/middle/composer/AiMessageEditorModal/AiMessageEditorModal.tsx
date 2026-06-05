@@ -156,13 +156,16 @@ const AiMessageEditorModal = ({
       case 'translate':
         composeWithAiMessageEditor({
           translateToLang: translateTab?.selectedLanguage,
-          changeTone: translateTab?.selectedTone,
+          tone: translateTab?.selectedTone,
           isEmojify: translateTab?.shouldEmojify,
         });
         break;
       case 'style':
         if (styleTab?.selectedTone) {
-          composeWithAiMessageEditor({ changeTone: styleTab.selectedTone, isEmojify: styleTab?.shouldEmojify });
+          composeWithAiMessageEditor({
+            tone: styleTab.selectedTone,
+            isEmojify: styleTab?.shouldEmojify,
+          });
         }
         break;
       case 'fix':
@@ -280,17 +283,17 @@ const AiMessageEditorModal = ({
       )}
       isSlim
     >
-      <div className={styles.tabListWrapper}>
-        <TabList
-          tabs={tabs}
-          activeTab={activeTabIndex}
-          onSwitchTab={handleTabChange}
-          className={styles.tabList}
-          tabClassName={styles.tab}
-          stretched
-          itemAlignment="vertical"
-        />
-      </div>
+      <TabList
+        tabs={tabs}
+        activeTab={activeTabIndex}
+        withFadeMask
+        fadeMaskClassName={styles.fadeMask}
+        className={styles.tabList}
+        tabClassName={styles.tab}
+        stretched
+        itemAlignment="vertical"
+        onSwitchTab={handleTabChange}
+      />
 
       <div className={styles.transitionWrapper}>
         <Transition

@@ -1,6 +1,7 @@
 @use "../../styles/mixins";
 
 .MessageList {
+  container-type: size;
   overflow-x: hidden;
   overflow-y: scroll;
   flex: 1;
@@ -60,6 +61,19 @@
 
     .fab-trigger {
       scroll-snap-align: end;
+    }
+
+    .live-tail {
+      overflow-anchor: none;
+      min-height: max(0rem, calc(100cqh - var(--middle-header-panes-height) - 2.5rem));
+
+      .message-list-item {
+        animation: live-tail-message-mount 0.2s ease-out;
+
+        body.no-message-sending-animations & {
+          animation: none;
+        }
+      }
     }
 
     @media (max-width: 600px) {
@@ -398,4 +412,9 @@
       transform: translate3d(0, calc(-1 * (var(--symbol-menu-height))), 0);
     }
   }
+}
+
+@keyframes live-tail-message-mount {
+  from { transform: translateY(2rem); }
+  to { transform: translateY(0); }
 }

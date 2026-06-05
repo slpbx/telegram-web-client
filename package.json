@@ -1,6 +1,6 @@
 {
   "name": "telegram-t",
-  "version": "12.0.25",
+  "version": "12.0.29",
   "description": "",
   "author": "Alexander Zinchuk (alexander@zinchuk.com)",
   "license": "GPL-3.0-or-later",
@@ -18,13 +18,17 @@
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
     "telegraph:update_changelog": "node ./dev/telegraphChangelog.js",
-    "check": "tsc && stylelint \"**/*.{css,scss}\" --cache --cache-location .cache/.stylelintcache && eslint --cache --cache-location .cache/.eslintcache",
-    "check:fix": "stylelint \"**/*.{css,scss}\" --fix --cache --cache-location .cache/.stylelintcache && eslint --fix --cache --cache-location .cache/.eslintcache",
+    "check:ts": "tsc && eslint --cache --cache-location .cache/.eslintcache",
+    "check:css": "stylelint \"**/*.{css,scss}\" --cache --cache-location .cache/.stylelintcache",
+    "fix:ts": "tsc && eslint --cache --cache-location .cache/.eslintcache --fix",
+    "fix:css": "stylelint \"**/*.{css,scss}\" --cache --cache-location .cache/.stylelintcache --fix",
+    "check": "npm run check:ts && npm run check:css",
+    "fix": "npm run fix:ts && npm run fix:css",
     "tl:rehash": "node ./dev/tlHash.js",
     "gramjs:tl": "tsx ./src/lib/gramjs/tl/generateModules.ts",
     "lang:ts": "tsx ./dev/generateLangTypes.js",
     "lang:initial": "tsx ./dev/generateInitialLangFallback.js",
-    "icons:build": "fantasticon -c .fantasticonrc.cjs",
+    "icons:build": "tsx ./dev/buildIcons.ts",
     "test": "cross-env APP_ENV=test jest --verbose --silent --forceExit",
     "test:playwright": "playwright test",
     "test:record": "playwright codegen localhost:1235",
@@ -37,8 +41,8 @@
     "npm": "^10.8 || ^11"
   },
   "lint-staged": {
-    "*.{ts,tsx,js}": "eslint --fix",
-    "*.{css,scss}": "stylelint --fix"
+    "*.{ts,tsx,js}": "eslint --cache --cache-location .cache/.eslintcache --fix",
+    "*.{css,scss}": "stylelint --cache --cache-location .cache/.stylelintcache --fix"
   },
   "devDependencies": {
     "@babel/core": "^7.29.0",
@@ -59,7 +63,6 @@
     "@stylistic/stylelint-plugin": "^5.1.0",
     "@tauri-apps/cli": "^2.10.1",
     "@testing-library/jest-dom": "^6.9.1",
-    "@twbs/fantasticon": "^3.1.0",
     "@types/dom-chromium-ai": "^0.0.16",
     "@types/dom-view-transitions": "^1.0.6",
     "@types/hast": "^3.0.4",
@@ -115,6 +118,7 @@
     "stylelint-group-selectors": "^1.0.10",
     "stylelint-high-performance-animation": "^2.0.0",
     "stylelint-plugin-use-baseline": "^1.4.1",
+    "svgtofont": "^6.5.1",
     "telegraph-node": "^1.0.4",
     "tsx": "^4.21.0",
     "typescript": "^6.0.2",

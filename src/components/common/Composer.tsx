@@ -19,7 +19,6 @@ import type {
   ApiMessage,
   ApiMessageEntity,
   ApiNewMediaTodo,
-  ApiNewPoll,
   ApiPeer,
   ApiQuickReply,
   ApiReaction,
@@ -68,6 +67,7 @@ import {
   isChatSuperGroup,
   isSameReaction,
   isSystemBot,
+  isUserRightBanned,
 } from '../../global/helpers';
 import { getChatNotifySettings } from '../../global/helpers/notifications';
 import { getPeerTitle } from '../../global/helpers/peers';
@@ -189,7 +189,6 @@ import EmojiTooltip from '../middle/composer/EmojiTooltip.async';
 import InlineBotTooltip from '../middle/composer/InlineBotTooltip.async';
 import MentionTooltip from '../middle/composer/MentionTooltip.async';
 import MessageInput from '../middle/composer/MessageInput';
-import PollModal from '../middle/composer/PollModal.async';
 import SendAsMenu from '../middle/composer/SendAsMenu.async';
 import StickerTooltip from '../middle/composer/StickerTooltip.async';
 import SymbolMenuButton from '../middle/composer/SymbolMenuButton';
@@ -253,7 +252,6 @@ type StateProps = {
   isReplying?: boolean;
   hasSuggestedPost?: boolean;
   forwardedMessagesCount?: number;
-  pollModal: TabState['pollModal'];
   todoListModal: TabState['todoListModal'];
   aiMessageEditorPendingResult: TabState['aiMessageEditorPendingResult'];
   botKeyboardMessageId?: number;
@@ -272,6 +270,7 @@ type StateProps = {
   baseEmojiKeywords?: Record<string, string[]>;
   emojiKeywords?: Record<string, string[]>;
   topInlineBotIds?: string[];
+  topGuestBotIds?: string[];
   isInlineBotLoading: boolean;
   inlineBots?: Record<string, false | InlineBotSettings>;
   botCommands?: ApiBotCommand[] | false;
@@ -321,7 +320,6 @@ type StateProps = {
   isAccountFrozen?: boolean;
   isAppConfigLoaded?: boolean;
   insertingPeerIdMention?: string;
-  pollMaxAnswers?: number;
   replyToMessage?: ApiMessage;
   shouldOpenMessageMediaEditor?: TabState['shouldOpenMessageMediaEditor'];
 };
@@ -382,7 +380,6 @@ const Composer = ({
   isReplying,
   hasSuggestedPost,
   forwardedMessagesCount,
-  pollModal,
   todoListModal,
   aiMessageEditorPendingResult,
   botKeyboardMessageId,
@@ -392,6 +389,7 @@ const Composer = ({
   stickersForEmoji,
   customEmojiForEmoji,
   topInlineBotIds,
+  topGuestBotIds,
   currentUserId,
   currentUser,
   captionLimit,
@@ -449,7 +447,6 @@ const Composer = ({
   isAccountFrozen,
   isAppConfigLoaded,
   insertingPeerIdMention,
-  pollMaxAnswers,
   replyToMessage,
   shouldOpenMessageMediaEditor,
   onDropHide,
@@ -462,8 +459,6 @@ const Composer = ({
     clearDraft,
     saveDraft,
     showDialog,
-    openPollModal,
-    closePollModal,
     openTodoListModal,
     closeTodoListModal,
     openAiMessageEditorModal,
@@ -599,6 +594,7 @@ const Composer = ({
     ),
     [chat, chatFullInfo, isChatWithBot, isChatWithSelf, isInStoryViewer, paidMessagesStars, isInScheduledList],
   );
+  const canUseInlineBots = !chat || isChatAdmin(chat) || !isUserRightBanned(chat, 'sendInline', chatFullInfo);
 
   const isNeedPremium = isContactRequirePremium && isInStoryViewer;
   const isSendTextBlocked = isNeedPremium || !canSendPlainText;
@@ -852,7 +848,8 @@ const Composer = ({
     getSelectionRange,
     inputRef,
     groupChatMembers,
-    topInlineBotIds,
+    canUseInlineBots ? topInlineBotIds : undefined,
+    topGuestBotIds,
     currentUserId,
   );
 
@@ -895,7 +892,7 @@ const Composer = ({
     help: inlineBotHelp,
     loadMore: loadMoreForInlineBot,
   } = useInlineBotTooltip(
-    Boolean(isInMessageList && isReady && isForCurrentMessageList && !hasAttachments),
+    Boolean(canUseInlineBots && isInMessageList && isReady && isForCurrentMessageList && !hasAttachments),
     chatId,
     getHtml,
     inlineBots,
@@ -1603,7 +1600,7 @@ const Composer = ({
   const handleInlineBotSelect = useLastCallback((
     inlineResult: ApiBotInlineResult | ApiBotInlineMediaResult, isSilent?: boolean, isScheduleRequested?: boolean,
   ) => {
-    if (!currentMessageList && !storyId) {
+    if ((!currentMessageList && !storyId) || !inlineBotId) {
       return;
     }
 
@@ -1652,31 +1649,6 @@ const Composer = ({
     requestMeasure(() => {
       resetComposer();
     });
-  });
-
-  const handlePollSend = useLastCallback((poll: ApiNewPoll) => {
-    if (!currentMessageList) {
-      return;
-    }
-
-    if (isInScheduledList) {
-      requestCalendar((scheduledAt, scheduleRepeatPeriod) => {
-        handleActionWithPaymentConfirmation(
-          handleMessageSchedule,
-          { poll },
-          scheduledAt,
-          scheduleRepeatPeriod,
-          currentMessageList,
-        );
-      });
-      closePollModal();
-    } else {
-      handleActionWithPaymentConfirmation(
-        sendMessage,
-        { messageList: currentMessageList, poll, isSilent: isSilentPosting },
-      );
-      closePollModal();
-    }
   });
 
   const handleToDoListSend = useLastCallback((todo: ApiNewMediaTodo) => {
@@ -2180,14 +2152,6 @@ const Composer = ({
         canScheduleUntilOnline={canScheduleUntilOnline && !isViewOnceEnabled}
         paidMessagesStars={paidMessagesStars}
       />
-      <PollModal
-        isOpen={pollModal.isOpen}
-        isQuiz={pollModal.isQuiz}
-        shouldBeAnonymous={isChannel}
-        maxOptionsCount={pollMaxAnswers}
-        onClear={closePollModal}
-        onSend={handlePollSend}
-      />
       <ToDoListModal
         modal={todoListModal}
         onClear={closeTodoListModal}
@@ -2256,17 +2220,6 @@ const Composer = ({
             </g>
           </svg>
         )}
-        <Button
-          round
-          faded
-          className={buildClassName('ai-composer-button', (!shouldShowAiButton
-            || hasAttachments) && 'ai-composer-button-hidden')}
-          color="translucent"
-          ariaLabel={lang('AiMessageEditor')}
-          iconName="ai"
-          tabIndex={shouldShowAiButton && !hasAttachments ? 0 : -1}
-          onClick={handleOpenAiEditor}
-        />
         {isInMessageList && (
           <>
             <InlineBotTooltip
@@ -2370,6 +2323,17 @@ const Composer = ({
               forceDarkTheme={isInStoryViewer}
             />
           )}
+          <Button
+            round
+            faded
+            className={buildClassName('ai-composer-button', (!shouldShowAiButton
+              || hasAttachments) && 'ai-composer-button-hidden')}
+            color="translucent"
+            ariaLabel={lang('AiMessageEditor')}
+            iconName="ai"
+            tabIndex={shouldShowAiButton && !hasAttachments ? 0 : -1}
+            onClick={handleOpenAiEditor}
+          />
           <MessageInput
             ref={inputRef}
             id={inputId}
@@ -2457,15 +2421,26 @@ const Composer = ({
                       />
                     )}
                     {Boolean(botKeyboardMessageId) && !activeVoiceRecording && !editingMessage && (
-                      <ResponsiveHoverButton
-                        className={buildClassName('composer-action-button', isBotKeyboardOpen && 'activated')}
-                        round
-                        color="translucent"
-                        onActivate={openBotKeyboard}
-                        ariaLabel={lang('AriaComposerBotKeyboard')}
-                      >
-                        <Icon name="bot-command" />
-                      </ResponsiveHoverButton>
+                      <>
+                        <ResponsiveHoverButton
+                          className={buildClassName('composer-action-button', isBotKeyboardOpen && 'activated')}
+                          round
+                          color="translucent"
+                          noClickActivation
+                          onActivate={openBotKeyboard}
+                          ariaLabel={lang('AriaComposerBotKeyboard')}
+                        >
+                          <Icon name="bot-command" />
+                        </ResponsiveHoverButton>
+                        {!isMobile && (
+                          <BotKeyboardMenu
+                            messageId={botKeyboardMessageId}
+                            threadId={threadId}
+                            isOpen={isBotKeyboardOpen}
+                            onClose={closeBotKeyboard}
+                          />
+                        )}
+                      </>
                     )}
                   </>
                 )}
@@ -2494,7 +2469,6 @@ const Composer = ({
               canInsertDate={!isComposerBlocked}
               onFileSelect={handleFileSelect}
               onDateInsert={handleFormattedDateInsert}
-              onPollCreate={openPollModal}
               onTodoListCreate={handleTodoListCreate}
               isScheduled={isInScheduledList}
               attachBots={isInMessageList ? attachBots : undefined}
@@ -2507,7 +2481,7 @@ const Composer = ({
               paidMessagesStars={paidMessagesStars}
             />
           )}
-          {isInMessageList && Boolean(botKeyboardMessageId) && (
+          {isMobile && isInMessageList && Boolean(botKeyboardMessageId) && (
             <BotKeyboardMenu
               messageId={botKeyboardMessageId}
               threadId={threadId}
@@ -2522,34 +2496,34 @@ const Composer = ({
               onClose={closeBotCommandMenu}
             />
           )}
-          <CustomEmojiTooltip
-            key={`custom-emoji-tooltip-${editableInputId}`}
-            chatId={chatId}
-            isOpen={isCustomEmojiTooltipOpen}
-            onCustomEmojiSelect={insertCustomEmoji}
-            addRecentCustomEmoji={addRecentCustomEmoji}
-            onClose={closeCustomEmojiTooltip}
-          />
-          <StickerTooltip
-            key={`sticker-tooltip-${editableInputId}`}
-            chatId={chatId}
-            threadId={threadId}
-            isOpen={isStickerTooltipOpen}
-            onStickerSelect={handleStickerSelect}
-            onClose={closeStickerTooltip}
-          />
-          <EmojiTooltip
-            key={`emoji-tooltip-${editableInputId}`}
-            isOpen={isEmojiTooltipOpen}
-            emojis={filteredEmojis}
-            customEmojis={filteredCustomEmojis}
-            addRecentEmoji={addRecentEmoji}
-            addRecentCustomEmoji={addRecentCustomEmoji}
-            onEmojiSelect={insertEmoji}
-            onCustomEmojiSelect={insertEmoji}
-            onClose={closeEmojiTooltip}
-          />
         </div>
+        <CustomEmojiTooltip
+          key={`custom-emoji-tooltip-${editableInputId}`}
+          chatId={chatId}
+          isOpen={isCustomEmojiTooltipOpen}
+          onCustomEmojiSelect={insertCustomEmoji}
+          addRecentCustomEmoji={addRecentCustomEmoji}
+          onClose={closeCustomEmojiTooltip}
+        />
+        <StickerTooltip
+          key={`sticker-tooltip-${editableInputId}`}
+          chatId={chatId}
+          threadId={threadId}
+          isOpen={isStickerTooltipOpen}
+          onStickerSelect={handleStickerSelect}
+          onClose={closeStickerTooltip}
+        />
+        <EmojiTooltip
+          key={`emoji-tooltip-${editableInputId}`}
+          isOpen={isEmojiTooltipOpen}
+          emojis={filteredEmojis}
+          customEmojis={filteredCustomEmojis}
+          addRecentEmoji={addRecentEmoji}
+          addRecentCustomEmoji={addRecentCustomEmoji}
+          onEmojiSelect={insertEmoji}
+          onCustomEmojiSelect={insertEmoji}
+          onClose={closeEmojiTooltip}
+        />
       </div>
       {canSendOneTimeMedia && activeVoiceRecording && (
         <Button
@@ -2698,7 +2672,6 @@ export default memo(withGlobal<OwnProps>(
   (global, {
     chatId, threadId, storyId, messageListType, isMobile, type,
   }): Complete<StateProps> => {
-    const appConfig = global.appConfig;
     const chat = selectChat(global, chatId);
     const chatBot = !isSystemBot(chatId) ? selectBot(global, chatId) : undefined;
     const isChatWithBot = Boolean(chatBot);
@@ -2813,13 +2786,13 @@ export default memo(withGlobal<OwnProps>(
       isReplying,
       hasSuggestedPost,
       forwardedMessagesCount: isForwarding ? forwardMessageIds!.length : undefined,
-      pollModal: tabState.pollModal,
       todoListModal: tabState.todoListModal,
       aiMessageEditorPendingResult: tabState.aiMessageEditorPendingResult,
       stickersForEmoji: global.stickers.forEmoji.stickers,
       customEmojiForEmoji: global.customEmojis.forEmoji.stickers,
       chatFullInfo,
-      topInlineBotIds: global.topInlineBots?.userIds,
+      topInlineBotIds: global.topPeerCategories.botsInline?.peerIds,
+      topGuestBotIds: global.topPeerCategories.botsGuestChat?.peerIds,
       currentUserId,
       currentUser,
       contentToBeScheduled: tabState.contentToBeScheduled,
@@ -2872,7 +2845,9 @@ export default memo(withGlobal<OwnProps>(
       shouldPaidMessageAutoApprove,
       isSilentPosting,
       isPaymentMessageConfirmDialogOpen: tabState.isPaymentMessageConfirmDialogOpen
-        && !tabState.aiMessageEditorModal,
+        && !tabState.aiMessageEditorModal
+        && !tabState.pollModal
+        && !tabState.sharePreparedMessageModal,
       starsBalance,
       isStarsBalanceModalOpen,
       shouldDisplayGiftsButton: userFullInfo?.shouldDisplayGiftsButton,
@@ -2880,7 +2855,6 @@ export default memo(withGlobal<OwnProps>(
       isAccountFrozen,
       isAppConfigLoaded,
       insertingPeerIdMention,
-      pollMaxAnswers: appConfig.pollMaxAnswers,
       shouldOpenMessageMediaEditor,
       replyToMessage,
     };

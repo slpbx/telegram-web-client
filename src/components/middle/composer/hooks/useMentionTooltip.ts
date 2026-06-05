@@ -12,6 +12,7 @@ import { filterPeersByQuery, getPeerTitle } from '../../../../global/helpers/pee
 import focusEditableElement from '../../../../util/focusEditableElement';
 import { pickTruthy, unique } from '../../../../util/iteratees';
 import { getCaretPosition, getHtmlBeforeSelection, setCaretPosition } from '../../../../util/selection';
+import { escapeHtml } from '../helpers/cleanHtml';
 import { prepareForRegExp } from '../helpers/prepareForRegExp';
 
 import { useThrottledResolver } from '../../../../hooks/useAsyncResolvers';
@@ -38,6 +39,7 @@ export default function useMentionTooltip(
   inputRef: ElementRef<HTMLDivElement>,
   groupChatMembers?: ApiChatMember[],
   topInlineBotIds?: string[],
+  topGuestBotIds?: string[],
   currentUserId?: string,
 ) {
   const lang = useLang();
@@ -64,7 +66,7 @@ export default function useMentionTooltip(
   useEffect(() => {
     const usernameTag = getUsernameTag();
 
-    if (!usernameTag || !(groupChatMembers || topInlineBotIds)) {
+    if (!usernameTag || !(groupChatMembers || topInlineBotIds || topGuestBotIds)) {
       setFilteredUsers(undefined);
       return;
     }
@@ -89,13 +91,14 @@ export default function useMentionTooltip(
       ids: unique([
         ...((getWithInlineBots() && topInlineBotIds) || []),
         ...(memberIds || []),
+        ...(topGuestBotIds || []),
       ]),
       query: filter,
       type: 'user',
     });
 
     setFilteredUsers(Object.values(pickTruthy(usersById, filteredIds)));
-  }, [currentUserId, groupChatMembers, topInlineBotIds, getUsernameTag, getWithInlineBots]);
+  }, [currentUserId, groupChatMembers, topInlineBotIds, topGuestBotIds, getUsernameTag, getWithInlineBots]);
 
   const insertMention = useLastCallback((
     peer: ApiPeer,
@@ -109,14 +112,14 @@ export default function useMentionTooltip(
     const mainUsername = getMainUsername(peer);
     const userFirstOrLastName = getPeerTitle(lang, peer) || '';
     const htmlToInsert = mainUsername
-      ? `@${mainUsername}`
+      ? `@${escapeHtml(mainUsername)}`
       : `<a
           class="text-entity-link"
           data-entity-type="${ApiMessageEntityTypes.MentionName}"
           data-user-id="${peer.id}"
           contenteditable="false"
           dir="auto"
-        >${userFirstOrLastName}</a>`;
+        >${escapeHtml(userFirstOrLastName)}</a>`;
 
     const inputEl = inputRef.current!;
     const htmlBeforeSelection = getHtmlBeforeSelection(inputEl);

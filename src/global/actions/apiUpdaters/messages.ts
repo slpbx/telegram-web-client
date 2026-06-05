@@ -30,7 +30,10 @@ import {
   getMessageText,
   groupMessageIdsByThreadId,
   isActionMessage,
+  isDeletedUser,
   isMessageLocal,
+  isUserBot,
+  pickMatchingTypingDraftMessage,
 } from '../../helpers';
 import { getMessageReplyInfo, getStoryReplyInfo } from '../../helpers/replies';
 import {
@@ -63,6 +66,7 @@ import {
   updateQuickReplyMessage,
   updateScheduledMessage,
 } from '../../reducers';
+import { addUnreadPollVotes } from '../../reducers/polls';
 import { addUnreadReactions, removeUnreadReactions } from '../../reducers/reactions';
 import { updateTabState } from '../../reducers/tabs';
 import {
@@ -97,6 +101,7 @@ import {
   selectTabState,
   selectTopic,
   selectTopicFromMessage,
+  selectUser,
   selectViewportIds,
 } from '../../selectors';
 import {
@@ -114,19 +119,135 @@ const SNAP_ANIMATION_DELAY = 1000;
 const VIDEO_PROCESSING_NOTIFICATION_DELAY = 1000;
 let lastVideoProcessingNotificationTime = 0;
 
+type TypingDraftEntry = {
+  randomId: string;
+  message: ApiMessage;
+};
+
+function getTypingDraftEntries<T extends GlobalState>(
+  global: T,
+  chatId: string,
+  threadId: ThreadId,
+) {
+  const typingDraftStore = selectThreadLocalStateParam(global, chatId, threadId, 'typingDraftIdByRandomId');
+  const typingDraftEntries = Object.entries(typingDraftStore || {}).reduce((result, [randomId, messageId]) => {
+    const message = selectChatMessage(global, chatId, messageId);
+    if (!message?.isTypingDraft) {
+      return result;
+    }
+
+    result.push({ randomId, message });
+    return result;
+  }, [] as TypingDraftEntry[]);
+
+  return typingDraftEntries;
+}
+
+function removeTypingDraftEntries<T extends GlobalState>(
+  global: T,
+  chatId: string,
+  threadId: ThreadId,
+  typingDraftEntries: TypingDraftEntry[],
+) {
+  if (!typingDraftEntries.length) {
+    return global;
+  }
+
+  const typingDraftStore = selectThreadLocalStateParam(global, chatId, threadId, 'typingDraftIdByRandomId') || {};
+  const randomIds = typingDraftEntries.map(({ randomId }) => randomId);
+  const nextTypingDraftStore = omit(typingDraftStore, randomIds);
+  const messageIdsToDelete = randomIds.reduce((result, randomId) => {
+    const messageId = typingDraftStore[randomId];
+    const message = messageId ? selectChatMessage(global, chatId, messageId) : undefined;
+    if (!message?.isTypingDraft) {
+      return result;
+    }
+
+    result.push(messageId);
+    return result;
+  }, [] as number[]);
+
+  global = replaceThreadLocalStateParam(
+    global,
+    chatId,
+    threadId,
+    'typingDraftIdByRandomId',
+    Object.keys(nextTypingDraftStore).length ? nextTypingDraftStore : undefined,
+  );
+
+  if (messageIdsToDelete.length) {
+    global = deleteChatMessages(global, chatId, messageIdsToDelete);
+  }
+
+  return global;
+}
+
+function shouldBumpGuestBotTopPeer<T extends GlobalState>(global: T, message: ApiMessage) {
+  const { guestChatViaId, senderId } = message;
+  if (message.isOutgoing || message.content.action || guestChatViaId !== global.currentUserId || !senderId) {
+    return false;
+  }
+
+  const sender = selectUser(global, senderId);
+  return Boolean(sender?.isGuestChatBot);
+}
+
+function shouldBumpInlineBotTopPeer(message: ApiMessage) {
+  return Boolean(message.isOutgoing && !message.content.action && message.viaBotId);
+}
+
+function shouldBumpCorrespondentTopPeer<T extends GlobalState>(global: T, chatId: string) {
+  const user = selectUser(global, chatId);
+  return Boolean(user && !user.isSelf && !isUserBot(user) && !isDeletedUser(user));
+}
+
 addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
   switch (update['@type']) {
     case 'newMessage': {
       const {
         chatId, id, message, shouldForceReply, wasDrafted, poll, webPage,
       } = update;
-      global = updateWithLocalMedia(global, chatId, id, true, message);
-      global = updateListedAndViewportIds(global, message);
+      const chat = selectChat(global, chatId);
+      const isLocal = isMessageLocal(message);
+      const threadId = selectThreadIdFromMessage(global, message) || MAIN_THREAD_ID;
+      const typingDraftEntries = getTypingDraftEntries(global, chatId, threadId);
+      const hasTypingDraftsInThread = Boolean(typingDraftEntries.length);
+      const shouldAttemptTypingDraftHandoff = !isLocal && !message.isOutgoing && !message.content.action;
+
+      let matchedTypingDraftEntry: TypingDraftEntry | undefined;
+      let shouldClearTypingDraftsAfterRender = false;
+
+      if (hasTypingDraftsInThread && shouldAttemptTypingDraftHandoff) {
+        const matchedTypingDraft = pickMatchingTypingDraftMessage(
+          message,
+          typingDraftEntries.map(({ message: typingDraftMessage }) => typingDraftMessage),
+        );
+
+        matchedTypingDraftEntry = matchedTypingDraft
+          ? typingDraftEntries.find(
+            ({ message: typingDraftMessage }) => typingDraftMessage.id === matchedTypingDraft.id,
+          )
+          : undefined;
+        shouldClearTypingDraftsAfterRender = Boolean(typingDraftEntries.length && !matchedTypingDraftEntry);
+      }
+
+      const nextMessage = matchedTypingDraftEntry ? {
+        ...message,
+        previousLocalId: matchedTypingDraftEntry.message.id,
+        isTypingDraft: true,
+        wasTypingDraft: true,
+      } : message;
+
+      global = updateWithLocalMedia(global, chatId, id, true, nextMessage);
+      global = updateListedAndViewportIds(global, nextMessage);
+
+      if (hasTypingDraftsInThread && matchedTypingDraftEntry) {
+        global = removeTypingDraftEntries(global, chatId, threadId, [matchedTypingDraftEntry]);
+      }
 
       const newMessage = selectChatMessage(global, chatId, id)!;
       const replyInfo = getMessageReplyInfo(newMessage);
       const storyReplyInfo = getStoryReplyInfo(newMessage);
-      const chat = selectChat(global, chatId);
       if (chat?.isForum
         && replyInfo?.isForumTopic
         && !selectTopicFromMessage(global, newMessage)
@@ -134,16 +255,14 @@ addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
         actions.loadTopicById({ chatId, topicId: replyInfo.replyToMsgId });
       }
 
-      const isLocal = isMessageLocal(message);
-
       Object.values(global.byTabId).forEach(({ id: tabId }) => {
         // Force update for last message on drafted messages to prevent flickering
         if (isLocal && wasDrafted) {
           global = updateChatLastMessage(global, chatId, newMessage);
         }
 
-        const threadId = selectThreadIdFromMessage(global, newMessage);
-        global = updateChatMediaLoadingState(global, newMessage, chatId, threadId, tabId);
+        const messageThreadId = selectThreadIdFromMessage(global, newMessage);
+        global = updateChatMediaLoadingState(global, newMessage, chatId, messageThreadId, tabId);
 
         if (selectIsMessageInCurrentMessageList(global, chatId, message, tabId)) {
           if (isLocal && message.isOutgoing && !(message.content?.action) && !storyReplyInfo?.storyId
@@ -207,12 +326,12 @@ addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
         actions.reportMessageDelivery({ chatId, messageId: id });
       }
 
-      if (chat?.isBotForum && !newMessage.isOutgoing && !isLocal) {
-        const threadId = selectThreadIdFromMessage(global, newMessage);
-        const typingDraftStore = selectThreadLocalStateParam(global, chatId, threadId, 'typingDraftIdByRandomId');
-        const localDraftIds = Object.values(typingDraftStore || {});
-        global = deleteChatMessages(global, chatId, localDraftIds);
-        global = replaceThreadLocalStateParam(global, chatId, threadId, 'typingDraftIdByRandomId', undefined);
+      if (shouldClearTypingDraftsAfterRender) {
+        onTickEnd(() => {
+          global = getGlobal();
+          global = removeTypingDraftEntries(global, chatId, threadId, typingDraftEntries);
+          setGlobal(global);
+        });
       }
 
       if (!isLocal && message.content?.action?.type === 'noForwardsToggle') {
@@ -247,6 +366,22 @@ addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
       }
 
       setGlobal(global);
+
+      if (shouldBumpGuestBotTopPeer(global, newMessage)) {
+        actions.bumpTopPeerRating({
+          category: 'botsGuestChat',
+          peerId: newMessage.senderId!,
+          date: newMessage.date,
+        });
+      }
+
+      if (shouldBumpInlineBotTopPeer(newMessage)) {
+        actions.bumpTopPeerRating({
+          category: 'botsInline',
+          peerId: newMessage.viaBotId!,
+          date: newMessage.date,
+        });
+      }
 
       // Reload dialogs if chat is not present in the list
       if (!isLocal && !chat?.isNotJoined && !selectIsChatListed(global, chatId)) {
@@ -593,6 +728,10 @@ addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
 
       setGlobal(global);
 
+      if (shouldBumpCorrespondentTopPeer(global, chatId)) {
+        actions.bumpTopPeerRating({ category: 'correspondents', peerId: chatId });
+      }
+
       break;
     }
 
@@ -628,11 +767,19 @@ addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
       }
 
       setGlobal(global);
+      if (shouldBumpCorrespondentTopPeer(global, chatId)) {
+        actions.bumpTopPeerRating({ category: 'correspondents', peerId: chatId });
+      }
       break;
     }
 
     case 'updatePinnedIds': {
       const { chatId, isPinned, messageIds } = update;
+      const shouldBePinned = Boolean(isPinned);
+
+      messageIds.forEach((id) => {
+        global = updateChatMessage(global, chatId, id, { isPinned: shouldBePinned });
+      });
 
       const messageIdsByThreadId = groupMessageIdsByThreadId(global, chatId, messageIds, false);
 
@@ -818,6 +965,29 @@ addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
     case 'updateMessagePollVote': {
       const { pollId, peerId, options } = update;
       global = updatePollVote(global, pollId, peerId, options);
+      setGlobal(global);
+
+      break;
+    }
+
+    case 'updateMessagePollUnread': {
+      const { chatId, messageId, threadId } = update;
+      const readState = selectThreadReadState(global, chatId, threadId);
+
+      if (!readState?.unreadPollVotes) {
+        actions.loadUnreadPollVotes({ chatId, threadId });
+        break;
+      }
+
+      if (readState.unreadPollVotes.includes(messageId)) break;
+
+      // We can't calculate threads without local messages, so reload instead.
+      if (!selectChatMessage(global, chatId, messageId)) {
+        actions.loadUnreadPollVotes({ chatId, threadId });
+        break;
+      }
+
+      global = addUnreadPollVotes({ global, chatId, ids: [messageId] });
       setGlobal(global);
 
       break;
