@@ -11,6 +11,7 @@ import {
 
 import { requestMutation } from '../../../lib/fasterdom/fasterdom';
 import buildClassName from '../../../util/buildClassName';
+import captureKeyboardListeners from '../../../util/captureKeyboardListeners';
 import { waitForAnimationEnd } from '../../../util/cssAnimationEndListeners';
 
 import useContext from '../../../hooks/data/useContext';
@@ -65,6 +66,14 @@ type ModalSlotProps = {
   className?: string;
   children?: TeactNode;
 };
+
+type ModalHeaderProps = {
+  noMask?: boolean;
+} & ModalSlotProps;
+
+type ModalTitleProps = {
+  noAutoFocus?: boolean;
+} & ModalSlotProps;
 
 type ModalCloseButtonProps = {
   asAbsolute?: boolean;
@@ -181,6 +190,13 @@ const Modal = ({
     onClose();
   });
 
+  const handleEsc = useLastCallback((event: KeyboardEvent) => {
+    if (noLightDismiss || !isOpen || isClosing) return;
+
+    event.preventDefault();
+    handleRequestClose();
+  });
+
   const registerTitle = useLastCallback((isPresent: boolean) => {
     setHasTitle(isPresent);
   });
@@ -285,6 +301,14 @@ const Modal = ({
       }
     };
   }, [shouldRender]);
+
+  useEffect(() => {
+    if (!shouldRender) {
+      return undefined;
+    }
+
+    return captureKeyboardListeners({ onEsc: handleEsc });
+  }, [handleEsc, shouldRender]);
 
   useEffect(() => {
     if (!shouldRender) {
@@ -397,7 +421,7 @@ const Modal = ({
   );
 };
 
-const ModalHeader = ({ className, children }: ModalSlotProps) => {
+const ModalHeader = ({ noMask, className, children }: ModalHeaderProps) => {
   const modalContext = useModalContext();
 
   return (
@@ -405,6 +429,7 @@ const ModalHeader = ({ className, children }: ModalSlotProps) => {
       className={buildClassName(
         styles.header,
         modalContext?.hasSubtitle && styles.headerWithSubtitle,
+        !noMask && styles.scrollMask,
         className,
       )}
     >
@@ -421,7 +446,15 @@ const ModalHeaderAction = ({ className, children }: ModalSlotProps) => {
   );
 };
 
-const ModalTitle = ({ className, children }: ModalSlotProps) => {
+const ModalFooterActions = ({ className, children }: ModalSlotProps) => {
+  return (
+    <div className={buildClassName(styles.footerActions, className)}>
+      {children}
+    </div>
+  );
+};
+
+const ModalTitle = ({ noAutoFocus, className, children }: ModalTitleProps) => {
   const modalContext = useModalContext();
 
   useLayoutEffect(() => {
@@ -437,6 +470,8 @@ const ModalTitle = ({ className, children }: ModalSlotProps) => {
       id={modalContext?.titleId}
       className={buildClassName(styles.title, className)}
       dir="auto"
+      tabIndex={-1}
+      autoFocus={!noAutoFocus}
     >
       {children}
     </div>
@@ -495,6 +530,7 @@ export default memo(Modal);
 export {
   ModalHeader,
   ModalHeaderAction,
+  ModalFooterActions,
   ModalTitle,
   ModalSubtitle,
   ModalCloseButton,

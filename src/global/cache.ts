@@ -3,7 +3,10 @@ import { addCallback, removeCallback } from '../lib/teact/teactn';
 
 import type {
   ApiAvailableReaction,
+  ApiDocument,
   ApiMessage,
+  ApiPhoto,
+  ApiVideo,
 } from '../api/types';
 import type { MessageList, ThreadId, TopicsInfo } from '../types';
 import type { ActionReturnType, GlobalState, SharedState } from './types';
@@ -373,6 +376,10 @@ function unsafeMigrateCache(cached: GlobalState, initialState: GlobalState) {
     cached.appConfig.webAppAllowedProtocols = initialState.appConfig.webAppAllowedProtocols;
   }
 
+  if (cached.appConfig.isMessagePrimaryEditedDateEnabled === undefined) {
+    cached.appConfig.isMessagePrimaryEditedDateEnabled = initialState.appConfig.isMessagePrimaryEditedDateEnabled;
+  }
+
   if (untypedCached.sharedState?.settings?.shouldWarnAboutSvg) {
     cached.sharedState.settings.shouldWarnAboutFiles = true;
     untypedCached.sharedState.settings.shouldWarnAboutSvg = undefined;
@@ -418,7 +425,7 @@ export function forceUpdateCache(noEncrypt = false) {
   if (hasPasscode) {
     if (!isScreenLocked && !noEncrypt) {
       const serializedGlobal = serializeGlobal(global);
-      void encryptSession(undefined, serializedGlobal);
+      void encryptSession(undefined, serializedGlobal, serializeShared(global.sharedState));
     }
 
     cacheIsScreenLocked(global);
@@ -504,6 +511,10 @@ function reduceSharedState(sharedState: SharedState): SharedState {
 
 export function serializeGlobal<T extends GlobalState>(global: T) {
   return JSON.stringify(reduceGlobal(global));
+}
+
+export function serializeShared(sharedState: SharedState) {
+  return JSON.stringify(reduceSharedState(sharedState));
 }
 
 function reduceStickers<T extends GlobalState>(global: T): GlobalState['stickers'] {
@@ -801,32 +812,40 @@ function omitLocalPaidReactions(message: ApiMessage): ApiMessage {
 
 function omitLocalMedia(message: ApiMessage): ApiMessage {
   const {
-    photo, video, document, sticker,
+    photo, video, document,
   } = message.content;
 
   return {
     ...message,
     content: {
       ...message.content,
-      photo: photo && {
-        ...photo,
-        blobUrl: undefined,
-      },
-      video: video && {
-        ...video,
-        blobUrl: undefined,
-        previewBlobUrl: undefined,
-      },
-      document: document && {
-        ...document,
-        previewBlobUrl: undefined,
-      },
-      sticker: sticker && {
-        ...sticker,
-        isPreloadedGlobally: undefined,
-      },
+      photo: photo && omitLocalPhoto(photo),
+      video: video && omitLocalVideo(video),
+      document: document && omitLocalDocument(document),
     },
     previousLocalId: undefined,
+  };
+}
+
+function omitLocalPhoto(photo: ApiPhoto): ApiPhoto {
+  return {
+    ...photo,
+    blobUrl: undefined,
+  };
+}
+
+function omitLocalVideo(video: ApiVideo): ApiVideo {
+  return {
+    ...video,
+    blobUrl: undefined,
+    previewBlobUrl: undefined,
+  };
+}
+
+function omitLocalDocument(document: ApiDocument): ApiDocument {
+  return {
+    ...document,
+    previewBlobUrl: undefined,
   };
 }
 

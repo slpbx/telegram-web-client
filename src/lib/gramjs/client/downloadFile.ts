@@ -3,6 +3,7 @@ import type { SizeType } from './TelegramClient';
 
 import { getDcBandwidthManager } from '../../../util/dcBandwithManager';
 import Deferred from '../../../util/Deferred';
+import { concat } from '../../../util/encoding/buffer';
 import { FloodPremiumWaitError, FloodWaitError, RPCError } from '../errors';
 import Api from '../tl/api';
 
@@ -51,7 +52,7 @@ class FileView {
 
   private size?: number;
 
-  private buffer?: Buffer<ArrayBuffer>;
+  private buffer?: Uint8Array;
 
   private largeFile?: FileSystemFileHandle;
 
@@ -73,7 +74,7 @@ class FileView {
       this.largeFile = await downloadsFolder.getFileHandle(Math.random().toString(), { create: true });
       this.largeFileAccessHandle = await this.largeFile.createSyncAccessHandle();
     } else {
-      this.buffer = this.size ? Buffer.alloc(this.size) : Buffer.alloc(0);
+      this.buffer = new Uint8Array(this.size || 0);
     }
   }
 
@@ -96,10 +97,10 @@ class FileView {
       return;
     }
 
-    this.buffer = Buffer.concat([this.buffer!, data]);
+    this.buffer = concat(this.buffer!, data);
   }
 
-  async getData(): Promise<Buffer<ArrayBuffer> | File> {
+  async getData(): Promise<Uint8Array | File> {
     if (this.type === 'opfs') {
       return this.largeFile!.getFile();
     } else {

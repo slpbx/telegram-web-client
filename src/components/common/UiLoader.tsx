@@ -21,9 +21,6 @@ import useEffectOnce from '../../hooks/useEffectOnce';
 import useFlag from '../../hooks/useFlag';
 import useShowTransitionDeprecated from '../../hooks/useShowTransitionDeprecated';
 
-// Workaround for incorrect bundling by Webpack: force including in the main chunk
-import '../ui/Modal.scss';
-import './Avatar.scss';
 import appStyles from '../App.module.scss';
 import styles from './UiLoader.module.scss';
 
@@ -163,7 +160,7 @@ const UiLoader: FC<OwnProps & StateProps> = ({
                 className={styles.left}
                 style={leftColumnWidth ? `width: ${leftColumnWidth}px` : undefined}
               />
-              <div className={buildClassName(styles.middle, appStyles.bg)} />
+              <div className={styles.middle} />
               {isRightColumnShown && <div className={styles.right} />}
             </div>
           ) : (page === 'inactive' || page === 'lock') ? (

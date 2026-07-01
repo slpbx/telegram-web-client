@@ -244,6 +244,27 @@ const CONTENT_LIST_CLASS: Record<string, string> = {
   similarBots: styles.similarBotsList,
 };
 
+const GRID_COLUMNS = 3;
+
+function getGridCornerClassName(index: number, total: number) {
+  const lastRowIndex = Math.floor((total - 1) / GRID_COLUMNS);
+  const lastRowCount = total - lastRowIndex * GRID_COLUMNS;
+  const isLastRowFull = lastRowCount === GRID_COLUMNS;
+
+  const isTopStart = index === 0;
+  const isTopEnd = index === Math.min(GRID_COLUMNS - 1, total - 1);
+  const isBottomStart = index === lastRowIndex * GRID_COLUMNS;
+  const isBottomEnd = index === total - 1
+    || (!isLastRowFull && lastRowIndex > 0 && index === lastRowIndex * GRID_COLUMNS - 1);
+
+  return buildClassName(
+    isTopStart && 'roundTopStart',
+    isTopEnd && 'roundTopEnd',
+    isBottomStart && 'roundBottomStart',
+    isBottomEnd && 'roundBottomEnd',
+  );
+}
+
 const Profile = ({
   chatId,
   isActive,
@@ -623,7 +644,7 @@ const Profile = ({
   const shouldShowContentPanel = (isGiftsResult && hasGiftsCollections) || (isStoriesResult && hasStoryAlbums);
 
   useEffect(() => {
-    const timers: ReturnType<typeof setTimeout>[] = [];
+    const timers: number[] = [];
     if (hasGiftsCollections) {
       timers.push(setTimeout(markGiftCollectionsShowed, CONTENT_PANEL_SHOW_DELAY));
     } else {
@@ -1025,10 +1046,11 @@ const Profile = ({
         dir={lang.isRtl && (resultType === 'media' || resultType === 'gif') ? 'rtl' : undefined}
       >
         {resultType === 'media' || resultType === 'gif' ? (
-          (viewportIds as number[]).filter((id) => Boolean(messagesById[id])).map((id) => (
+          (viewportIds as number[]).filter((id) => Boolean(messagesById[id])).map((id, i, ids) => (
             <Media
               key={id}
               message={messagesById[id]}
+              className={getGridCornerClassName(i, ids.length)}
               isProtected={isChatProtected || messagesById[id].isProtected}
               canAutoPlay={canAutoPlayGifs}
               observeIntersection={observeIntersectionForMedia}
@@ -1037,10 +1059,11 @@ const Profile = ({
             />
           ))
         ) : (resultType === 'stories' || resultType === 'storiesArchive') ? (
-          (viewportIds as number[]).filter((id) => Boolean(storyByIds?.[id])).map((id, i) => (
+          (viewportIds as number[]).filter((id) => Boolean(storyByIds?.[id])).map((id, i, ids) => (
             <MediaStory
               teactOrderKey={i}
               key={`${resultType}_${id}`}
+              className={getGridCornerClassName(i, ids.length)}
               story={storyByIds![id]}
               isArchive={resultType === 'storiesArchive'}
             />
@@ -1146,10 +1169,11 @@ const Profile = ({
             </ListItem>
           ))
         ) : resultType === 'previewMedia' ? (
-          botPreviewMedia!.map((media, i) => (
+          botPreviewMedia!.map((media, i, arr) => (
             <PreviewMedia
               key={media.date}
               media={media}
+              className={getGridCornerClassName(i, arr.length)}
               isProtected={isChatProtected}
               observeIntersection={observeIntersectionForMedia}
               onClick={handleSelectPreviewMedia}
@@ -1258,6 +1282,7 @@ const Profile = ({
       <div className={buildClassName(styles.profileInfo, 'profile-info')}>
         <ProfileInfo
           isExpanded={isProfileExpanded}
+          isActive={isActive}
           peerId={peerId}
           canPlayVideo={isReady}
           isForMonoforum={Boolean(monoforumChannel)}
@@ -1268,7 +1293,6 @@ const Profile = ({
           isSavedDialog={isSavedDialog}
           isOwnProfile={isOwnProfile}
           className={styles.chatExtraBlock}
-          style={createVtnStyle('chatExtraBlock', true)}
         />
       </div>
     );
@@ -1326,7 +1350,6 @@ const Profile = ({
         <>
           <div
             className={buildClassName(styles.sharedMediaTabs, 'shared-media-tabs')}
-            style={createVtnStyle('sharedMediaTabs')}
           >
             <TabList
               activeTab={activeTabIndex}
@@ -1336,7 +1359,6 @@ const Profile = ({
           </div>
           <div
             className={styles.sharedMedia}
-            style={createVtnStyle('sharedMedia')}
           >
             <Transition
               ref={transitionRef}
@@ -1423,7 +1445,7 @@ export default memo(withGlobal<OwnProps>(
     const peer = user || chat;
     const peerFullInfo = userFullInfo || chatFullInfo;
 
-    const hasCommonChatsTab = user && !user.isSelf && !isUserBot(user) && !isSavedMessages
+    const hasCommonChatsTab = user && !user.isSelf && !isSavedMessages
       && Boolean(userFullInfo?.commonChatsCount);
     const commonChats = selectUserCommonChats(global, chatId);
 

@@ -3,7 +3,6 @@ import eslintReact from '@eslint-react/eslint-plugin';
 import stylisticJs from '@stylistic/eslint-plugin';
 import { defineConfig, globalIgnores } from 'eslint/config';
 import { importX } from 'eslint-plugin-import-x';
-import jestPlugin from 'eslint-plugin-jest';
 import noNullPlugin from 'eslint-plugin-no-null';
 import reactHooksStaticDeps from 'eslint-plugin-react-hooks-static-deps';
 import simpleImportSortPlugin from 'eslint-plugin-simple-import-sort';
@@ -177,6 +176,7 @@ export default defineConfig(
       '@typescript-eslint/unbound-method': 'off',
       'unused-imports/no-unused-imports': 'error',
       'import-x/namespace': ['error', { allowComputed: true }],
+      'import-x/no-unresolved': ['error', { ignore: ['^virtual:'] }],
       'import-x/no-named-as-default-member': 'off',
       'react-hooks/exhaustive-deps': 'off',
       'react-hooks-static-deps/exhaustive-deps': [
@@ -214,15 +214,13 @@ export default defineConfig(
       'simple-import-sort': simpleImportSortPlugin,
       'unused-imports': unusedImports,
       'react-hooks-static-deps': reactHooksStaticDeps,
-      jest: jestPlugin,
       'tt-multitab': ttMultitabPlugin,
     },
     languageOptions: {
       parserOptions: {
-        projectService: true,
+        project: ['./tsconfig.json', './tsconfig.script.json'],
         tsconfigRootDir: import.meta.dirname,
       },
-      globals: jestPlugin.environments.globals.globals,
     },
   },
 );

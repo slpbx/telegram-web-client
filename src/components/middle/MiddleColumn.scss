@@ -8,6 +8,14 @@
   min-width: 0;
   height: 100%;
 
+  opacity: 0;
+
+  transition: opacity 0.3s ease;
+
+  &.ui-ready {
+    opacity: 1;
+  }
+
   .messages-layout {
     --slide-transition: 450ms cubic-bezier(0.25, 1, 0.5, 1);
 
@@ -148,15 +156,18 @@
       text-align: center;
 
       background: var(--color-background);
-      box-shadow: 0 1px 2px var(--color-default-shadow);
+      box-shadow: var(--shadow-footer);
     }
   }
 
   .middle-column-footer {
     --base-height: 3rem;
 
-    position: relative;
+    position: absolute;
     z-index: var(--z-middle-footer);
+    right: 0;
+    bottom: 0;
+    left: 0;
     transform: translate3d(0, 0, 0);
 
     display: flex;
@@ -164,65 +175,29 @@
 
     width: 100%;
     max-width: var(--messages-container-width);
+    margin: 0 auto;
     padding: 0 1rem;
 
-    transition: top 200ms, transform var(--layer-transition);
-
-    &::before {
-      content: "";
-
-      position: absolute;
-      top: -0.5625rem;
-      right: 0;
-      left: 0;
-
-      height: 1px;
-
-      opacity: 0;
-      background:
-        linear-gradient(
-          90deg,
-          rgba(255, 255, 255, 0) 0%,
-          rgba(255, 255, 255, 0.4) 2%,
-          rgba(255, 255, 255, 0.4) 98%,
-          rgba(255, 255, 255, 0) 100%
-        );
-
-      transition: opacity 350ms ease;
-
-      @media (max-width: 600px) {
-        right: -2%;
-        left: -2%;
-      }
-    }
+    transition: transform var(--layer-transition);
 
     body.no-page-transitions & {
       transition: none !important;
     }
 
     body.no-right-column-animations & {
-      transition: top 200ms !important;
+      transition: none !important;
     }
 
     &:not(.no-composer) {
-      top: 0;
       padding-bottom: 0;
 
       @media (max-width: 600px) {
         padding-bottom: env(safe-area-inset-bottom);
 
         body.keyboard-visible & {
-          top: env(safe-area-inset-bottom);
+          padding-bottom: 0;
         }
       }
-    }
-
-    &.with-notch::before {
-      opacity: 0.75;
-    }
-
-    html.theme-dark &::before {
-      background: var(--action-message-bg);
     }
 
     @media (min-width: 1276px) {
@@ -272,7 +247,7 @@
 .composer-button {
   .mask-image-disabled & {
     border-radius: var(--border-radius-messages);
-    box-shadow: 0 0.25rem 0.5rem 0.125rem var(--color-default-shadow);
+    box-shadow: var(--shadow-footer);
   }
 }
 
@@ -337,7 +312,7 @@
   z-index: var(--z-resize-handle);
   top: 0;
   bottom: 0;
-  left: 0;
+  left: -0.25rem;
 
-  width: 0.25rem;
+  width: 0.5rem;
 }

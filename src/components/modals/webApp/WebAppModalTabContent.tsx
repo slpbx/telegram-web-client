@@ -24,6 +24,7 @@ import {
   selectUserFullInfo,
   selectWebApp,
 } from '../../../global/selectors';
+import { IFRAME_ALLOW_ATTRIBUTES, IFRAME_SANDBOX_ATTRIBUTES } from '../../../util/browser/iframe';
 import { getGeolocationStatus, IS_GEOLOCATION_SUPPORTED } from '../../../util/browser/windowEnvironment';
 import buildClassName from '../../../util/buildClassName';
 import buildStyle from '../../../util/buildStyle.ts';
@@ -98,15 +99,6 @@ const COLLAPSING_WAIT = 350;
 const POPUP_SEQUENTIAL_LIMIT = 3;
 const POPUP_RESET_DELAY = 2000; // 2s
 const APP_NAME_DISPLAY_DURATION = 3800;
-const SANDBOX_ATTRIBUTES = [
-  'allow-scripts',
-  'allow-popups',
-  'allow-forms',
-  'allow-modals',
-  'allow-same-origin',
-  'allow-storage-access-by-user-activation',
-].join(' ');
-
 const DEFAULT_BUTTON_TEXT: Record<string, string> = {
   ok: 'OK',
   cancel: 'Cancel',
@@ -956,11 +948,11 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
   const hideDirection = (isHorizontalLayout
     && (!shouldHideMainButton && !shouldHideSecondaryButton)) ? 'horizontal' : 'vertical';
 
-  const mainButtonChangeTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
-  const mainButtonFastTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
-  const secondaryButtonChangeTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
-  const secondaryButtonFastTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
-  const appNameDisplayTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const mainButtonChangeTimeoutRef = useRef<number>();
+  const mainButtonFastTimeoutRef = useRef<number>();
+  const secondaryButtonChangeTimeoutRef = useRef<number>();
+  const secondaryButtonFastTimeoutRef = useRef<number>();
+  const appNameDisplayTimeoutRef = useRef<number>();
 
   useEffect(() => {
     if (isFullscreen && isOpen && Boolean(activeWebAppName)) {
@@ -1229,8 +1221,8 @@ const WebAppModalTabContent: FC<OwnProps & StateProps> = ({
         style={frameStyle}
         src={url}
         title={lang('AriaMiniApp', { bot: bot?.firstName })}
-        sandbox={SANDBOX_ATTRIBUTES}
-        allow="camera; microphone; geolocation; clipboard-write;"
+        sandbox={IFRAME_SANDBOX_ATTRIBUTES}
+        allow={IFRAME_ALLOW_ATTRIBUTES}
         allowFullScreen
         ref={frameRef}
       />

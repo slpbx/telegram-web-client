@@ -120,6 +120,8 @@ export interface GramJsAppConfig extends LimitsConfig {
   ton_topup_url?: string;
   poll_answers_max?: number;
   poll_close_period_max?: number;
+  poll_countries_max?: number;
+  phone_country_iso2?: string;
   todo_items_max?: number;
   todo_title_length_max?: number;
   todo_item_length_max?: number;
@@ -129,6 +131,7 @@ export interface GramJsAppConfig extends LimitsConfig {
   verify_age_country?: string;
   verify_age_min?: number;
   message_typing_draft_ttl?: number;
+  message_primary_edited_date?: boolean;
   contact_note_length_limit?: number;
   whitelisted_bots?: string[];
   settings_display_passkeys?: boolean;
@@ -147,7 +150,7 @@ function buildEmojiSounds(appConfig: GramJsAppConfig) {
       accessHash: BigInt(l.access_hash),
       dcId: 1,
       mimeType: 'audio/ogg',
-      fileReference: Buffer.alloc(0),
+      fileReference: new Uint8Array(0),
       size: 0n,
     } as GramJs.Document);
 
@@ -267,6 +270,8 @@ export function buildAppConfig(json: GramJs.TypeJSONValue, hash: number): ApiApp
     tonTopupUrl: appConfig.ton_topup_url,
     pollMaxAnswers: appConfig.poll_answers_max,
     pollClosePeriodMax: appConfig.poll_close_period_max,
+    pollCountriesMax: appConfig.poll_countries_max,
+    phoneCountryIso2: appConfig.phone_country_iso2,
     todoItemsMax: appConfig.todo_items_max,
     todoTitleLengthMax: appConfig.todo_title_length_max,
     todoItemLengthMax: appConfig.todo_item_length_max,
@@ -276,6 +281,7 @@ export function buildAppConfig(json: GramJs.TypeJSONValue, hash: number): ApiApp
     verifyAgeCountry: appConfig.verify_age_country,
     verifyAgeMin: appConfig.verify_age_min,
     typingDraftTtl: appConfig.message_typing_draft_ttl,
+    isMessagePrimaryEditedDateEnabled: appConfig.message_primary_edited_date,
     whitelistedBotIds: appConfig.whitelisted_bots,
     arePasskeysAvailable: appConfig.settings_display_passkeys,
     passkeysMaxCount: appConfig.passkeys_account_passkeys_max,

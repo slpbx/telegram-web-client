@@ -19,7 +19,7 @@ import useHistoryBack from '../../../hooks/useHistoryBack';
 import useLang from '../../../hooks/useLang';
 import useLastCallback from '../../../hooks/useLastCallback';
 
-import Icon from '../../common/icons/Icon';
+import GramIcon from '../../common/icons/GramIcon';
 import StarIcon from '../../common/icons/StarIcon';
 import ChatExtra from '../../common/profile/ChatExtra';
 import ProfileInfo from '../../common/profile/ProfileInfo';
@@ -89,6 +89,7 @@ const SettingsMain: FC<OwnProps & StateProps> = ({
         {currentUserId && (
           <ProfileInfo
             peerId={currentUserId}
+            isActive={Boolean(isActive)}
             canPlayVideo={Boolean(isActive)}
             isForSettings
           />
@@ -191,11 +192,11 @@ const SettingsMain: FC<OwnProps & StateProps> = ({
             )}
           </ListItem>
           <ListItem
-            leftElement={<Icon className="icon ListItem-main-icon" name="toncoin" />}
+            leftElement={<GramIcon isAppIcon className="ListItem-main-icon" />}
             narrow
             onClick={() => openStarsBalanceModal({ currency: TON_CURRENCY_CODE })}
           >
-            {lang('MenuTon')}
+            {lang('MenuGram')}
             {Boolean(tonBalance) && (
               <span className="settings-item__current-value">
                 {convertCurrencyFromBaseUnit(tonBalance.amount, tonBalance.currency)}

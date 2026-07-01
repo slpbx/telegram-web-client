@@ -14,6 +14,7 @@ import {
   MEDIA_CACHE_NAME_AVATARS,
 } from '../../../config';
 import * as cacheApi from '../../../util/cacheApi';
+import { bufferToUtf8 } from '../../../util/encoding/buffer';
 import { toJSNumber } from '../../../util/numbers';
 import { getEntityTypeById } from '../gramjsBuilders';
 import localDb from '../localDb';
@@ -97,7 +98,7 @@ async function download(
     const h = Number(parsedParams.get('h'));
     const zoom = Number(parsedParams.get('zoom'));
     const scale = Number(parsedParams.get('scale'));
-    const accuracyRadiusStr = parsedParams.get('accuracy_radius');
+    const accuracyRadiusStr = parsedParams.get('accuracyRadius');
     const accuracyRadius = accuracyRadiusStr ? Number(accuracyRadiusStr) : undefined;
 
     const data = await client.downloadStaticMap(accessHash, long, lat, w, h, zoom, scale, accuracyRadius);
@@ -185,26 +186,32 @@ async function download(
 }
 
 function parseMedia(
-  data: Buffer<ArrayBuffer> | File, mediaFormat: ApiMediaFormat, mimeType?: string,
+  data: Uint8Array | File, mediaFormat: ApiMediaFormat, mimeType?: string,
 ): ApiParsedMedia | undefined {
   if (data instanceof File) {
     return data;
   }
 
+  const dataBytes = new Uint8Array(data);
+
   switch (mediaFormat) {
     case ApiMediaFormat.BlobUrl:
-      return new Blob([data], { type: mimeType });
+      return new Blob([dataBytes], { type: mimeType });
     case ApiMediaFormat.Text:
-      return data.toString();
+      return bufferToUtf8(dataBytes);
     case ApiMediaFormat.Progressive:
     case ApiMediaFormat.DownloadUrl:
-      return data.buffer;
+      return dataBytes.buffer;
   }
 
   return undefined;
 }
 
-function getMimeType(data: Uint8Array, fallbackMimeType = 'image/jpeg') {
+function getMimeType(data: Uint8Array | File, fallbackMimeType = 'image/jpeg') {
+  if (data instanceof File) {
+    return data.type;
+  }
+
   if (data.length < 4) {
     return fallbackMimeType;
   }

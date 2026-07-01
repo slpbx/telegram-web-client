@@ -588,7 +588,7 @@ export function selectAllowedMessageActionsSlow<T extends GlobalState>(
       canEditMessagesIndefinitely
       || getServerTime() - message.date < (global.config?.editTimeLimit || Infinity)
     ) && !(
-      content.sticker || content.contact || content.pollId || content.action
+      content.sticker || content.contact || content.pollId || content.action || content.richMessage
       || (content.video?.isRound) || content.location || content.invoice || content.giveaway || content.giveawayResults
       || isDocumentSticker || content.dice
     )
@@ -1243,7 +1243,13 @@ export function selectDefaultReaction<T extends GlobalState>(global: T, chatId: 
     return defaultReaction;
   }
 
-  const chatReactions = selectChatFullInfo(global, chatId)?.enabledReactions;
+  const chat = selectChat(global, chatId);
+  const chatFullInfo = selectChatFullInfo(global, chatId);
+  if (chat && isUserRightBanned(chat, 'sendReactions', chatFullInfo)) {
+    return undefined;
+  }
+
+  const chatReactions = chatFullInfo?.enabledReactions;
   if (!chatReactions || !canSendReaction(defaultReaction, chatReactions)) {
     return undefined;
   }

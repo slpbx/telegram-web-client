@@ -3,9 +3,10 @@
     --modal-max-width: 35rem;
     --modal-max-height: min(92dvh, 50rem);
     --modal-header-height: 3.5rem;
-    --modal-content-block-padding: 1rem;
-    --modal-scroll-fade-size: 1rem;
+    --modal-content-block-padding: 0.5rem;
+    --modal-scroll-fade-size: 0rem;
     --modal-border-radius: 1.75rem;
+    --modal-background-color: var(--color-background-secondary);
 
     user-select: none;
 
@@ -124,8 +125,23 @@
     max-height: min(100%, var(--modal-max-height));
     border-radius: var(--modal-border-radius);
 
-    background-color: var(--color-background-secondary);
+    background-color: var(--modal-background-color);
     box-shadow: 0 0.625rem 2rem rgb(0 0 0 / 18%);
+
+    &:has(.scrollMask) {
+      --modal-scroll-fade-size: 1rem;
+
+      .withHeader {
+        mask-image:
+        linear-gradient(
+          to bottom,
+          transparent 0,
+          transparent calc(var(--modal-header-height) - var(--modal-scroll-fade-size)),
+          black calc(var(--modal-header-height) + var(--modal-scroll-fade-size)),
+          black 100%
+        );
+      }
+    }
   }
 
   .headerSlot {
@@ -149,14 +165,7 @@
   }
 
   .withHeader {
-    mask-image:
-      linear-gradient(
-        to bottom,
-        transparent 0,
-        transparent calc(var(--modal-header-height) - var(--modal-scroll-fade-size)),
-        black calc(var(--modal-header-height) + var(--modal-scroll-fade-size)),
-        black 100%
-      );
+    scroll-padding-top: calc(var(--modal-header-height) + var(--modal-scroll-fade-size));
   }
 
   .body {
@@ -165,7 +174,7 @@
   }
 
   .withHeader .body {
-    padding-top: calc(var(--modal-header-height) + var(--modal-content-block-padding));
+    padding-top: calc(var(--modal-header-height) + var(--modal-scroll-fade-size));
   }
 
   .header {
@@ -176,6 +185,12 @@
 
     min-height: var(--modal-header-height);
     padding: 0.5rem 1rem;
+
+    background-color: var(--color-background-secondary);
+  }
+
+  .scrollMask {
+    background-color: transparent;
   }
 
   .headerWithSubtitle {
@@ -219,6 +234,13 @@
     grid-row: 1 / -1;
     align-items: center;
     justify-self: end;
+  }
+
+  .footerActions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+    margin-top: 1rem;
   }
 
   .closeButton {
@@ -279,7 +301,8 @@
   }
 
   :global(body.no-page-transitions) {
-    .dialog::backdrop, .panel {
+    .dialog::backdrop,
+    .panel {
       animation: none !important;
     }
   }

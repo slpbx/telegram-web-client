@@ -62,7 +62,7 @@ export type MockDocument = Partial<Api.Document> & {
   mimeType: string;
   size: bigint;
   url: string;
-  bytes: Buffer;
+  bytes: Uint8Array;
 };
 
 export type MockDialogFilter = Partial<Api.DialogFilter> & {

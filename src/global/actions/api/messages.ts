@@ -8,6 +8,7 @@ import type {
   ApiInputStoryReplyInfo,
   ApiInputSuggestedPostInfo,
   ApiMessage,
+  ApiMessageReadMetric,
   ApiOnProgress,
   ApiStory,
   ApiUser,
@@ -161,6 +162,7 @@ import {
   selectUserFullInfo,
   selectUserStatus,
   selectViewportIds,
+  selectWebPage,
 } from '../../selectors';
 import {
   selectDraft,
@@ -347,6 +349,39 @@ addActionHandler('loadMessage', async (global, actions, payload): Promise<void> 
 
   global = getGlobal();
   global = updateChatMessage(global, chat.id, messageId, result.message);
+  setGlobal(global);
+});
+
+addActionHandler('loadRichMessage', async (global, actions, payload): Promise<void> => {
+  const {
+    chatId, messageId,
+  } = payload;
+
+  const chat = selectChat(global, chatId);
+  if (!chat) {
+    return;
+  }
+
+  const result = await callApi('fetchRichMessage', { chat, messageId });
+  if (!result) {
+    return;
+  }
+
+  global = getGlobal();
+  const currentMessage = selectChatMessage(global, chat.id, messageId);
+  const partCutoff = currentMessage?.content.richMessage?.partCutoff;
+  const richMessage = result.message.content.richMessage;
+
+  global = updateChatMessage(global, chat.id, messageId, {
+    ...result.message,
+    content: {
+      ...result.message.content,
+      richMessage: richMessage && partCutoff !== undefined ? {
+        ...richMessage,
+        partCutoff,
+      } : richMessage,
+    },
+  });
   setGlobal(global);
 });
 
@@ -1363,6 +1398,17 @@ addActionHandler('loadWebPagePreview', async (global, actions, payload): Promise
   actions.apiUpdate({
     '@type': 'updateWebPage',
     webPage: webPagePreview,
+  });
+});
+
+addActionHandler('loadWebPage', async (global, actions, payload): Promise<void> => {
+  const { url, hash } = payload;
+  const webPage = await callApi('fetchWebPage', { url, hash });
+  if (!webPage) return;
+
+  actions.apiUpdate({
+    '@type': 'updateWebPage',
+    webPage,
   });
 });
 
@@ -2517,9 +2563,9 @@ addActionHandler('readAllPollVotes', (global, actions, payload): ActionReturnTyp
   return global;
 });
 
-addActionHandler('openUrl', (global, actions, payload): ActionReturnType => {
+addActionHandler('openUrl', async (global, actions, payload): Promise<void> => {
   const {
-    url, shouldSkipModal, ignoreDeepLinks, linkContext, tabId = getCurrentTabId(),
+    url, shouldSkipModal, ignoreDeepLinks, tryInstant, previewId, linkContext, tabId = getCurrentTabId(),
   } = payload;
   const urlWithProtocol = ensureProtocol(url);
   const parsedUrl = new URL(urlWithProtocol);
@@ -2531,6 +2577,27 @@ addActionHandler('openUrl', (global, actions, payload): ActionReturnType => {
 
     actions.openTelegramLink({ url, linkContext, tabId });
     return;
+  }
+
+  if (tryInstant) {
+    const localWebPage = previewId ? selectWebPage(global, previewId) : undefined;
+    if (localWebPage?.webpageType === 'full' && localWebPage.cachedPage) {
+      actions.openInstantView({ webPageId: localWebPage.id, tabId });
+      return;
+    }
+
+    const webPage = await callApi('fetchWebPage', { url: urlWithProtocol });
+    if (webPage) {
+      actions.apiUpdate({
+        '@type': 'updateWebPage',
+        webPage,
+      });
+    }
+
+    if (webPage?.webpageType === 'full' && webPage.cachedPage) {
+      actions.openInstantView({ webPageId: webPage.id, tabId });
+      return;
+    }
   }
 
   const { appConfig, config } = global;
@@ -2955,7 +3022,9 @@ addActionHandler('translateMessages', (global, actions, payload): ActionReturnTy
 });
 
 addActionHandler('summarizeMessage', async (global, actions, payload): Promise<void> => {
-  const { chatId, id, toLanguageCode } = payload;
+  const {
+    chatId, id, toLanguageCode, onError,
+  } = payload;
   const chat = selectChat(global, chatId);
   if (!chat) return;
 
@@ -2975,9 +3044,9 @@ addActionHandler('summarizeMessage', async (global, actions, payload): Promise<v
   const result = await callApi('fetchMessageSummary', { chat, id, toLanguageCode: languageCode, tone: apiTone });
   if (!result) {
     global = getGlobal();
-    global = updateChatMessage(global, chatId, id, { summaryLanguageCode: undefined });
-    global = clearMessageSummary(global, chatId, id);
+    global = clearMessageSummary(global, chatId, id, toLanguageCode);
     setGlobal(global);
+    onError?.();
     return;
   }
 
@@ -3054,6 +3123,50 @@ addActionHandler('loadMessageViews', async (global, actions, payload): Promise<v
   });
 
   setGlobal(global);
+});
+
+const SEND_READ_METRICS_TIMEOUT = 1000;
+let readMetricsReportTimeout: number | undefined;
+let readMetricsToReport: Record<string, ApiMessageReadMetric[]> = {};
+
+function reportMessageReadMetrics() {
+  if (readMetricsReportTimeout) {
+    clearTimeout(readMetricsReportTimeout);
+    readMetricsReportTimeout = undefined;
+  }
+
+  const currentReadMetricsToReport = readMetricsToReport;
+  readMetricsToReport = {};
+
+  const global = getGlobal();
+  if (selectIsCurrentUserFrozen(global)) return;
+
+  Object.entries(currentReadMetricsToReport).forEach(([chatId, metrics]) => {
+    if (!metrics.length) return;
+
+    const chat = selectChat(global, chatId);
+    if (!chat) return;
+
+    void callApi('reportMessageReadMetrics', { chat, metrics });
+  });
+}
+
+addActionHandler('scheduleMessageReadMetricsReport', (global, actions, payload): ActionReturnType => {
+  const { chatId, metrics } = payload;
+
+  if (!metrics.length) return undefined;
+
+  if (!readMetricsReportTimeout) {
+    readMetricsReportTimeout = window.setTimeout(reportMessageReadMetrics, SEND_READ_METRICS_TIMEOUT);
+  }
+
+  if (!readMetricsToReport[chatId]) {
+    readMetricsToReport[chatId] = [];
+  }
+
+  readMetricsToReport[chatId].push(...metrics);
+
+  return undefined;
 });
 
 addActionHandler('loadFactChecks', async (global, actions, payload): Promise<void> => {

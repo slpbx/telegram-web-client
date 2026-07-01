@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from '@jest/globals';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { Api as GramJs } from '../../../lib/gramjs/tl';
 
 import {

@@ -134,6 +134,7 @@
     --color-warning: #{$color-warning};
 
     --color-yellow: #{$color-yellow};
+    --color-marked: #{rgba($color-yellow, 0.5)};
 
     --color-orange: #{$color-orange};
     --color-light-coral: #{$color-light-coral};
@@ -232,17 +233,26 @@
     --border-radius-modal: 2rem;
     --border-radius-toast: 1rem;
     --border-radius-island: 1.5rem;
+    --border-radius-pane: 2rem;
+    --shadow-island: 0 1px 4px 0 #0000000D;
+    --shadow-pane: 0 1px 5px -1px rgba(0, 0, 0, 0.21);
+    --shadow-footer: 0 1px 8px 1px rgba(0, 0, 0, 0.12);
+    --shadow-chat-list-panel: 0 1px 8px 0 rgba(0, 0, 0, 0.1);
     --border-radius-default: 1rem;
     --border-radius-default-small: 0.625rem;
     --border-radius-default-tiny: 0.375rem;
     --border-radius-messages: 0.9375rem;
     --border-radius-messages-small: 0.375rem;
     --border-radius-forum-avatar: 33.3333%;
-    --messages-container-width: 45.5rem;
+    --messages-container-width: 47.5rem;
     --right-column-width: 26.5rem;
+    --right-column-padding: 1rem;
+    --right-column-content-width: calc(var(--right-column-width) - var(--right-column-padding));
+    --middle-panel-inline-padding: 1rem;
     --folders-sidebar-width: 5rem;
     --window-controls-width: 0rem;
-    --header-height: 3.5rem;
+    --middle-header-height: 3rem;
+    --column-header-height: 4rem;
     --emoji-size: 1.25em;
     --custom-emoji-size: var(--emoji-size);
     --custom-emoji-border-radius: 0;
@@ -352,6 +362,7 @@
 
     @media (max-width: 600px) {
       --right-column-width: 100vw;
+      --middle-panel-inline-padding: 0.5rem;
       --symbol-menu-width: 100vw;
       --symbol-menu-height: 17.6875rem;
     }

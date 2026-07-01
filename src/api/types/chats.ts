@@ -23,6 +23,14 @@ type ApiChatType = (
 
 export type ApiPeer = ApiChat | ApiUser;
 
+export type ApiChatInviteJoinWebView = {
+  type: 'webView';
+  botId: string;
+  url: string;
+  queryId?: string;
+  isFullscreen: boolean;
+};
+
 export interface ApiChat {
   id: string;
   folderId?: number;
@@ -166,6 +174,7 @@ export interface ApiChatFullInfo {
   boostsToUnrestrict?: number;
   botVerification?: ApiBotVerification;
   mainTab?: ApiProfileTab;
+  guardBotId?: string;
 }
 
 export interface ApiChatMember {
@@ -192,6 +201,7 @@ export interface ApiChatAdminRights {
   pinMessages?: true;
   addAdmins?: true;
   anonymous?: true;
+  other?: true;
   manageCall?: true;
   manageTopics?: true;
   postStories?: true;
@@ -223,6 +233,7 @@ export interface ApiChatBannedRights {
   sendDocs?: true;
   sendPlain?: true;
   editRank?: true;
+  sendReactions?: true;
   untilDate?: number;
 }
 

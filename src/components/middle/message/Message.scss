@@ -519,6 +519,8 @@
 
   &.is-in-document-group {
     .message-content.document {
+      --surface-breakout-margin: -0.5rem;
+
       padding: 0.25rem 0.5rem !important;
     }
 
@@ -753,7 +755,7 @@
 
   .message-action-button-sticky {
     position: sticky;
-    top: 0.5rem;
+    top: calc(0.5rem + var(--message-list-top-inset, var(--middle-header-panes-height)));
   }
 
   .message-action-buttons {

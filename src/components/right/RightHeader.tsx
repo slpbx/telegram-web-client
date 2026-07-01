@@ -32,7 +32,6 @@ import buildClassName from '../../util/buildClassName';
 import { CAN_ACCESS_CHANNEL_SETTINGS } from '../../util/crmchat';
 import { isUserId } from '../../util/entities/ids';
 
-import { useVtn } from '../../hooks/animations/useVtn';
 import useAppLayout from '../../hooks/useAppLayout';
 import useCurrentOrPrev from '../../hooks/useCurrentOrPrev';
 import useFlag from '../../hooks/useFlag';
@@ -201,7 +200,6 @@ const RightHeader: FC<OwnProps & StateProps> = ({
 
   const [isDeleteDialogOpen, openDeleteDialog, closeDeleteDialog] = useFlag();
   const { isMobile } = useAppLayout();
-  const { createVtnStyle } = useVtn();
 
   const {
     sortType: giftsSortType,
@@ -710,7 +708,6 @@ const RightHeader: FC<OwnProps & StateProps> = ({
     <div
       className={buildClassName('RightHeader', isSecondaryBackground && 'secondary')}
       data-tauri-drag-region={IS_TAURI && IS_MAC_OS ? true : undefined}
-      style={createVtnStyle('rightHeader', true)}
     >
       <Button
         className="close-button"

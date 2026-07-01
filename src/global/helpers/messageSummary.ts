@@ -1,7 +1,7 @@
 import type { TeactNode } from '../../lib/teact/teact';
 
 import type {
-  ApiMediaExtendedPreview, ApiMessage, MediaContent, StatefulMediaContent,
+  ApiFormattedText, ApiMediaExtendedPreview, ApiMessage, MediaContent, StatefulMediaContent,
 } from '../../api/types';
 import { ApiMessageEntityTypes } from '../../api/types';
 
@@ -11,6 +11,7 @@ import { renderTextWithEntities } from '../../components/common/helpers/renderTe
 import {
   getMessageTextWithFallback, getMessageTranscription,
 } from './messages';
+import { getRichMessagePreviewText } from './richMessage';
 
 const SPOILER_CHARS = ['⠺', '⠵', '⠞', '⠟'];
 export const TRUNCATED_SUMMARY_LENGTH = 200;
@@ -25,26 +26,32 @@ export function getMessageSummaryText(
 ) {
   const emoji = !noEmoji && getMessageSummaryEmoji(message);
   const emojiWithSpace = emoji ? `${emoji} ` : '';
-  const text = trimText(getMessageTextWithSpoilers(lang, message, statefulContent), truncateLength);
-  const description = getMessageSummaryDescription(lang, message, statefulContent, text, isExtended) as string;
+  const text = trimText(getMessageTextWithSpoilers(lang, message, statefulContent, truncateLength), truncateLength);
+  const description = getMessageSummaryDescription(lang, message, statefulContent, text, isExtended);
+  const descriptionText = getSummaryDescriptionText(message, statefulContent, description, truncateLength);
 
-  return `${emojiWithSpace}${description}`;
+  return `${emojiWithSpace}${descriptionText}`;
 }
 
 export function getMessageTextWithSpoilers(
   lang: LangFn,
   message: ApiMessage,
   statefulContent: StatefulMediaContent | undefined,
+  truncateLength?: number,
 ) {
   const transcription = getMessageTranscription(message);
 
-  const textWithoutTranscription = getMessageTextWithFallback(lang, statefulContent?.story || message)?.text;
+  const richMessageText = message.content.richMessage
+    ? getRichMessagePreviewText(message.content.richMessage, truncateLength)
+    : undefined;
+  const textWithoutTranscription = richMessageText
+    || getMessageTextWithFallback(lang, statefulContent?.story || message)?.text;
   if (!textWithoutTranscription) {
     return transcription;
   }
 
   const { entities } = message.content.text || {};
-  if (!entities?.length) {
+  if (richMessageText || !entities?.length) {
     return transcription ? `${transcription}\n${textWithoutTranscription}` : textWithoutTranscription;
   }
 
@@ -153,6 +160,7 @@ function getSummaryDescription(
     paidMedia,
     todo,
     dice,
+    richMessage,
   } = mediaContent;
   const { poll } = statefulContent || {};
 
@@ -261,6 +269,10 @@ function getSummaryDescription(
     summary = dice.emoticon;
   }
 
+  if (richMessage) {
+    summary = truncatedText as string;
+  }
+
   return summary || lang('MessageUnsupported');
 }
 
@@ -279,4 +291,52 @@ function getMessageAudioCaption(mediaContent: MediaContent) {
 
   return (audio && [audio.title, audio.performer].filter(Boolean)
     .join(' — ')) || (text?.text);
+}
+
+function getSummaryDescriptionText(
+  message: ApiMessage,
+  statefulContent: StatefulMediaContent | undefined,
+  description: TeactNode,
+  truncateLength: number,
+): string {
+  const { todo } = message.content;
+  const { poll } = statefulContent || {};
+
+  if (todo) {
+    return trimText(getFormattedTextWithSpoilers(todo.todo.title), truncateLength);
+  }
+
+  if (poll) {
+    return trimText(getFormattedTextWithSpoilers(poll.summary.question), truncateLength);
+  }
+
+  if (Array.isArray(description)) {
+    return description.map((part) => {
+      return getSummaryDescriptionText(message, statefulContent, part, truncateLength);
+    }).join('');
+  }
+
+  return typeof description === 'string' || typeof description === 'number' ? String(description) : '';
+}
+
+function getFormattedTextWithSpoilers(formattedText: ApiFormattedText) {
+  const { text, entities } = formattedText;
+
+  if (!entities?.length) {
+    return text;
+  }
+
+  return entities.reduce((accText, {
+    type,
+    offset,
+    length,
+  }) => {
+    if (type !== ApiMessageEntityTypes.Spoiler) {
+      return accText;
+    }
+
+    const spoiler = generateBrailleSpoiler(length);
+
+    return `${accText.slice(0, offset)}${spoiler}${accText.slice(offset + length)}`;
+  }, text);
 }

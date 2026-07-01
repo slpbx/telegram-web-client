@@ -10,22 +10,23 @@ import type {
 export const CRM_CHAT_ACCOUNT_ID = typeof location !== 'undefined' ? (new URLSearchParams(location?.search ?? '').get('accountId') ?? '') : '';
 
 export const APP_CODE_NAME = 'A';
-export const APP_NAME = process.env.APP_NAME || `Telegram Web ${APP_CODE_NAME}`;
+export const APP_ENV = import.meta.env.TG_APP_ENV;
+export const APP_NAME = import.meta.env.TG_APP_NAME || `Telegram Web ${APP_CODE_NAME}`;
 
 export const PRODUCTION_HOSTNAME = 'tg-client.crmchat.ai';
 export const PRODUCTION_URL = 'https://tg-client.crmchat.ai/';
 export const WEB_VERSION_BASE = 'https://web.telegram.org/'; // Used to redirect to other versions
-export const BASE_URL = process.env.BASE_URL;
+export const BASE_URL = import.meta.env.TG_PUBLIC_URL;
 export const ACCOUNT_QUERY = 'account';
 
-export const IS_MOCKED_CLIENT = process.env.APP_MOCKED_CLIENT === '1';
-export const IS_TEST = process.env.APP_ENV === 'test';
-export const IS_PERF = process.env.APP_ENV === 'perf';
-export const IS_BETA = process.env.APP_ENV === 'staging';
+export const IS_MOCKED_CLIENT = import.meta.env.TG_APP_MOCKED_CLIENT === '1';
+export const IS_TEST = APP_ENV === 'test';
+export const IS_PERF = APP_ENV === 'perf';
+export const IS_BETA = APP_ENV === 'staging';
 
 export const PAID_MESSAGES_PURPOSE = 'paid_messages';
 
-export const DEBUG = process.env.APP_ENV !== 'production';
+export const DEBUG = APP_ENV !== 'production';
 export const DEBUG_MORE = false;
 export const DEBUG_CALLS = false;
 export const DEBUG_LOG_FILENAME = 'tt-log.json';
@@ -37,15 +38,17 @@ export const BETA_CHANGELOG_URL = 'https://telegra.ph/WebA-Beta-03-20';
 export const DEBUG_ALERT_MSG = 'Shoot!\nSomething went wrong, please see the error details in Dev Tools Console.';
 export const DEBUG_GRAMJS = false;
 
-export const PAGE_TITLE = process.env.APP_TITLE!;
+export const PAGE_TITLE = import.meta.env.TG_APP_TITLE;
 export const PAGE_TITLE_TAURI = 'Telegram Air';
 export const INACTIVE_MARKER = '[Inactive]';
+export const TELEGRAM_API_ID = Number(import.meta.env.TG_TELEGRAM_API_ID);
+export const TELEGRAM_API_HASH = import.meta.env.TG_TELEGRAM_API_HASH;
+export const TEST_SESSION = import.meta.env.TG_TEST_SESSION;
 
 export const DEBUG_PAYMENT_SMART_GLOCAL = false;
 
 export const SESSION_LEGACY_USER_KEY = 'user_auth';
 export const SESSION_ACCOUNT_PREFIX = 'account';
-export const LEGACY_PASSCODE_CACHE_NAME = 'tt-passcode';
 
 export const MULTIACCOUNT_MAX_SLOTS = 6;
 export const GLOBAL_STATE_CACHE_DISABLED = false;
@@ -199,7 +202,6 @@ export const UNMUTE_TIMESTAMP = 0;
 export const ANIMATION_END_DELAY = 100;
 export const ANIMATION_WAVE_MIN_INTERVAL = 200;
 export const MESSAGE_APPEARANCE_DELAY = 10;
-export const PAID_SEND_DELAY = 5000;
 
 export const SCROLL_MIN_DURATION = 300;
 export const SCROLL_MAX_DURATION = 600;
@@ -255,8 +257,7 @@ export const DEFAULT_TOPIC_ICON_STICKER_ID = 'topic-default-icon';
 export const DEFAULT_STATUS_ICON_ID = 'status-default-icon';
 export const EMOJI_IMG_REGEX = /<img[^>]+alt="([^"]+)"(?![^>]*data-document-id)[^>]*>/gm;
 
-export const FALLBACK_LANG_CODE = 'en';
-export const BASE_EMOJI_KEYWORD_LANG = FALLBACK_LANG_CODE;
+export const BASE_EMOJI_KEYWORD_LANG = 'en';
 
 export const MENU_TRANSITION_DURATION = 200;
 export const SLIDE_TRANSITION_DURATION = 450;
@@ -371,7 +372,6 @@ export const FEEDBACK_URL = 'https://bugs.telegram.org/?tag_ids=41&sort=time';
 export const FAQ_URL = 'https://telegram.org/faq';
 export const PRIVACY_URL = 'https://telegram.org/privacy';
 export const MINI_APP_TOS_URL = 'https://telegram.org/tos/mini-apps';
-export const FRAGMENT_ADS_URL = 'https://fragment.com/ads';
 export const GENERAL_TOPIC_ID = 1;
 export const FRESH_AUTH_PERIOD = 86400; // 1 day
 export const GIVEAWAY_BOOST_PER_PREMIUM = 4;

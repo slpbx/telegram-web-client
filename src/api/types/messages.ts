@@ -4,6 +4,7 @@ import type {
   ApiBotInlineResult,
   ApiWebDocument,
 } from './bots';
+import type { ApiInstantViewPage, ApiPageBlock } from './instantView';
 import type { ApiMessageAction } from './messageActions';
 import type { ApiAttachment, ApiPeerNotifySettings, ApiRestrictionReason } from './misc';
 import type {
@@ -20,6 +21,15 @@ export interface ApiDimensions {
   width: number;
   height: number;
 }
+
+export type ApiMessageReadMetric = {
+  messageId: number;
+  viewId: string;
+  timeInViewMs: number;
+  activeTimeInViewMs: number;
+  heightToViewportRatioPermille: number;
+  seenRangeRatioPermille: number;
+};
 
 export interface ApiPhotoSize extends ApiDimensions {
   type: 's' | 'm' | 'x' | 'y' | 'w';
@@ -59,7 +69,6 @@ export interface ApiSticker {
   height?: number;
   thumbnail?: ApiThumbnail;
   previewPhotoSizes?: ApiPhotoSize[];
-  isPreloadedGlobally?: boolean;
   hasEffect?: boolean;
   isFree?: boolean;
   shouldUseTextColor?: boolean;
@@ -211,6 +220,8 @@ export interface ApiPoll {
   shouldShuffleAnswers?: true;
   shouldHideResultsUntilClose?: true;
   isCreator?: true;
+  isRestrictedToSubscribers?: true;
+  allowedCountryCodes?: string[];
   question: ApiFormattedText;
   answers: ApiPollAnswer[];
   closePeriod?: number;
@@ -412,6 +423,7 @@ export interface ApiWebPageFull {
   webpageType: 'full';
   id: string;
   url: string;
+  hash: number;
   displayUrl: string;
   type?: string;
   siteName?: string;
@@ -426,6 +438,7 @@ export interface ApiWebPageFull {
   gift?: ApiStarGiftUnique;
   auction?: ApiWebPageAuctionData;
   stickers?: ApiWebPageStickerData;
+  cachedPage?: ApiInstantViewPage;
   aiComposeToneEmojiId?: string;
   hasLargeMedia?: boolean;
 }
@@ -650,6 +663,13 @@ export interface ApiFormattedTextWithEmojiOnlyCount extends ApiFormattedText {
   emojiOnlyCount?: number;
 }
 
+export interface ApiRichMessage {
+  blocks: ApiPageBlock[];
+  isRtl?: true;
+  isPart?: true;
+  partCutoff?: number;
+}
+
 export type ApiInputAiComposeTone = {
   type: 'default';
   tone: string;
@@ -695,6 +715,7 @@ export interface ApiComposedMessageWithAI {
 
 export type MediaContent = {
   text?: ApiFormattedTextWithEmojiOnlyCount;
+  richMessage?: ApiRichMessage;
   photo?: ApiPhoto;
   video?: ApiVideo;
   document?: ApiDocument;

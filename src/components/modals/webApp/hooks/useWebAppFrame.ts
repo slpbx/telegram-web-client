@@ -52,10 +52,11 @@ const useWebAppFrame = (
     closeWebApp,
     openSuggestedStatusModal,
     updateWebApp,
+    openUrl,
   } = getActions();
 
   const isReloadSupportedRef = useRef<boolean>(false);
-  const reloadTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const reloadTimeoutRef = useRef<number>();
   const ignoreEventsRef = useRef<boolean>(false);
   const lastFrameSizeRef = useRef<{ width: number; height: number; isResizing?: boolean }>();
   const windowSize = useWindowSize();
@@ -244,7 +245,7 @@ const useWebAppFrame = (
           return;
         }
 
-        window.open(eventData.url, '_blank', 'noopener,noreferrer');
+        openUrl({ url: eventData.url, tryInstant: eventData.try_instant_view, shouldSkipModal: true });
       }
 
       if (eventType === 'web_app_biometry_get_info') {

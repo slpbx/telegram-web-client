@@ -21,6 +21,7 @@ import type {
   ApiMessage,
   ApiMessageEntity,
   ApiMessagePoll,
+  ApiMessageReadMetric,
   ApiMessageSearchContext,
   ApiMessageSearchType,
   ApiNewMediaTodo,
@@ -70,7 +71,9 @@ import {
 import { buildApiTopicWithState } from '../apiBuilders/forums';
 import {
   buildMessageMediaContent, buildMessagePollFromMedia, buildMessageTextContent,
+  buildWebPage,
   buildWebPageFromMedia,
+  buildWebPagesFromMedia,
 } from '../apiBuilders/messageContent';
 import {
   buildApiFactCheck,
@@ -179,7 +182,7 @@ export async function fetchMessages({
       ...(threadId !== MAIN_THREAD_ID && !isSavedDialog && {
         msgId: Number(threadId),
       }),
-      // Workaround for local message IDs overflowing some internal `Buffer` range check
+      // Workaround for local message IDs overflowing some internal range check
       offsetId: offsetId ? Math.min(offsetId, MAX_INT_32) : DEFAULT_PRIMITIVES.INT,
       addOffset: addOffset ?? DEFAULT_PRIMITIVES.INT,
       limit,
@@ -279,6 +282,42 @@ export async function fetchMessage({ chat, messageId }: { chat: ApiChat; message
 
   if (mtpMessage instanceof GramJs.MessageEmpty) {
     return MESSAGE_DELETED;
+  }
+
+  processMessageAndUpdateThreadInfo(mtpMessage);
+  const message = buildApiMessage(mtpMessage);
+
+  if (!message) {
+    return undefined;
+  }
+
+  return { message };
+}
+
+export async function fetchRichMessage({ chat, messageId }: { chat: ApiChat; messageId: number }) {
+  const isChannel = getEntityTypeById(chat.id) === 'channel';
+
+  const result = await invokeRequest(
+    new GramJs.messages.GetRichMessage({
+      peer: buildInputPeer(chat.id, chat.accessHash),
+      id: messageId,
+    }),
+    {
+      abortControllerChatId: chat.id,
+    },
+  );
+
+  if (!result || result instanceof GramJs.messages.MessagesNotModified) {
+    return undefined;
+  }
+
+  if (isChannel && 'pts' in result) {
+    updateChannelState(chat.id, result.pts);
+  }
+
+  const mtpMessage = result.messages[0];
+  if (!mtpMessage || mtpMessage instanceof GramJs.MessageEmpty) {
+    return undefined;
   }
 
   processMessageAndUpdateThreadInfo(mtpMessage);
@@ -1056,7 +1095,7 @@ async function uploadMedia(message: ApiMessage, attachment: ApiAttachment, onPro
       attributes.push(new GramJs.DocumentAttributeAudio({
         voice: true,
         duration,
-        waveform: Buffer.from(inputWaveform),
+        waveform: Uint8Array.from(inputWaveform),
       }));
     }
   }
@@ -1476,6 +1515,36 @@ export async function fetchMessageViews({
   };
 }
 
+export async function reportMessageReadMetrics({
+  chat, metrics,
+}: {
+  chat: ApiChat;
+  metrics: ApiMessageReadMetric[];
+}) {
+  const chunks = split(metrics, API_GENERAL_ID_LIMIT);
+  const results = await Promise.all(chunks.map((chunkMetrics) => (
+    invokeRequest(new GramJs.messages.ReportReadMetrics({
+      peer: buildInputPeer(chat.id, chat.accessHash),
+      metrics: chunkMetrics.map(buildInputMessageReadMetric),
+    }))
+  )));
+
+  if (results.some((result) => !result)) return undefined;
+
+  return true;
+}
+
+function buildInputMessageReadMetric(metric: ApiMessageReadMetric) {
+  return new GramJs.InputMessageReadMetric({
+    msgId: metric.messageId,
+    viewId: BigInt(metric.viewId),
+    timeInViewMs: metric.timeInViewMs,
+    activeTimeInViewMs: metric.activeTimeInViewMs,
+    heightToViewportRatioPermille: metric.heightToViewportRatioPermille,
+    seenRangeRatioPermille: metric.seenRangeRatioPermille,
+  });
+}
+
 export async function fetchFactChecks({
   chat, ids,
 }: {
@@ -1863,6 +1932,25 @@ export async function fetchWebPagePreview({
   if (!preview) return undefined;
 
   return buildWebPageFromMedia(preview.media);
+}
+
+export async function fetchWebPage({
+  url,
+  hash = DEFAULT_PRIMITIVES.INT,
+}: {
+  url: string;
+  hash?: number;
+}) {
+  const result = await invokeRequest(new GramJs.messages.GetWebPage({
+    url,
+    hash,
+  }), {
+    shouldIgnoreErrors: true,
+  });
+
+  if (!result?.webpage) return undefined;
+
+  return buildWebPage(result.webpage);
 }
 
 export async function sendPollVote({
@@ -2631,7 +2719,7 @@ function handleLocalMessageUpdate(
 
   let newContent: MediaContent | undefined;
   let poll: ApiMessagePoll | undefined;
-  let webPage: ApiWebPage | undefined;
+  let webPages: ApiWebPage[] | undefined;
   if (messageUpdate instanceof GramJs.UpdateShortSentMessage) {
     if (localMessage.content.text && messageUpdate.entities) {
       newContent = {
@@ -2646,7 +2734,7 @@ function handleLocalMessageUpdate(
         }),
       };
       poll = buildMessagePollFromMedia(messageUpdate.media);
-      webPage = buildWebPageFromMedia(messageUpdate.media);
+      webPages = buildWebPagesFromMedia(messageUpdate.media);
     }
 
     const mtpMessage = buildMessageFromUpdate(messageUpdate.id, localMessage.chatId, messageUpdate);
@@ -2687,7 +2775,7 @@ function handleLocalMessageUpdate(
       localId: localMessage.id,
       message: updatedMessage,
       poll,
-      webPage,
+      webPages,
     });
   }
 

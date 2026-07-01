@@ -9,6 +9,7 @@ import type {
   ApiUser,
 } from '../../../api/types';
 
+import ensureLovelyChart from '../../../lib/lovelyChartWithStyles';
 import { selectChatFullInfo, selectTabState } from '../../../global/selectors';
 import buildClassName from '../../../util/buildClassName';
 import { callApi } from '../../../api/gramjs';
@@ -25,19 +26,6 @@ import StatisticsOverview from './StatisticsOverview';
 import StatisticsStoryPublicForward from './StatisticsStoryPublicForward';
 
 import styles from './Statistics.module.scss';
-
-type ILovelyChart = { create: (el: HTMLElement, params: AnyLiteral) => void };
-let lovelyChartPromise: Promise<ILovelyChart> | undefined;
-let LovelyChart: ILovelyChart;
-
-async function ensureLovelyChart() {
-  if (!lovelyChartPromise) {
-    lovelyChartPromise = import('../../../lib/lovely-chart/LovelyChart') as Promise<ILovelyChart>;
-    LovelyChart = await lovelyChartPromise;
-  }
-
-  return lovelyChartPromise;
-}
 
 const GRAPH_TITLES = {
   viewsGraph: 'Stats.StoryInteractionsTitle',
@@ -111,7 +99,7 @@ function StoryStatistics({
 
   useEffect(() => {
     (async () => {
-      await ensureLovelyChart();
+      const LovelyChart = await ensureLovelyChart();
 
       if (!isReady) {
         setIsReady(true);
@@ -143,17 +131,14 @@ function StoryStatistics({
 
         const { zoomToken } = graph;
 
-        LovelyChart.create(
-          containerRef.current!.children[index] as HTMLElement,
-          {
-            title: lang((GRAPH_TITLES as Record<string, string>)[name]),
-            ...zoomToken ? {
-              onZoom: (x: number) => callApi('fetchStatisticsAsyncGraph', { token: zoomToken, x, dcId }),
-              zoomOutLabel: lang('Graph.ZoomOut'),
-            } : {},
-            ...graph,
-          },
-        );
+        new LovelyChart(containerRef.current!.children[index] as HTMLElement, {
+          ...graph,
+          title: lang((GRAPH_TITLES as Record<string, string>)[name]),
+          onZoom: zoomToken
+            ? (x: number) => callApi('fetchStatisticsAsyncGraph', { token: zoomToken, x, dcId })
+            : undefined,
+          zoomOutLabel: zoomToken ? lang('Graph.ZoomOut') : undefined,
+        });
 
         loadedChartsRef.current.add(name);
       });

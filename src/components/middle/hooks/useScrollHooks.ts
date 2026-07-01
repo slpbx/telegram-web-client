@@ -33,7 +33,6 @@ export default function useScrollHooks({
   isReady,
   isReplacingHistoryRef,
   onScrollDownToggle,
-  onNotchToggle,
 }: {
   type: MessageListType;
   containerRef: ElementRef<HTMLDivElement>;
@@ -44,7 +43,6 @@ export default function useScrollHooks({
   isReady: boolean;
   isReplacingHistoryRef: { current: boolean };
   onScrollDownToggle: BooleanToVoidFunction | undefined;
-  onNotchToggle: AnyToVoidFunction | undefined;
 }) {
   const { loadViewportMessages } = getActions();
 
@@ -61,9 +59,8 @@ export default function useScrollHooks({
   const forwardsTriggerRef = useRef<HTMLDivElement>();
   const fabTriggerRef = useRef<HTMLDivElement>();
 
-  const toggleScrollTools = useLastCallback((scrollDown: boolean, notch: boolean) => {
+  const toggleScrollTools = useLastCallback((scrollDown: boolean) => {
     onScrollDownToggle?.(scrollDown);
-    onNotchToggle?.(notch);
   });
 
   const toggleScrollToolsDebounced = useDebouncedCallback(
@@ -74,13 +71,13 @@ export default function useScrollHooks({
     if (!isReady) return;
 
     if (!messageIds?.length) {
-      toggleScrollTools(false, false);
+      toggleScrollTools(false);
 
       return;
     }
 
     if (!isViewportNewest) {
-      toggleScrollToolsDebounced(true, true);
+      toggleScrollToolsDebounced(true);
 
       return;
     }
@@ -97,7 +94,7 @@ export default function useScrollHooks({
 
     if (scrollHeight === 0) return;
 
-    toggleScrollToolsDebounced(isUnread ? !isAtBottom : !isNearBottom, !isAtBottom);
+    toggleScrollToolsDebounced(isUnread ? !isAtBottom : !isNearBottom);
   });
 
   const {
@@ -166,9 +163,11 @@ export default function useScrollHooks({
     const container = containerRef.current;
     if (!container) return;
 
+    container.addEventListener('scroll', updateScrollTools);
     container.addEventListener('scrollend', updateScrollTools);
 
     return () => {
+      container.removeEventListener('scroll', updateScrollTools);
       container.removeEventListener('scrollend', updateScrollTools);
     };
   }, [containerRef]);

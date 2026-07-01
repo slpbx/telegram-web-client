@@ -1,0 +1,26 @@
+.root {
+  position: relative;
+
+  overflow: hidden;
+
+  max-width: 100%;
+  margin: 0 auto;
+  border-radius: 0.5rem;
+}
+
+.item {
+  position: absolute;
+}
+
+.media {
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 100% !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+}
+
+.media :global(.full-media),
+.media :global(.thumbnail) {
+  object-fit: cover !important;
+}

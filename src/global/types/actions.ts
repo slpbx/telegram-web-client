@@ -28,6 +28,7 @@ import type {
   ApiLimitTypeWithModal,
   ApiMessage,
   ApiMessageEntity,
+  ApiMessageReadMetric,
   ApiMessageSearchContext,
   ApiNewMediaTodo,
   ApiNotification,
@@ -91,6 +92,7 @@ import type {
   ManagementScreens,
   MediaViewerMedia,
   MediaViewerOrigin,
+  MediaViewerPageMedia,
   MessageList,
   MessageListType,
   MiddleSearchParams,
@@ -116,7 +118,7 @@ import type {
 import type { WebApp, WebAppModalStateType, WebAppOutboundEvent } from '../../types/webapp';
 import type { DownloadableMedia } from '../helpers';
 import type { SharedState } from './sharedState';
-import type { TabState } from './tabState';
+import type { ReactionDeletionContext, TabState } from './tabState';
 
 export type WithTabId = { tabId?: number };
 
@@ -188,6 +190,7 @@ export interface ActionPayloads {
     userId: string;
     adminRights: ApiChatAdminRights;
     rank?: string;
+    processJoinRequests?: boolean;
   } & WithTabId;
   editChatParticipantRank: {
     chatId: string;
@@ -198,7 +201,7 @@ export interface ActionPayloads {
   checkChatInvite: {
     hash: string;
   } & WithTabId;
-  acceptChatInvite: { hash: string } & WithTabId;
+  acceptChatInvite: { hash: string; isRequestNeeded?: boolean; isBroadcast?: boolean } & WithTabId;
   closeChatInviteModal: WithTabId | undefined;
 
   // settings
@@ -304,6 +307,10 @@ export interface ActionPayloads {
   loadWebPagePreview: {
     text: ApiFormattedText;
   } & WithTabId;
+  loadWebPage: {
+    url: string;
+    hash?: number;
+  };
   clearWebPagePreview: WithTabId | undefined;
   loadWallpapers: undefined;
   uploadWallpaper: File;
@@ -559,6 +566,10 @@ export interface ActionPayloads {
     messageId: number;
     replyOriginForId?: number;
   };
+  loadRichMessage: {
+    chatId: string;
+    messageId: number;
+  };
   loadMessagesById: {
     chatId: string;
     messageIds: number[];
@@ -715,6 +726,7 @@ export interface ActionPayloads {
     messageId?: number;
     commentId?: number;
     startParam?: string;
+    startGroup?: string;
     ref?: string;
     startAttach?: string;
     attach?: string;
@@ -950,6 +962,10 @@ export interface ActionPayloads {
     messageId?: number;
   } & WithTabId;
   closeChatLanguageModal: WithTabId | undefined;
+  openInstantView: {
+    webPageId: string;
+  } & WithTabId;
+  closeInstantView: WithTabId | undefined;
 
   // poll result
   openPollResults: {
@@ -1298,7 +1314,10 @@ export interface ActionPayloads {
   toggleJoinRequest: {
     chatId: string;
     isEnabled: boolean;
-  };
+    guardBotId?: string;
+    shouldClearGuardBot?: boolean;
+    shouldApplyToInvites?: boolean;
+  } & WithTabId;
   changeProfileTab: {
     profileTab: ProfileTabType | undefined;
     shouldScrollTo?: boolean;
@@ -1468,6 +1487,10 @@ export interface ActionPayloads {
     ids: number[];
     shouldIncrement?: boolean;
   };
+  scheduleMessageReadMetricsReport: {
+    chatId: string;
+    metrics: ApiMessageReadMetric[];
+  };
   loadFactChecks: {
     chatId: string;
     ids: number[];
@@ -1589,6 +1612,7 @@ export interface ActionPayloads {
     chatId: string;
     id: number;
     toLanguageCode?: string;
+    onError?: NoneToVoidFunction;
   };
 
   // Reactions
@@ -1845,6 +1869,7 @@ export interface ActionPayloads {
     threadId?: ThreadId;
     messageId?: number;
     standaloneMedia?: MediaViewerMedia[];
+    pageMedia?: MediaViewerPageMedia;
     mediaIndex?: number;
     isAvatarView?: boolean;
     isSponsoredMessage?: boolean;
@@ -2212,8 +2237,9 @@ export interface ActionPayloads {
   resetAllInlineBots: WithTabId | undefined;
   startBot: {
     botId: string;
+    chatId?: string;
     param?: string;
-  };
+  } & WithTabId;
   restartBot: {
     chatId: string;
   } & WithTabId;
@@ -2301,6 +2327,14 @@ export interface ActionPayloads {
   openWebAppTab: {
     webApp?: WebApp;
   } & WithTabId;
+  openChatInviteWebView: {
+    botId: string;
+    url: string;
+    queryId?: string;
+    peerId?: string;
+    isFullscreen?: boolean;
+    isBroadcast?: boolean;
+  } & WithTabId;
   loadPreviewMedias: {
     botId: string;
   };
@@ -2330,6 +2364,12 @@ export interface ActionPayloads {
     startParam?: string;
   } & WithTabId;
   cancelAttachBotInChat: WithTabId | undefined;
+
+  requestBotStartGroup: {
+    bot: ApiUser;
+    startParam?: string;
+  } & WithTabId;
+  cancelBotStartGroup: WithTabId | undefined;
 
   sendWebViewData: {
     bot: ApiUser;
@@ -2496,6 +2536,8 @@ export interface ActionPayloads {
     url: string;
     shouldSkipModal?: boolean;
     ignoreDeepLinks?: boolean;
+    tryInstant?: boolean;
+    previewId?: string;
     linkContext?: LinkContext;
   } & WithTabId;
   openMapModal: {
@@ -2592,7 +2634,7 @@ export interface ActionPayloads {
   setPasscode: { passcode: string } & WithTabId;
   clearPasscode: undefined;
   lockScreen: undefined;
-  unlockScreen: { sessionJson: string; globalJson: string };
+  unlockScreen: { sessionJson: string; globalJson: string; sharedStateJson?: string };
   softSignIn: undefined;
   logInvalidUnlockAttempt: undefined;
   resetInvalidUnlockAttempts: undefined;
@@ -2802,8 +2844,26 @@ export interface ActionPayloads {
     messageIds: number[];
     isSchedule?: boolean;
     onConfirm?: NoneToVoidFunction;
+    reactionContext?: ReactionDeletionContext;
   } & WithTabId);
   closeDeleteMessageModal: WithTabId | undefined;
+
+  deleteParticipantReaction: {
+    chatId: string;
+    messageId: number;
+    peerId: string;
+    notificationPluralValue?: number;
+  } & WithTabId;
+  deleteParticipantReactions: {
+    chatId: string;
+    peerId: string;
+    shouldUseNotificationPluralLang?: boolean;
+  } & WithTabId;
+  reportMessageReaction: {
+    chatId: string;
+    messageId: number;
+    peerId: string;
+  };
 
   transcribeAudio: {
     chatId: string;

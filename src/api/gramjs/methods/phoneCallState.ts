@@ -1,10 +1,24 @@
 import { gunzipSync, gzipSync } from 'fflate';
 import { CTR } from '../../../lib/gramjs/crypto/CTR';
+import { SecurityError } from '../../../lib/gramjs/errors';
 import {
-  getByteArray, modExp, readBigIntFromBuffer, readBufferFromBigInt, sha1, sha256,
+  DH_PRIME_BYTES,
+  generateDhPrivateExponent,
+  modExp,
+  readBigIntFromBuffer,
+  readBufferFromBigInt,
+  sha1,
+  sha256,
+  validateDhParameters,
+  validateDhPublicValue,
 } from '../../../lib/gramjs/Helpers';
 
+import {
+  bufferFromUtf8, buffersEqual, bufferToUtf8, concat, readUint32BE, writeUint32BE,
+} from '../../../util/encoding/buffer';
 import { isSctpPacket, SctpSignaling } from './sctpSignaling';
+
+const SHA256_HASH_BYTES = 32;
 
 type DhConfig = {
   p: number[];
@@ -12,10 +26,30 @@ type DhConfig = {
   random: number[];
 };
 
+type ConfirmCallParams = {
+  gAOrB: number[];
+  emojiData: Uint16Array;
+  emojiOffsets: number[];
+  gAHash?: number[];
+  expectedKeyFingerprint?: string;
+};
+
+type VerifyKeyFingerprintParams = {
+  expectedKeyFingerprint: string;
+};
+
+type PhoneCallDataParams = {
+  data: unknown;
+};
+
+type DecodePhoneCallDataParams = {
+  data: number[];
+};
+
 let currentPhoneCallState: PhoneCallState | undefined;
 
 class PhoneCallState {
-  private authKey?: Buffer;
+  private authKey?: Uint8Array;
 
   private sctp = new SctpSignaling();
 
@@ -32,6 +66,8 @@ class PhoneCallState {
   private p?: bigint;
 
   private random?: bigint;
+
+  private keyFingerprint?: string;
 
   private waitForState: Promise<void>;
 
@@ -59,94 +95,135 @@ class PhoneCallState {
   }
 
   async requestCall({ p, g, random }: DhConfig) {
-    const pBN = readBigIntFromBuffer(Buffer.from(p), false);
-    const randomBN = readBigIntFromBuffer(Buffer.from(random), false);
+    const primeBytes = Uint8Array.from(p);
+    const pBN = validateDhParameters(primeBytes, g);
+    const randomBN = generateDhPrivateExponent(pBN, random);
 
     const gA = modExp(BigInt(g), randomBN, pBN);
+    validateDhPublicValue(gA, pBN, 'g_a');
 
     this.gA = gA;
     this.p = pBN;
     this.random = randomBN;
 
-    const gAHash: Buffer = await sha256(getByteArray(gA));
+    const gAHash = await sha256(readBufferFromBigInt(gA, DH_PRIME_BYTES, false));
     return Array.from(gAHash);
   }
 
   acceptCall({ p, g, random }: DhConfig) {
-    const pLast = readBigIntFromBuffer(Buffer.from(p), false);
-    const randomLast = readBigIntFromBuffer(Buffer.from(random), false);
+    const primeBytes = Uint8Array.from(p);
+    const pLast = validateDhParameters(primeBytes, g);
+    const randomLast = generateDhPrivateExponent(pLast, random);
 
     const gB = modExp(BigInt(g), randomLast, pLast);
+    validateDhPublicValue(gB, pLast, 'g_b');
+
     this.gB = gB;
     this.p = pLast;
     this.random = randomLast;
 
-    return Array.from(getByteArray(gB));
+    return Array.from(readBufferFromBigInt(gB, DH_PRIME_BYTES, false));
   }
 
-  async confirmCall(gAOrB: number[], emojiData: Uint16Array, emojiOffsets: number[]) {
+  async confirmCall({
+    gAOrB,
+    emojiData,
+    emojiOffsets,
+    gAHash,
+    expectedKeyFingerprint,
+  }: ConfirmCallParams) {
     if (!this.random || !this.p) {
       throw new Error('Values not set');
     }
 
+    const peerValueBytes = Uint8Array.from(gAOrB);
     if (this.isOutgoing) {
-      this.gB = readBigIntFromBuffer(Buffer.from(gAOrB), false);
+      this.gB = readBigIntFromBuffer(peerValueBytes, false);
+      validateDhPublicValue(this.gB, this.p, 'g_b');
     } else {
-      this.gA = readBigIntFromBuffer(Buffer.from(gAOrB), false);
+      if (!gAHash) {
+        throw new SecurityError('Missing phone call gA hash');
+      }
+
+      if (expectedKeyFingerprint === undefined) {
+        throw new SecurityError('Missing phone call key fingerprint');
+      }
+
+      await validateGAHash(peerValueBytes, gAHash);
+      this.gA = readBigIntFromBuffer(peerValueBytes, false);
+      validateDhPublicValue(this.gA, this.p, 'g_a');
     }
     const authKey = modExp(
       (!this.isOutgoing ? this.gA : this.gB)!,
       this.random,
       this.p,
     );
-    const fingerprint: Buffer = await sha1(getByteArray(authKey));
+    const authKeyBytes = readBufferFromBigInt(authKey, DH_PRIME_BYTES, false);
+    const fingerprint = await sha1(authKeyBytes);
     const keyFingerprint = readBigIntFromBuffer(fingerprint.slice(-8), true, true);
+    const keyFingerprintString = keyFingerprint.toString();
 
+    if (expectedKeyFingerprint !== undefined && keyFingerprintString !== expectedKeyFingerprint) {
+      throw new SecurityError('Phone call key fingerprint mismatch');
+    }
+
+    const gABytes = readBufferFromBigInt(this.gA!, DH_PRIME_BYTES, false);
     const emojis = await generateEmojiFingerprint(
-      getByteArray(authKey),
-      getByteArray(this.gA!),
+      authKeyBytes,
+      gABytes,
       emojiData,
       emojiOffsets,
     );
 
-    this.authKey = readBufferFromBigInt(authKey, 256, false);
+    this.authKey = authKeyBytes;
+    this.keyFingerprint = keyFingerprintString;
     this.resolveState?.();
     this.resolveState = undefined;
 
-    return { gA: Array.from(getByteArray(this.gA!)), keyFingerprint: keyFingerprint.toString(), emojis };
+    return { gA: Array.from(gABytes), keyFingerprint: keyFingerprintString, emojis };
   }
 
-  private async calcKey(msgKey: Buffer, isClient: boolean) {
+  verifyKeyFingerprint({ expectedKeyFingerprint }: VerifyKeyFingerprintParams) {
+    if (!this.keyFingerprint) {
+      throw new SecurityError('Phone call key fingerprint is not set');
+    }
+
+    if (this.keyFingerprint !== expectedKeyFingerprint) {
+      throw new SecurityError('Phone call key fingerprint mismatch');
+    }
+  }
+
+  private async calcKey(msgKey: Uint8Array, isClient: boolean) {
     if (!this.authKey) {
       throw new Error('Auth key unset');
     }
 
     const x = 128 + (this.isOutgoing !== isClient ? 8 : 0);
     const [sha256a, sha256b] = await Promise.all([
-      sha256(Buffer.concat([msgKey, this.authKey.slice(x, x + 36)])),
-      sha256(Buffer.concat([this.authKey.slice(x + 40, x + 76), msgKey])),
+      sha256(concat(msgKey, this.authKey.slice(x, x + 36))),
+      sha256(concat(this.authKey.slice(x + 40, x + 76), msgKey)),
     ]);
 
     return {
-      key: Buffer.concat([sha256a.slice(0, 8), sha256b.slice(8, 24), sha256a.slice(24, 32)]),
-      iv: Buffer.concat([sha256b.slice(0, 4), sha256a.slice(8, 16), sha256b.slice(24, 28)]),
+      key: concat(sha256a.slice(0, 8), sha256b.slice(8, 24), sha256a.slice(24, 32)),
+      iv: concat(sha256b.slice(0, 4), sha256a.slice(8, 16), sha256b.slice(24, 28)),
     };
   }
 
   async encode(data: unknown) {
     if (!this.authKey) return undefined;
 
-    const message = Buffer.from(gzipSync(Buffer.from(JSON.stringify(data))));
-    const packet = Buffer.alloc(4 + message.length);
-    packet.writeUInt32BE(++this.seq, 0);
-    message.copy(packet, 4);
+    const message = gzipSync(bufferFromUtf8(JSON.stringify(data)));
+    const packet = new Uint8Array(4 + message.length);
+    writeUint32BE(packet, ++this.seq);
+    packet.set(message, 4);
 
     const x = 128 + (this.isOutgoing ? 0 : 8);
-    const msgKeyLarge = await sha256(Buffer.concat([this.authKey.slice(88 + x, 88 + x + 32), packet]));
+    const msgKeyLarge = await sha256(concat(this.authKey.slice(88 + x, 88 + x + 32), packet));
     const msgKey = msgKeyLarge.slice(8, 24);
     const { key, iv } = await this.calcKey(msgKey, true);
     const encrypted = new CTR(key, iv).encrypt(packet);
-    const body = Buffer.concat([msgKey, encrypted]);
+    const body = concat(msgKey, encrypted);
 
     return this.shouldUseSctp ? this.sctp.wrapPayload(body) : Array.from(body);
   }
@@ -164,7 +241,7 @@ class PhoneCallState {
       return this.decode(data);
     }
 
-    const incoming = Buffer.from(data);
+    const incoming = Uint8Array.from(data);
     const payloads = isSctpPacket(incoming) ? this.sctp.receive(incoming) : [];
     const bodies = payloads.length ? payloads : [incoming];
     const messages = [];
@@ -182,7 +259,7 @@ class PhoneCallState {
     return messages[0];
   }
 
-  private async decodeBody(body: Buffer): Promise<any> {
+  private async decodeBody(body: Uint8Array): Promise<any> {
     if (body.length < 21) {
       return undefined;
     }
@@ -197,8 +274,8 @@ class PhoneCallState {
     const decrypted = new CTR(key, iv).decrypt(encryptedData);
 
     const x = 128 + (this.isOutgoing ? 8 : 0);
-    const msgKeyLarge = await sha256(Buffer.concat([authKey.slice(88 + x, 88 + x + 32), decrypted]));
-    if (!msgKey.equals(msgKeyLarge.slice(8, 24))) {
+    const msgKeyLarge = await sha256(concat(authKey.slice(88 + x, 88 + x + 32), decrypted));
+    if (!buffersEqual(msgKey, msgKeyLarge.slice(8, 24))) {
       return undefined;
     }
 
@@ -206,16 +283,16 @@ class PhoneCallState {
       return undefined;
     }
 
-    const inboundSeq = decrypted.readUInt32BE(0);
+    const inboundSeq = readUint32BE(decrypted);
     if (!this.shouldAcceptInboundSeq(inboundSeq)) {
       return undefined;
     }
 
     const message = decrypted.slice(4);
     try {
-      const payload = message[0] === 0x1F && message[1] === 0x8B ? Buffer.from(gunzipSync(message)) : message;
+      const payload = message[0] === 0x1F && message[1] === 0x8B ? gunzipSync(message) : message;
       this.markInboundSeq(inboundSeq);
-      return JSON.parse(payload.toString());
+      return JSON.parse(bufferToUtf8(payload));
     } catch {
       return undefined;
     }
@@ -263,7 +340,7 @@ function computeEmojiIndex(bytes: Uint8Array) {
 async function generateEmojiFingerprint(
   authKey: Uint8Array, gA: Uint8Array, emojiData: Uint16Array, emojiOffsets: number[],
 ) {
-  const hash = await sha256(Buffer.concat([new Uint8Array(authKey), new Uint8Array(gA)]));
+  const hash = await sha256(concat(new Uint8Array(authKey), new Uint8Array(gA)));
   const result = [];
   const emojiCount = emojiOffsets.length - 1;
   const kPartSize = 8;
@@ -275,6 +352,17 @@ async function generateEmojiFingerprint(
     result.push(String.fromCharCode(...emojiData.subarray(offset, offset + size)));
   }
   return result.join('');
+}
+
+async function validateGAHash(gA: Uint8Array, expectedHash: number[]) {
+  if (expectedHash.length !== SHA256_HASH_BYTES) {
+    throw new SecurityError('Invalid phone call gA hash');
+  }
+
+  const actualHash = await sha256(gA);
+  if (!buffersEqual(actualHash, Uint8Array.from(expectedHash))) {
+    throw new SecurityError('Phone call gA hash mismatch');
+  }
 }
 
 export function createPhoneCallState({
@@ -302,18 +390,17 @@ type FunctionPropertyOf<T> = {
     : never
 }[keyof T];
 
-type ParamsOf<T extends FunctionPropertyOf<PhoneCallState>> = Parameters<PhoneCallState[T]>;
 type ReturnTypeOf<T extends FunctionPropertyOf<PhoneCallState>> = ReturnType<PhoneCallState[T]>;
 
-export function encodePhoneCallData(params: ParamsOf<'encode'>): ReturnTypeOf<'encode'> {
-  return currentPhoneCallState!.encode(...params);
+export function encodePhoneCallData({ data }: PhoneCallDataParams): ReturnTypeOf<'encode'> {
+  return currentPhoneCallState!.encode(data);
 }
 
-export async function decodePhoneCallData(params: ParamsOf<'decode'>) {
+export async function decodePhoneCallData({ data }: DecodePhoneCallDataParams) {
   if (!currentPhoneCallState) {
     return undefined;
   }
-  const result = await currentPhoneCallState.decode(...params);
+  const result = await currentPhoneCallState.decode(data);
   return result;
 }
 
@@ -321,14 +408,20 @@ export function drainPhoneCallSignalingData() {
   return currentPhoneCallState?.drainSignalingData() || [];
 }
 
-export function confirmPhoneCall(params: ParamsOf<'confirmCall'>): ReturnTypeOf<'confirmCall'> {
-  return currentPhoneCallState!.confirmCall(...params);
+export function confirmPhoneCall(params: ConfirmCallParams): ReturnTypeOf<'confirmCall'> {
+  return currentPhoneCallState!.confirmCall(params);
 }
 
-export function acceptPhoneCall(params: ParamsOf<'acceptCall'>): ReturnTypeOf<'acceptCall'> {
-  return currentPhoneCallState!.acceptCall(...params);
+export function verifyPhoneCallKeyFingerprint(
+  params: VerifyKeyFingerprintParams,
+): ReturnTypeOf<'verifyKeyFingerprint'> {
+  return currentPhoneCallState!.verifyKeyFingerprint(params);
 }
 
-export function requestPhoneCall(params: ParamsOf<'requestCall'>): ReturnTypeOf<'requestCall'> {
-  return currentPhoneCallState!.requestCall(...params);
+export function acceptPhoneCall(params: DhConfig): ReturnTypeOf<'acceptCall'> {
+  return currentPhoneCallState!.acceptCall(params);
+}
+
+export function requestPhoneCall(params: DhConfig): ReturnTypeOf<'requestCall'> {
+  return currentPhoneCallState!.requestCall(params);
 }

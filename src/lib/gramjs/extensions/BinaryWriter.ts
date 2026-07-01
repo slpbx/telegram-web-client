@@ -1,15 +1,17 @@
-export default class BinaryWriter {
-  private readonly _buffers: Buffer<ArrayBuffer>[];
+import { concat } from '../../../util/encoding/buffer';
 
-  constructor(stream: Buffer<ArrayBuffer>) {
+export default class BinaryWriter {
+  private readonly _buffers: Uint8Array[];
+
+  constructor(stream: Uint8Array) {
     this._buffers = [stream];
   }
 
-  write(buffer: Buffer<ArrayBuffer>) {
+  write(buffer: Uint8Array) {
     this._buffers.push(buffer);
   }
 
-  getValue(): Buffer<ArrayBuffer> {
-    return Buffer.concat(this._buffers);
+  getValue(): Uint8Array {
+    return concat(...this._buffers);
   }
 }

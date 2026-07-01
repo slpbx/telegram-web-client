@@ -11,7 +11,7 @@ import type {
   VirtualElementTag,
 } from './teact';
 
-import { DEBUG } from '../../config';
+import { DEBUG, IS_PERF } from '../../config';
 import { addEventListener, removeAllDelegatedListeners, removeEventListener } from './dom-events';
 import {
   captureImmediateEffects,
@@ -53,6 +53,7 @@ const MAPPED_ATTRIBUTES: Partial<Record<string, string>> = {
   autoPlay: 'autoplay',
   spellCheck: 'spellcheck',
   autoFocus: 'autofocus',
+  srcDoc: 'srcdoc',
 };
 const INDEX_KEY_PREFIX = '__indexKey#';
 const SELECTION_STATE_ATTRIBUTE = '__teactSelectionState';
@@ -77,7 +78,7 @@ function render($element: VirtualElement | undefined, parentEl: HTMLElement) {
 
   $head.children = $renderedChild ? [$renderedChild] : [];
 
-  if (process.env.APP_ENV === 'perf') {
+  if (IS_PERF) {
     DEBUG_virtualTreeSize = 0;
     DEBUG_addToVirtualTreeSize($head);
 

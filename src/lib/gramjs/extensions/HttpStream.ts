@@ -1,3 +1,5 @@
+import { concat } from '../../../util/encoding/buffer';
+
 const closeError = new Error('HttpStream was closed');
 const REQUEST_TIMEOUT = 10000;
 
@@ -12,7 +14,7 @@ export default class HttpStream {
 
   private isClosed: boolean;
 
-  private stream: Buffer<ArrayBuffer>[] = [];
+  private stream: Uint8Array[] = [];
 
   private canRead: Promise<void> = Promise.resolve();
 
@@ -28,11 +30,11 @@ export default class HttpStream {
   }
 
   async readExactly(number: number) {
-    let readData = Buffer.alloc(0);
+    let readData = new Uint8Array(0);
 
     while (true) {
       const thisTime = await this.read();
-      readData = Buffer.concat([readData, thisTime]);
+      readData = concat(readData, thisTime);
       number -= thisTime.length;
       if (number <= 0) {
         return readData;
@@ -74,7 +76,7 @@ export default class HttpStream {
 
     await fetch(this.url, {
       method: 'POST',
-      body: Buffer.from([]),
+      body: new Uint8Array(0),
       mode: 'cors',
       signal: AbortSignal.timeout(REQUEST_TIMEOUT),
     });
@@ -82,7 +84,7 @@ export default class HttpStream {
     this.isClosed = false;
   }
 
-  write(data: Buffer<ArrayBuffer>) {
+  write(data: Uint8Array) {
     if (this.isClosed || !this.url) {
       this.handleDisconnect();
       throw closeError;
@@ -90,7 +92,7 @@ export default class HttpStream {
 
     return fetch(this.url, {
       method: 'POST',
-      body: data,
+      body: new Uint8Array(data),
       mode: 'cors',
       signal: AbortSignal.timeout(REQUEST_TIMEOUT),
     }).then(async (response) => {
@@ -104,7 +106,7 @@ export default class HttpStream {
 
       const arrayBuffer = await response.arrayBuffer();
 
-      this.stream = this.stream.concat(Buffer.from(arrayBuffer));
+      this.stream = this.stream.concat(new Uint8Array(arrayBuffer));
       if (this.resolveRead && !this.isClosed) this.resolveRead();
     }).catch((err) => {
       this.handleDisconnect();

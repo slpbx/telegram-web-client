@@ -1,6 +1,7 @@
 import type { WrappedError } from '../../../api/gramjs/helpers/misc';
 import type TelegramClient from './TelegramClient';
 
+import { concat } from '../../../util/encoding/buffer';
 import { EmailUnconfirmedError } from '../errors';
 import Api from '../tl/api';
 
@@ -84,7 +85,7 @@ export async function updateTwoFaSettings(
     throw new Error('Password algorithm is unknown');
   }
 
-  newAlgo.salt1 = Buffer.concat([newAlgo.salt1, generateRandomBytes(32)]);
+  newAlgo.salt1 = concat(newAlgo.salt1, generateRandomBytes(32));
   if (!pwd.hasPassword && currentPassword) {
     currentPassword = undefined;
   }
@@ -101,7 +102,7 @@ export async function updateTwoFaSettings(
       password,
       newSettings: new Api.account.PasswordInputSettings({
         newAlgo,
-        newPasswordHash: newPassword ? await computeDigest(newAlgo, newPassword) : Buffer.alloc(0),
+        newPasswordHash: newPassword ? await computeDigest(newAlgo, newPassword) : new Uint8Array(0),
         hint,
         email,
         // not explained what it does and it seems to always be set to empty in tdesktop

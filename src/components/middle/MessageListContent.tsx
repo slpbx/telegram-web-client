@@ -1,5 +1,5 @@
 import type { ElementRef, TeactNode } from '../../lib/teact/teact';
-import { getIsHeavyAnimating, memo } from '../../lib/teact/teact';
+import { getIsHeavyAnimating, memo, useRef } from '../../lib/teact/teact';
 import { getActions, getGlobal } from '../../global';
 
 import type { ApiMessage } from '../../api/types';
@@ -34,8 +34,10 @@ import { renderPeerLink } from './message/helpers/messageActions';
 
 import useDerivedSignal from '../../hooks/useDerivedSignal';
 import useLang from '../../hooks/useLang';
+import useLastCallback from '../../hooks/useLastCallback';
 import useOldLang from '../../hooks/useOldLang';
 import usePreviousDeprecated from '../../hooks/usePreviousDeprecated';
+import useResizeObserver from '../../hooks/useResizeObserver';
 import useMessageObservers from './hooks/useMessageObservers';
 import useScrollHooks from './hooks/useScrollHooks';
 
@@ -74,6 +76,7 @@ interface OwnProps {
   isReplacingHistoryRef: { current: boolean };
   type: MessageListType;
   isReady: boolean;
+  isActive?: boolean;
   hasLinkedChat: boolean | undefined;
   isSchedule: boolean;
   shouldRenderAccountInfo?: boolean;
@@ -85,7 +88,7 @@ interface OwnProps {
   canPost?: boolean;
   shouldScrollToBottom?: boolean;
   onScrollDownToggle?: BooleanToVoidFunction;
-  onNotchToggle?: AnyToVoidFunction;
+  onContentResize?: (growth: number) => void;
   onIntersectPinnedMessage?: OnIntersectPinnedMessage;
 }
 
@@ -128,6 +131,7 @@ const MessageListContent = ({
   isReplacingHistoryRef,
   type,
   isReady,
+  isActive,
   hasLinkedChat,
   isSchedule,
   shouldRenderAccountInfo,
@@ -139,10 +143,25 @@ const MessageListContent = ({
   shouldScrollToBottom,
   canPost,
   onScrollDownToggle,
-  onNotchToggle,
+  onContentResize,
   onIntersectPinnedMessage,
 }: OwnProps) => {
   const { openHistoryCalendar } = getActions();
+
+  const messagesContainerRef = useRef<HTMLDivElement>();
+  const prevContentHeightRef = useRef<number>();
+
+  const handleContentResize = useLastCallback((entry: ResizeObserverEntry) => {
+    const newHeight = entry.contentRect.height;
+    const prevHeight = prevContentHeightRef.current;
+    prevContentHeightRef.current = newHeight;
+    if (prevHeight === undefined) return;
+
+    const growth = newHeight - prevHeight;
+    if (growth > 0) onContentResize?.(growth);
+  });
+
+  useResizeObserver(messagesContainerRef, handleContentResize);
 
   const getIsHeavyAnimating2 = getIsHeavyAnimating;
   const getIsReady = useDerivedSignal(() => isReady && !getIsHeavyAnimating2(), [isReady, getIsHeavyAnimating2]);
@@ -182,7 +201,6 @@ const MessageListContent = ({
     isReady,
     isReplacingHistoryRef,
     onScrollDownToggle,
-    onNotchToggle,
   });
 
   const oldLang = useOldLang();
@@ -376,6 +394,7 @@ const MessageListContent = ({
             <Message
               key={key}
               message={message}
+              containerRef={containerRef}
               observeIntersectionForBottom={observeIntersectionForReading}
               observeIntersectionForLoading={observeIntersectionForLoading}
               observeIntersectionForPlaying={observeIntersectionForPlaying}
@@ -401,6 +420,7 @@ const MessageListContent = ({
               isQuickPreview={isQuickPreview}
               memoFirstUnreadIdRef={memoFirstUnreadIdRef}
               getIsMessageListReady={getIsReady}
+              isMessageListActive={isActive}
               onMessageUnmount={onMessageUnmount}
             />,
           ]);
@@ -596,7 +616,8 @@ const MessageListContent = ({
       target.push(...senderGroupElements);
     });
 
-    const shouldAddFirstClass = !(nameChangeDate || photoChangeDate) && dateGroupIndex === 0;
+    const shouldAddFirstClass = !shouldRenderAccountInfo
+      && !(nameChangeDate || photoChangeDate) && dateGroupIndex === 0;
     if (beforeTailChildren.length) {
       dateGroups.push(renderDateGroup(
         dateGroup, beforeTailChildren, 'before-tail', shouldAddFirstClass,
@@ -611,7 +632,7 @@ const MessageListContent = ({
   });
 
   return (
-    <div className="messages-container" teactFastList>
+    <div ref={messagesContainerRef} className="messages-container" teactFastList>
       {withHistoryTriggers && <div ref={backwardsTriggerRef} key="backwards-trigger" className="backwards-trigger" />}
       {shouldRenderAccountInfo
         && <MessageListAccountInfo key={`account_info_${chatId}`} chatId={chatId} hasMessages />}

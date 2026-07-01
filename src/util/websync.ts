@@ -27,7 +27,7 @@ const saveSync = (authed: boolean) => {
   }));
 };
 
-let lastTimeout: NodeJS.Timeout | undefined;
+let lastTimeout: number | undefined;
 
 export const forceWebsync = (authed: boolean) => {
   // eslint-disable-next-line no-constant-condition, no-constant-binary-expression

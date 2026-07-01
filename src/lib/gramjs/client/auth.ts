@@ -24,7 +24,7 @@ export interface UserAuthParams {
   phoneCode: (isCodeViaApp?: boolean) => Promise<string>;
   password: (hint?: string, noReset?: boolean) => Promise<string>;
   firstAndLastNames: () => Promise<[string, string?]>;
-  qrCode: (qrCode: { token: Buffer; expires: number }) => Promise<void>;
+  qrCode: (qrCode: { token: Uint8Array; expires: number }) => Promise<void>;
   onError: (err: Error) => void;
   forceSMS?: boolean;
   initialMethod?: 'phoneNumber' | 'qrCode';

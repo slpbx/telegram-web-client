@@ -36,6 +36,7 @@ import {
   getUserFullName,
   hasMessageTtl,
   isActionMessage,
+  isChatAdmin,
   isChatChannel,
   isChatGroup,
   isMessageLocal,
@@ -731,6 +732,7 @@ const ContextMenuContainer: FC<OwnProps & StateProps> = ({
         reactionsLimit={reactionsLimit}
         anchor={anchor}
         targetHref={targetHref}
+        chat={chat}
         canShowReactionsCount={canShowReactionsCount}
         canShowReactionList={canShowReactionList}
         canSendNow={canSendNow}
@@ -996,7 +998,8 @@ export default memo(withGlobal<OwnProps>(
       isCurrentUserPremium,
       hasFullInfo: Boolean(chatFullInfo),
       canShowReactionsCount,
-      canShowReactionList: !isLocal && !isAction && !isScheduled && !hasTtl,
+      canShowReactionList: !isLocal && !isAction && !isScheduled && !hasTtl
+        && !(chat && !isPrivate && !isChatAdmin(chat) && isUserRightBanned(chat, 'sendReactions', chatFullInfo)),
       canBuyPremium: !isCurrentUserPremium && !selectIsPremiumPurchaseBlocked(global),
       customEmojiSetsInfo,
       customEmojiSets,

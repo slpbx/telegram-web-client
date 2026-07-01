@@ -1,3 +1,4 @@
+import { buffersEqual, concat } from '../../../util/encoding/buffer';
 import { BinaryReader } from '../extensions';
 
 import {
@@ -9,15 +10,15 @@ import {
 } from '../Helpers';
 
 export class AuthKey {
-  _key?: Buffer<ArrayBuffer>;
+  _key?: Uint8Array<ArrayBuffer>;
 
-  _hash?: Buffer<ArrayBuffer>;
+  _hash?: Uint8Array<ArrayBuffer>;
 
   private auxHash?: bigint;
 
   keyId?: bigint;
 
-  constructor(value?: Buffer<ArrayBuffer>, hash?: Buffer<ArrayBuffer>) {
+  constructor(value?: Uint8Array<ArrayBuffer>, hash?: Uint8Array<ArrayBuffer>) {
     if (!hash || !value) {
       return;
     }
@@ -29,7 +30,7 @@ export class AuthKey {
     this.keyId = reader.readLong(false);
   }
 
-  async setKey(value?: Buffer<ArrayBuffer> | AuthKey) {
+  async setKey(value?: Uint8Array<ArrayBuffer> | AuthKey) {
     if (!value) {
       this._key = undefined;
       this.auxHash = undefined;
@@ -79,12 +80,8 @@ export class AuthKey {
     }
 
     const nonce = toSignedLittleBuffer(newNonce, 32);
-    const n = Buffer.alloc(1);
-    n.writeUInt8(number, 0);
-    const data = Buffer.concat([
-      nonce,
-      Buffer.concat([n, readBufferFromBigInt(this.auxHash, 8, true)]),
-    ]);
+    const n = new Uint8Array([number]);
+    const data = concat(nonce, n, readBufferFromBigInt(this.auxHash, 8, true));
 
     // Calculates the message key from the given data
     const shaData = (await sha1(data)).slice(4, 20);
@@ -92,11 +89,12 @@ export class AuthKey {
   }
 
   equals(other: AuthKey) {
+    const otherKey = other.getKey();
     return (
       other instanceof this.constructor
       && this._key
-      && Buffer.isBuffer(other.getKey())
-      && other.getKey()?.equals(this._key)
+      && otherKey instanceof Uint8Array
+      && buffersEqual(otherKey, this._key)
     );
   }
 }

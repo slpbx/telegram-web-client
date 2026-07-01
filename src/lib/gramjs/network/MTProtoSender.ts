@@ -476,7 +476,7 @@ export default class MTProtoSender {
     if (!this.authKey.getKey()) {
       const plain = new MtProtoPlainSender(connection, this._log);
       this._log.debug('New auth_key attempt ...');
-      const res = await doAuthentication(plain, this._log);
+      const res = await doAuthentication(plain, this._log, connection._dcId, connection._isTestServer);
       this._log.debug('Generated new auth_key successfully');
       await this.authKey.setKey(res.authKey);
 
@@ -735,7 +735,7 @@ export default class MTProtoSender {
       }
 
       try {
-        // TODO: Handle `DecryptedDataBlock` in calls like a regular `TLMessage` rather than `Buffer`
+        // TODO: Handle `DecryptedDataBlock` in calls like a regular `TLMessage` rather than `Uint8Array`
         message = (await this._state.decryptMessageData(body)) as TLMessage;
       } catch (e: any) {
         this.logWithIndex.debug(`Error while receiving items from the network ${e.toString()}`);
@@ -907,7 +907,7 @@ export default class MTProtoSender {
       try {
         const reader = new BinaryReader(result.body);
         if (!(reader.tgReadObject() instanceof Api.upload.File)) {
-          throw new TypeNotFoundError(0, Buffer.alloc(0));
+          throw new TypeNotFoundError(0, new Uint8Array(0));
         }
       } catch (e) {
         if (e instanceof TypeNotFoundError) {

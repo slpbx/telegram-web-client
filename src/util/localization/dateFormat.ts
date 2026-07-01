@@ -1,9 +1,9 @@
 import type { TimeFormat } from '../../types';
 import type { LangFn } from './types';
 
-import { FALLBACK_LANG_CODE } from '../../config';
-
 import LimitedMap from '../primitives/LimitedMap';
+
+const FALLBACK_LANG_CODE = 'en';
 
 type DateStyle = 'short' | 'long' | 'numeric' | false;
 type TimeStyle = 'short' | 'long' | false;
@@ -284,6 +284,12 @@ function getHourCycle(timeFormat: TimeFormat) {
 
 export function secondsToDate(seconds: number) {
   return new Date(seconds * 1000);
+}
+
+export function isSameLocalDay(leftDate: Date, rightDate: Date) {
+  return leftDate.getDate() === rightDate.getDate()
+    && leftDate.getMonth() === rightDate.getMonth()
+    && leftDate.getFullYear() === rightDate.getFullYear();
 }
 
 export function getCalendarDayDiff(targetDate: Date, anchorDate: Date) {

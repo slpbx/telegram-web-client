@@ -70,7 +70,7 @@ export function onRequestRegistration() {
   });
 }
 
-export function onRequestQrCode(qrCode: { token: Buffer; expires: number }) {
+export function onRequestQrCode(qrCode: { token: Uint8Array; expires: number }) {
   sendApiUpdate({
     ...buildAuthStateUpdate('authorizationStateWaitQrCode'),
     qrCode: {

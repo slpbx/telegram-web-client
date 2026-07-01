@@ -229,10 +229,20 @@
   &.full-width-player {
     @include mixins.middle-header-pane;
 
+    height: 3rem;
+
     .AudioPlayer-content {
       flex-grow: 1;
+      align-self: stretch;
+
       max-width: none;
+      padding-left: 0.75rem;
+      border-radius: var(--pane-content-radius);
     }
+  }
+
+  &.full-width-player.settled {
+    transform: translateY(0);
   }
 
   .playback-rate-menu .bubble {

@@ -12,6 +12,7 @@ import type {
   ApiTypeStory,
 } from '../../../api/types';
 
+import ensureLovelyChart from '../../../lib/lovelyChartWithStyles';
 import {
   selectChat,
   selectChatFullInfo,
@@ -33,19 +34,6 @@ import StatisticsRecentMessage from './StatisticsRecentMessage';
 import StatisticsRecentStory from './StatisticsRecentStory';
 
 import styles from './Statistics.module.scss';
-
-type ILovelyChart = { create: (el: HTMLElement, params: AnyLiteral) => void };
-let lovelyChartPromise: Promise<ILovelyChart> | undefined;
-let LovelyChart: ILovelyChart;
-
-async function ensureLovelyChart() {
-  if (!lovelyChartPromise) {
-    lovelyChartPromise = import('../../../lib/lovely-chart/LovelyChart') as Promise<ILovelyChart>;
-    LovelyChart = await lovelyChartPromise;
-  }
-
-  return lovelyChartPromise;
-}
 
 const CHANNEL_GRAPHS_TITLES = {
   growthGraph: 'ChannelStats.Graph.Growth',
@@ -142,7 +130,7 @@ const Statistics = ({
 
   useEffect(() => {
     (async () => {
-      await ensureLovelyChart();
+      const LovelyChart = await ensureLovelyChart();
 
       if (!isReady) {
         setIsReady(true);
@@ -175,17 +163,14 @@ const Statistics = ({
 
         const { zoomToken } = graph;
 
-        LovelyChart.create(
-          containerRef.current!.children[index] as HTMLElement,
-          {
-            title: lang((graphTitles as Record<string, string>)[name]),
-            ...zoomToken ? {
-              onZoom: (x: number) => callApi('fetchStatisticsAsyncGraph', { token: zoomToken, x, dcId }),
-              zoomOutLabel: lang('Graph.ZoomOut'),
-            } : {},
-            ...graph,
-          },
-        );
+        new LovelyChart(containerRef.current!.children[index] as HTMLElement, {
+          ...graph,
+          title: lang((graphTitles as Record<string, string>)[name]),
+          onZoom: zoomToken
+            ? (x: number) => callApi('fetchStatisticsAsyncGraph', { token: zoomToken, x, dcId })
+            : undefined,
+          zoomOutLabel: zoomToken ? lang('Graph.ZoomOut') : undefined,
+        });
 
         loadedChartsRef.current.add(name);
 

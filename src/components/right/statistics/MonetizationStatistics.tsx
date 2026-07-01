@@ -5,6 +5,7 @@ import { getActions, withGlobal } from '../../../global';
 
 import type { ApiChannelMonetizationStatistics } from '../../../api/types';
 
+import ensureLovelyChart from '../../../lib/lovelyChartWithStyles';
 import { selectChat, selectChatFullInfo, selectTabState } from '../../../global/selectors';
 import buildClassName from '../../../util/buildClassName';
 import { convertTonFromNanos } from '../../../util/formatCurrency';
@@ -18,6 +19,7 @@ import useLastCallback from '../../../hooks/useLastCallback';
 import useOldLang from '../../../hooks/useOldLang';
 
 import AboutMonetizationModal from '../../common/AboutMonetizationModal.async';
+import GramIcon from '../../common/icons/GramIcon';
 import Icon from '../../common/icons/Icon';
 import SafeLink from '../../common/SafeLink';
 import Island, { IslandDescription } from '../../gili/layout/Island';
@@ -28,19 +30,6 @@ import Loading from '../../ui/Loading';
 import StatisticsOverview from './StatisticsOverview';
 
 import styles from './MonetizationStatistics.module.scss';
-
-type ILovelyChart = { create: (el: HTMLElement, params: AnyLiteral) => void };
-let lovelyChartPromise: Promise<ILovelyChart> | undefined;
-let LovelyChart: ILovelyChart;
-
-async function ensureLovelyChart() {
-  if (!lovelyChartPromise) {
-    lovelyChartPromise = import('../../../lib/lovely-chart/LovelyChart') as Promise<ILovelyChart>;
-    LovelyChart = await lovelyChartPromise;
-  }
-
-  return lovelyChartPromise;
-}
 
 const MONETIZATION_GRAPHS_TITLES = {
   topHoursGraph: 'ChannelStats.Graph.ViewsByHours',
@@ -91,7 +80,7 @@ const MonetizationStatistics = ({
 
   useEffect(() => {
     (async () => {
-      await ensureLovelyChart();
+      const LovelyChart = await ensureLovelyChart();
 
       if (!isReady) {
         setIsReady(true);
@@ -131,9 +120,9 @@ const MonetizationStatistics = ({
           return;
         }
 
-        LovelyChart.create(containerRef.current!.children[index] as HTMLElement, {
-          title: oldLang((MONETIZATION_GRAPHS_TITLES as Record<string, string>)[name]),
+        new LovelyChart(containerRef.current!.children[index] as HTMLElement, {
           ...graph,
+          title: oldLang((MONETIZATION_GRAPHS_TITLES as Record<string, string>)[name]),
         });
 
         loadedChartsRef.current.add(name);
@@ -154,7 +143,7 @@ const MonetizationStatistics = ({
     return (
       <div className={styles.availableReward}>
         <div className={styles.toncoin}>
-          <Icon className={styles.toncoinIcon} name="toncoin" />
+          <GramIcon className={styles.toncoinIcon} />
           <b className={styles.rewardValue}>
             {integerTonPart}
             {decimalTonPart ? (

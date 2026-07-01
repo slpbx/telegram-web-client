@@ -45,6 +45,7 @@ import {
 } from '../../types';
 
 import { CHANNEL_ID_BASE, DEFAULT_STATUS_ICON_ID, STARS_CURRENCY_CODE } from '../../../config';
+import { writeUint32LE } from '../../../util/encoding/buffer';
 import { pick } from '../../../util/iteratees';
 import { deserializeBytes } from '../helpers/misc';
 import localDb from '../localDb';
@@ -241,6 +242,8 @@ export function buildInputPoll(
     hideResultsUntilClose: poll.shouldHideResultsUntilClose,
     revotingDisabled: poll.isRevoteDisabled,
     shuffleAnswers: poll.shouldShuffleAnswers,
+    subscribersOnly: poll.isRestrictedToSubscribers,
+    countriesIso2: poll.allowedCountryCodes,
     openAnswers: poll.canAddAnswers,
     multipleChoice: poll.isMultipleChoice,
     hash: DEFAULT_PRIMITIVES.BIGINT,
@@ -276,6 +279,8 @@ export function buildInputPollFromExisting(poll: ApiMessagePoll, shouldClose = f
       closePeriod: poll.summary.closePeriod,
       closed: shouldClose ? true : poll.summary.isClosed,
       creator: poll.summary.isCreator,
+      subscribersOnly: poll.summary.isRestrictedToSubscribers,
+      countriesIso2: poll.summary.allowedCountryCodes,
       revotingDisabled: poll.summary.isRevoteDisabled,
       shuffleAnswers: poll.summary.shouldShuffleAnswers,
       hideResultsUntilClose: poll.summary.shouldHideResultsUntilClose,
@@ -458,8 +463,8 @@ export function buildInputStory(story: ApiStory | ApiStorySkipped) {
 export function generateRandomTimestampedBigInt() {
   // 32 bits for timestamp, 32 bits are random
   const buffer = generateRandomBytes(8);
-  const timestampBuffer = Buffer.allocUnsafe(4);
-  timestampBuffer.writeUInt32LE(Math.floor(Date.now() / 1000), 0);
+  const timestampBuffer = new Uint8Array(4);
+  writeUint32LE(timestampBuffer, Math.floor(Date.now() / 1000));
   buffer.set(timestampBuffer, 4);
   return readBigIntFromBuffer(buffer, true, true);
 }

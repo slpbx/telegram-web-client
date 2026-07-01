@@ -27,7 +27,7 @@
   }
 
   .with-notch::before {
-    top: var(--header-height);
+    top: var(--column-header-height);
   }
 
   > .Transition_slide {
@@ -67,7 +67,7 @@
 .settings-content {
   overflow-y: scroll;
 
-  height: calc(100% - var(--header-height));
+  height: calc(100% - var(--column-header-height));
   padding: 1rem;
   padding-top: 0;
 
@@ -77,6 +77,12 @@
 
   &.password-form .input-group.error label::first-letter {
     text-transform: uppercase;
+  }
+
+  // `.settings-input > :last-child` zeroes `--input-group-margin` on the wrapping `<form>`,
+  // which cascades into the inner input and collapses the gap before the submit button
+  &.password-form .settings-input .input-group {
+    --input-group-margin: 1.125rem;
   }
 
   &.infinite-scroll {
@@ -341,7 +347,7 @@
 
 .settings-fab-wrapper {
   position: relative;
-  height: calc(100% - var(--header-height));
+  height: calc(100% - var(--column-header-height));
 
   .with-notch::before {
     top: 0 !important;

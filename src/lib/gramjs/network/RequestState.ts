@@ -12,7 +12,7 @@ export default class RequestState<T extends CallableRequest = CallableRequest> {
 
   public request: any;
 
-  public data: Buffer<ArrayBuffer>;
+  public data: Uint8Array;
 
   public after: any;
 

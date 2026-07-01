@@ -11,7 +11,7 @@ export default function createMockedDocument(documentId: number, mockData: MockT
 
   const {
     accessHash = 1n,
-    fileReference = Buffer.from([0]),
+    fileReference = new Uint8Array([0]),
     date = MOCK_STARTING_DATE,
     dcId = 2,
     url,

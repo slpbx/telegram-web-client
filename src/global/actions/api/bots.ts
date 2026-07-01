@@ -489,10 +489,13 @@ addActionHandler('resetAllInlineBots', (global, actions, payload): ActionReturnT
 });
 
 addActionHandler('startBot', async (global, actions, payload): Promise<void> => {
-  const { botId, param } = payload;
+  const {
+    botId, chatId, param,
+  } = payload;
 
   const bot = selectUser(global, botId);
-  if (!bot) {
+  const chat = chatId ? selectChat(global, chatId) : undefined;
+  if (!bot || (chatId && !chat)) {
     return;
   }
 
@@ -506,8 +509,22 @@ addActionHandler('startBot', async (global, actions, payload): Promise<void> => 
     await callApi('unblockUser', { user: bot });
   }
 
+  if (!chat) {
+    await callApi('startBot', {
+      bot,
+      startParam: param,
+    });
+    return;
+  }
+
+  const missingUsers = await callApi('addBotToChat', chat, bot);
+  if (!missingUsers || missingUsers.length) return;
+
+  if (!param) return;
+
   await callApi('startBot', {
     bot,
+    peer: chat,
     startParam: param,
   });
 });
@@ -667,6 +684,51 @@ addActionHandler('requestWebView', async (global, actions, payload): Promise<voi
   setGlobal(global);
 
   if (isFullScreen && getIsWebAppsFullscreenSupported()) {
+    actions.changeWebAppModalState({ state: 'fullScreen', tabId });
+  }
+});
+
+addActionHandler('openChatInviteWebView', (global, actions, payload): ActionReturnType => {
+  const {
+    botId, url, queryId, peerId, isFullscreen, isBroadcast,
+    tabId = getCurrentTabId(),
+  } = payload;
+
+  if (checkIfOpenOrActivate(global, botId, tabId, url)) return;
+
+  const bot = selectUser(global, botId);
+  if (!bot) return;
+
+  if (!selectIsTrustedBot(global, botId)) {
+    global = updateTabState(global, {
+      botTrustRequest: {
+        botId,
+        type: 'webApp',
+        onConfirm: {
+          action: 'openChatInviteWebView',
+          payload,
+        },
+      },
+    }, tabId);
+    setGlobal(global);
+    return;
+  }
+
+  const newActiveApp: WebApp = {
+    url,
+    requestUrl: url,
+    appName: bot.firstName,
+    botId,
+    peerId,
+    queryId,
+    isJoinChat: true,
+    isJoinChatBroadcast: isBroadcast,
+    buttonText: '',
+  };
+  global = addWebAppToOpenList(global, newActiveApp, true, true, tabId);
+  setGlobal(global);
+
+  if (isFullscreen && getIsWebAppsFullscreenSupported()) {
     actions.changeWebAppModalState({ state: 'fullScreen', tabId });
   }
 });
@@ -1552,7 +1614,7 @@ addActionHandler('startBotFatherConversation', async (global, actions, payload):
   }
 
   if (param) {
-    actions.startBot({ botId: botFatherId, param });
+    actions.startBot({ botId: botFatherId, param, tabId });
   }
 
   actions.openChat({ id: botFatherId, tabId });

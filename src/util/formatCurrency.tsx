@@ -2,8 +2,10 @@ import { type TeactNode } from '../lib/teact/teact';
 
 import type { LangFn } from './localization';
 
-import { FALLBACK_LANG_CODE, STARS_CURRENCY_CODE, TON_CURRENCY_CODE } from '../config';
+import { STARS_CURRENCY_CODE, TON_CURRENCY_CODE } from '../config';
 import { formatStarsAsIcon, formatTonAsIcon } from './localization/format';
+
+const FALLBACK_LANG_CODE = 'en';
 
 export function convertCurrencyFromBaseUnit(amount: number, currency: string) {
   return amount / 10 ** getCurrencyExp(currency);
@@ -38,7 +40,7 @@ export function formatCurrency(
   }
 
   if (currency === TON_CURRENCY_CODE) {
-    return formatTonAsIcon(lang, price, { className: options?.iconClassName });
+    return formatTonAsIcon(lang, price, { className: options?.iconClassName, isMono: options?.asFontIcon });
   }
 
   return formatCurrencyAsString(totalPrice, currency, lang.code, options);

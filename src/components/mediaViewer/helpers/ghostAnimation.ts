@@ -18,6 +18,7 @@ import {
 } from '../../common/helpers/mediaDimensions';
 
 const ANIMATION_DURATION = 200;
+const MIDDLE_HEADER_PANES_HEIGHT_PROPERTY = '--middle-header-panes-height';
 
 export function animateOpening(
   hasFooter: boolean,
@@ -27,10 +28,11 @@ export function animateOpening(
   isVideo: boolean,
   message?: ApiMessage,
   mediaIndex?: number,
+  sourceId?: string,
 ) {
-  const { mediaEl: fromImage } = getNodes(origin, message, mediaIndex);
+  const { mediaEl: fromImage } = getNodes(origin, message, mediaIndex, sourceId);
   if (!fromImage) {
-    return;
+    return false;
   }
 
   const { width: windowWidth } = windowSize.get();
@@ -76,7 +78,7 @@ export function animateOpening(
     });
     applyShape(ghost, origin);
 
-    document.body.appendChild(ghost);
+    getGhostHost().appendChild(ghost);
     document.body.classList.add('ghost-animating');
 
     requestMutation(() => {
@@ -85,21 +87,21 @@ export function animateOpening(
 
       setTimeout(() => {
         requestMutation(() => {
-          if (document.body.contains(ghost)) {
-            document.body.removeChild(ghost);
-          }
+          removeGhost(ghost);
           document.body.classList.remove('ghost-animating');
         });
       }, ANIMATION_DURATION + ANIMATION_END_DELAY);
     });
   });
+
+  return true;
 }
 
 export function animateClosing(
-  origin: MediaViewerOrigin, bestImageData: string, message?: ApiMessage, mediaIndex?: number,
+  origin: MediaViewerOrigin, bestImageData: string, message?: ApiMessage, mediaIndex?: number, sourceId?: string,
 ) {
-  const { container, mediaEl: toImage } = getNodes(origin, message, mediaIndex);
-  if (!toImage) {
+  const { container, mediaEl: toImage } = getNodes(origin, message, mediaIndex, sourceId);
+  if (!container || !toImage) {
     return;
   }
 
@@ -134,6 +136,7 @@ export function animateClosing(
       MediaViewerOrigin.ScheduledInline,
       MediaViewerOrigin.Album,
       MediaViewerOrigin.ScheduledAlbum,
+      MediaViewerOrigin.RichPageBlock,
     ].includes(origin)
     && !isMessageImageFullyVisible(toImage)
   );
@@ -183,7 +186,7 @@ export function animateClosing(
 
   requestMutation(() => {
     applyStyles(ghost, styles);
-    if (!existingGhost) document.body.appendChild(ghost);
+    if (!existingGhost) getGhostHost().appendChild(ghost);
     document.body.classList.add('ghost-animating');
 
     requestMutation(() => {
@@ -201,9 +204,7 @@ export function animateClosing(
 
       setTimeout(() => {
         requestMutation(() => {
-          if (document.body.contains(ghost)) {
-            document.body.removeChild(ghost);
-          }
+          removeGhost(ghost);
           document.body.classList.remove('ghost-animating');
         });
       }, ANIMATION_DURATION + ANIMATION_END_DELAY);
@@ -252,6 +253,14 @@ function createGhost(
   return ghost;
 }
 
+function getGhostHost() {
+  return document.getElementById('MediaViewer') || document.body;
+}
+
+function removeGhost(ghost: HTMLDivElement) {
+  ghost.parentElement?.removeChild(ghost);
+}
+
 function uncover(realWidth: number, realHeight: number, top: number, left: number, width: number, height: number) {
   if (realWidth === realHeight) {
     const size = Math.max(width, height) * (realWidth / realHeight);
@@ -278,9 +287,13 @@ function isMessageImageFullyVisible(imageEl: HTMLElement) {
   const messageListElement = document.querySelector<HTMLDivElement>('.Transition_slide-active > .MessageList')!;
 
   const { top } = getOffsetToContainer(imageEl, messageListElement);
+  const computedStyle = getComputedStyle(messageListElement);
+  const headerPanesHeight = parseFloat(computedStyle.getPropertyValue(MIDDLE_HEADER_PANES_HEIGHT_PROPERTY)) || 0;
+  const visibleTop = messageListElement.scrollTop + headerPanesHeight;
+  const visibleBottom = messageListElement.scrollTop + messageListElement.offsetHeight;
 
-  return top > messageListElement.scrollTop
-    && top + imageEl.offsetHeight < messageListElement.scrollTop + messageListElement.offsetHeight;
+  return top > visibleTop
+    && top + imageEl.offsetHeight < visibleBottom;
 }
 
 function getTopOffset(hasFooter: boolean) {
@@ -293,11 +306,26 @@ function getTopOffset(hasFooter: boolean) {
   return topOffsetRem * REM;
 }
 
-function getNodes(origin: MediaViewerOrigin, message?: ApiMessage, index?: number) {
+function getNodes(origin: MediaViewerOrigin, message?: ApiMessage, index?: number, sourceId?: string) {
   let containerSelector;
   let mediaSelector;
 
   switch (origin) {
+    case MediaViewerOrigin.RichPageBlock:
+    case MediaViewerOrigin.IVPageBlock: {
+      const container = sourceId ? document.getElementById(sourceId) : undefined;
+      const pageBlockMediaSelector = 'img.full-media, video.full-media, img.thumbnail:not(.blurred-bg), '
+        + 'canvas.thumbnail:not(.blurred-bg), img, video';
+      const mediaEls = container?.querySelectorAll<HTMLImageElement | HTMLVideoElement | HTMLCanvasElement>(
+        pageBlockMediaSelector,
+      );
+
+      return {
+        container,
+        mediaEl: mediaEls?.[0],
+      };
+    }
+
     case MediaViewerOrigin.Album:
     case MediaViewerOrigin.ScheduledAlbum:
       // eslint-disable-next-line @stylistic/max-len
@@ -362,9 +390,9 @@ function getNodes(origin: MediaViewerOrigin, message?: ApiMessage, index?: numbe
     case MediaViewerOrigin.Inline:
     default:
       containerSelector = `.Transition_slide-active > .MessageList #${getMessageHtmlId(message!.id, index)}`;
-      mediaSelector = `${MESSAGE_CONTENT_SELECTOR} img.full-media,`
-        + `${MESSAGE_CONTENT_SELECTOR} video.full-media,`
-        + `${MESSAGE_CONTENT_SELECTOR} img.thumbnail:not(.blurred-bg)`;
+      mediaSelector = `${MESSAGE_CONTENT_SELECTOR} :not(.embedded-thumb) > img.full-media,`
+        + `${MESSAGE_CONTENT_SELECTOR} :not(.embedded-thumb) > video.full-media,`
+        + `${MESSAGE_CONTENT_SELECTOR} :not(.embedded-thumb) > img.thumbnail:not(.blurred-bg)`;
   }
 
   const container = document.querySelector<HTMLElement>(containerSelector)!;
@@ -393,6 +421,8 @@ function applyShape(ghost: HTMLDivElement, origin: MediaViewerOrigin) {
     case MediaViewerOrigin.SettingsAvatar:
     case MediaViewerOrigin.ProfileAvatar:
     case MediaViewerOrigin.SearchResult:
+    case MediaViewerOrigin.RichPageBlock:
+    case MediaViewerOrigin.IVPageBlock:
       (ghost.firstChild as HTMLElement).style.objectFit = 'cover';
       break;
 

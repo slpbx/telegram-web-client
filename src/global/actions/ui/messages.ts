@@ -19,7 +19,7 @@ import { compact, findLast } from '../../../util/iteratees';
 import { getTranslationFn } from '../../../util/localization';
 import parseHtmlAsFormattedText from '../../../util/parseHtmlAsFormattedText';
 import { getServerTime } from '../../../util/serverTime';
-import versionNotification from '../../../versionNotification.txt';
+import versionNotification from '../../../versionNotification.txt?raw';
 import {
   getMediaFilename,
   getMediaFormat,
@@ -927,6 +927,16 @@ addActionHandler('closeChatLanguageModal', (global, actions, payload): ActionRet
   }, tabId);
 });
 
+addActionHandler('openInstantView', (global, actions, payload): ActionReturnType => {
+  const { webPageId, tabId = getCurrentTabId() } = payload;
+
+  return updateTabState(global, {
+    instantViewModal: { webPageId },
+  }, tabId);
+});
+
+addTabStateResetterAction('closeInstantView', 'instantViewModal');
+
 addActionHandler('copySelectedMessages', (global, actions, payload): ActionReturnType => {
   const { tabId = getCurrentTabId() } = payload || {};
   const tabState = selectTabState(global, tabId);
@@ -1099,7 +1109,7 @@ function copyTextForMessages(global: GlobalState, chatId: string, messageIds: nu
 
 addActionHandler('openDeleteMessageModal', (global, actions, payload): ActionReturnType => {
   const {
-    chatId, messageIds, isSchedule,
+    chatId, messageIds, isSchedule, reactionContext,
     tabId = getCurrentTabId(),
   } = payload;
 
@@ -1109,6 +1119,7 @@ addActionHandler('openDeleteMessageModal', (global, actions, payload): ActionRet
       chatId,
       messageIds,
       isSchedule,
+      reactionContext,
     },
   }, tabId);
   setGlobal(global);

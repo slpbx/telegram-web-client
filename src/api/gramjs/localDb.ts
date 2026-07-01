@@ -67,7 +67,7 @@ function createProxy(name: string, object: any) {
 }
 
 function convertToVirtualClass(value: any): any {
-  if (value instanceof Uint8Array) return Buffer.from(value);
+  if (value instanceof Uint8Array) return value;
   if (typeof value === 'object' && Object.keys(value).length === 1 && Object.keys(value)[0] === 'value') {
     return BigInt(value.value);
   }

@@ -23,6 +23,8 @@ import type {
   ApiMessageEntity,
   ApiNewMediaTodo,
   ApiNewPoll,
+  ApiPageBlockPhoto,
+  ApiPageBlockVideo,
   ApiPeer,
   ApiPhoto,
   ApiReaction,
@@ -328,6 +330,16 @@ export enum RightColumnContent {
 }
 
 export type MediaViewerMedia = ApiPhoto | ApiVideo | ApiDocument;
+export type MediaViewerPageBlock = ApiPageBlockPhoto | ApiPageBlockVideo;
+export type MediaViewerPageMedia = {
+  blocks: MediaViewerPageBlock[];
+  sourceIds: string[];
+  pageUrl?: string;
+  chatId?: string;
+  messageId?: number;
+  threadId?: ThreadId;
+  isProtected?: boolean;
+};
 
 export enum MediaViewerOrigin {
   Inline,
@@ -345,6 +357,8 @@ export enum MediaViewerOrigin {
   PreviewMedia,
   SponsoredMessage,
   PollPreview,
+  RichPageBlock,
+  IVPageBlock,
 }
 
 export enum StoryViewerOrigin {
@@ -385,6 +399,7 @@ export enum ManagementProgress {
 export interface ManagementState {
   isActive: boolean;
   nextScreen?: ManagementScreens;
+  selectedChatMemberId?: string;
   checkedUsername?: string;
   isUsernameAvailable?: boolean;
   error?: string;

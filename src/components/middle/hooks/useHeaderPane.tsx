@@ -11,6 +11,7 @@ import {
 import { setExtraStyles } from '../../../lib/teact/teact-dom';
 
 import { requestForcedReflow, requestNextMutation } from '../../../lib/fasterdom/fasterdom';
+import { REM } from '../../common/helpers/mediaDimensions';
 
 import useTimeout from '../../../hooks/schedulers/useTimeout';
 import useLastCallback from '../../../hooks/useLastCallback';
@@ -27,6 +28,7 @@ export interface PaneState {
 // Max slide transition duration
 const CLOSE_DURATION = 450;
 const RESIZE_THROTTLE = 100;
+export const PANE_GAP_REM = 0.5;
 
 export default function useHeaderPane<RefType extends HTMLElement = HTMLDivElement>({
   ref: providedRef,
@@ -136,6 +138,7 @@ export function applyAnimationState({
   noTransition?: boolean;
   zIndexIncrease?: boolean;
 }) {
+  const gapPx = PANE_GAP_REM * REM;
   let cumulativeHeight = 0;
   for (let i = 0; i < list.length; i++) {
     const state = list[i];
@@ -147,6 +150,8 @@ export function applyAnimationState({
 
     const shiftPx = `${cumulativeHeight}px`;
 
+    const isEntrance = !element.dataset.isPanelOpen && state.isOpen && !noTransition;
+
     const apply = () => {
       setExtraStyles(element, {
         transform: `translateY(${state.isOpen ? shiftPx : `calc(${shiftPx} - 100% - 0.5rem)`})`,
@@ -155,8 +160,7 @@ export function applyAnimationState({
       });
     };
 
-    if (!element.dataset.isPanelOpen && state.isOpen && !noTransition) {
-      // Start animation right above its final position
+    if (isEntrance) {
       setExtraStyles(element, {
         transform: `translateY(calc(${shiftPx} - 100%))`,
         zIndex: String(zIndexIncrease ? i : -i),
@@ -164,10 +168,15 @@ export function applyAnimationState({
       });
       element.dataset.isPanelOpen = 'true';
       requestNextMutation(apply);
+    } else if (state.isOpen) {
+      element.dataset.isPanelOpen = 'true';
+      apply();
     } else {
+      delete element.dataset.isPanelOpen;
       apply();
     }
 
     cumulativeHeight += state.height;
+    if (state.height > 0) cumulativeHeight += gapPx;
   }
 }

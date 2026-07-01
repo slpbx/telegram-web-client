@@ -1,5 +1,7 @@
 import type { SessionData } from '../types';
 
+import { bufferFromHex, bufferToHex } from '../../../util/encoding/buffer';
+
 import { AuthKey } from '../crypto/AuthKey';
 import { getDC } from '../Utils';
 import MemorySession from './Memory';
@@ -40,7 +42,7 @@ export default class CallbackSession extends MemorySession {
     await Promise.all(Object.keys(keys)
       .map(async (dcIdStr) => {
         const dcId = Number(dcIdStr);
-        const key = Buffer.from(keys[dcId], 'hex');
+        const key = bufferFromHex(keys[dcId]);
 
         this._authKeys[dcId] = new AuthKey();
         await this._authKeys[dcId].setKey(key);
@@ -84,7 +86,7 @@ export default class CallbackSession extends MemorySession {
         const authKey = this._authKeys[dcId];
         if (!authKey?._key) return;
 
-        sessionData.keys[dcId] = authKey._key.toString('hex');
+        sessionData.keys[dcId] = bufferToHex(authKey._key);
       });
 
     return sessionData;

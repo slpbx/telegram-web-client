@@ -316,6 +316,8 @@ export interface ApiAppConfig {
   tonTopupUrl: string;
   pollMaxAnswers: number;
   pollClosePeriodMax: number;
+  pollCountriesMax: number;
+  phoneCountryIso2?: string;
   todoItemsMax: number;
   todoTitleLengthMax: number;
   todoItemLengthMax: number;
@@ -325,6 +327,7 @@ export interface ApiAppConfig {
   verifyAgeCountry?: string;
   verifyAgeMin?: number;
   typingDraftTtl: number;
+  isMessagePrimaryEditedDateEnabled: boolean;
   contactNoteLimit?: number;
   whitelistedBotIds?: string[];
   arePasskeysAvailable: boolean;

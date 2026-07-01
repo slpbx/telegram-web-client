@@ -10,6 +10,7 @@ import { LoadMoreDirection, type MessageListType, type ThreadId } from '../../ty
 import {
   ANIMATION_END_DELAY,
   ANONYMOUS_USER_ID,
+  IS_PERF,
   MESSAGE_LIST_SLICE,
   SCROLL_MAX_DURATION,
   SERVICE_NOTIFICATIONS_USER_ID,
@@ -67,10 +68,17 @@ import { orderBy } from '../../util/iteratees';
 import { isLocalMessageId } from '../../util/keys/messageKey';
 import resetScroll from '../../util/resetScroll';
 import { debounce, onTickEnd } from '../../util/schedulers';
+import { getServerTime } from '../../util/serverTime';
 import getOffsetToContainer from '../../util/visibility/getOffsetToContainer';
 import { REM } from '../common/helpers/mediaDimensions';
 import { groupMessages } from './helpers/groupMessages';
 import { requestMessageListReflow } from './helpers/messageListReflow';
+import {
+  applyMessageListBottomInset,
+  getMessageListBottomReserve,
+  getMessageListTopReserve,
+  syncMessageListBottomReserve,
+} from './helpers/messageListReserves';
 import { preventMessageInputBlur } from './helpers/preventMessageInputBlur';
 
 import useInterval from '../../hooks/schedulers/useInterval';
@@ -78,6 +86,7 @@ import useEffectWithPrevDeps from '../../hooks/useEffectWithPrevDeps';
 import useLastCallback from '../../hooks/useLastCallback';
 import useLayoutEffectWithPrevDeps from '../../hooks/useLayoutEffectWithPrevDeps';
 import useNativeCopySelectedMessages from '../../hooks/useNativeCopySelectedMessages';
+import usePrevious from '../../hooks/usePrevious';
 import { useStateRef } from '../../hooks/useStateRef';
 import useSyncEffect from '../../hooks/useSyncEffect';
 import { isBackgroundModeActive } from '../../hooks/window/useBackgroundMode';
@@ -100,6 +109,7 @@ type OwnProps = {
   type: MessageListType;
   isComments?: boolean;
   canPost: boolean;
+  hasFooter: boolean;
   isReady: boolean;
   withBottomShift?: boolean;
   withDefaultBg: boolean;
@@ -107,7 +117,6 @@ type OwnProps = {
   paidMessagesStars?: number;
   isQuickPreview?: boolean;
   onScrollDownToggle?: BooleanToVoidFunction;
-  onNotchToggle?: AnyToVoidFunction;
   onIntersectPinnedMessage?: OnIntersectPinnedMessage;
 };
 
@@ -155,6 +164,7 @@ type StateProps = {
   isActive?: boolean;
   canManageBotForumTopics?: boolean;
   shouldScrollToBottom?: boolean;
+  reactionPollingPause?: { until: number; chatId: string };
 };
 
 enum Content {
@@ -184,6 +194,7 @@ const SCROLL_DEBOUNCE = 200;
 const MESSAGE_ANIMATION_DURATION = 500;
 const SEND_FOCUS_DURATION = SCROLL_MAX_DURATION + ANIMATION_END_DELAY;
 const BOTTOM_FOCUS_MARGIN = 0.5 * REM;
+const FEW_MESSAGES_SCROLL_RISE = 4 * REM;
 const SELECT_MODE_ANIMATION_DURATION = 200;
 
 const UNREAD_DIVIDER_CLASS = 'unread-divider';
@@ -208,6 +219,7 @@ const MessageList = ({
   isGroupChat,
   isChannelWithAvatars,
   canPost,
+  hasFooter,
   isSynced,
   isActive,
   canManageBotForumTopics,
@@ -253,10 +265,10 @@ const MessageList = ({
   canTranslate,
   translationLanguage,
   shouldAutoTranslate,
+  reactionPollingPause,
   isQuickPreview,
   onIntersectPinnedMessage,
   onScrollDownToggle,
-  onNotchToggle,
 }: OwnProps & StateProps) => {
   const {
     loadViewportMessages, setScrollOffset, loadSponsoredMessages, loadMessageReactions, copyMessagesByIds,
@@ -268,8 +280,10 @@ const MessageList = ({
   // We update local cached `scrollOffsetRef` when opening chat.
   // Then we update global version every second on scrolling.
   const scrollOffsetRef = useRef<number>(
-    (type === 'thread' && selectScrollOffset(getGlobal(), chatId, threadId))
-    || selectLastScrollOffset(getGlobal(), chatId, threadId)
+    (type === 'thread' && (
+      selectScrollOffset(getGlobal(), chatId, threadId)
+      || selectLastScrollOffset(getGlobal(), chatId, threadId)
+    ))
     || 0,
   );
 
@@ -505,6 +519,7 @@ const MessageList = ({
   useInterval(() => {
     if (!messageIds || !messagesById || type === 'scheduled' || isAccountFrozen || !isActive) return;
     if (!isChannelChat && !isGroupChat) return;
+    if (reactionPollingPause?.chatId === chatId && reactionPollingPause.until > getServerTime()) return;
 
     const ids = messageIds.filter((id) => {
       const message = messagesById[id];
@@ -672,6 +687,38 @@ const MessageList = ({
     });
   });
 
+  const isMessageSendPendingRef = useRef(false);
+
+  const handleContentResize = useLastCallback((growth: number) => {
+    const container = containerRef.current;
+    if (!container || growth <= 0) return;
+
+    requestMeasure(() => {
+      if (
+        isMessageSendPendingRef.current
+        || isAnimatingScroll()
+        || isLiveTailAutoScrollingRef.current
+        || isScrollTopJustUpdatedRef.current
+        || isReplacingHistoryRef.current
+      ) {
+        return;
+      }
+
+      const { scrollTop, scrollHeight, offsetHeight } = container;
+      const wasAtBottom = (scrollHeight - scrollTop - offsetHeight) - growth <= BOTTOM_THRESHOLD;
+      if (!wasAtBottom || !isViewportNewest) return;
+
+      requestMutation(() => {
+        resetScroll(container, scrollHeight - offsetHeight);
+        scrollOffsetRef.current = offsetHeight;
+        isScrollTopJustUpdatedRef.current = true;
+        requestMeasure(() => {
+          isScrollTopJustUpdatedRef.current = false;
+        });
+      });
+    });
+  });
+
   const [getContainerHeight, prevContainerHeightRef] = useContainerHeight(containerRef, canPost && !isSelectModeActive);
 
   const handleWheel = useLastCallback((e: React.WheelEvent<HTMLDivElement>) => {
@@ -759,7 +806,7 @@ const MessageList = ({
   useLayoutEffectWithPrevDeps(([
     prevMessageIds, prevIsViewportNewest, prevCurrentLastMessageOriginalId, prevLiveTailStartOriginalId,
   ]) => {
-    if (process.env.APP_ENV === 'perf') {
+    if (IS_PERF) {
       // eslint-disable-next-line no-console
       console.time('scrollTop');
     }
@@ -786,10 +833,14 @@ const MessageList = ({
       : undefined;
 
     const hasLastMessageChanged = currentLastMessageOriginalId !== prevCurrentLastMessageOriginalId;
+    const firstMessageId = messageIds?.[0];
+    const prevFirstMessageId = prevMessageIds?.[0];
+    const hasLoadedMessageIds = Boolean(messageIds?.length && prevMessageIds?.length);
     const hasViewportShifted = (
-      messageIds?.[0] !== prevMessageIds?.[0] && messageIds?.length === (MESSAGE_LIST_SLICE / 2 + 1)
+      firstMessageId !== prevFirstMessageId && messageIds?.length === (MESSAGE_LIST_SLICE / 2 + 1)
     );
-    const wasMessageAdded = hasLastMessageChanged && !hasViewportShifted;
+
+    const wasMessageAdded = hasLoadedMessageIds && hasLastMessageChanged && !hasViewportShifted;
     const wasLiveTailCreated = Boolean(
       effectiveLiveTailStartOriginalId !== undefined
       && effectiveLiveTailStartOriginalId !== prevLiveTailStartOriginalId,
@@ -834,13 +885,16 @@ const MessageList = ({
       addExtraClass(container.parentElement!, FORCE_MESSAGES_SCROLL_CLASS);
 
       setTimeout(() => {
-        if (container.parentElement) {
-          removeExtraClass(container.parentElement, FORCE_MESSAGES_SCROLL_CLASS);
-        }
+        requestMutation(() => {
+          if (container.parentElement) {
+            removeExtraClass(container.parentElement, FORCE_MESSAGES_SCROLL_CLASS);
+          }
+        });
       }, MESSAGE_ANIMATION_DURATION);
     }
 
     if (wasMessageAdded) {
+      isMessageSendPendingRef.current = true;
       clearTimeout(scrollSnapDisabledTimerRef.current);
       scrollSnapDisabledTimerRef.current = undefined;
 
@@ -848,6 +902,7 @@ const MessageList = ({
 
       scrollSnapDisabledTimerRef.current = window.setTimeout(() => {
         scrollSnapDisabledTimerRef.current = undefined;
+        isMessageSendPendingRef.current = false;
         updateBottomSnapClass();
       }, MESSAGE_ANIMATION_DURATION);
     }
@@ -855,6 +910,13 @@ const MessageList = ({
     requestMessageListReflow(() => {
       const { scrollTop, scrollHeight, offsetHeight } = container;
       const scrollOffset = scrollOffsetRef.current;
+      const bottomReserve = getMessageListBottomReserve(container);
+      const messagesContainerEl = container.querySelector<HTMLElement>('.messages-container');
+      const currentBottomInset = messagesContainerEl
+        ? parseFloat(getComputedStyle(messagesContainerEl).paddingBottom) || 0
+        : 0;
+      const reserveDelta = bottomReserve - currentBottomInset;
+      const effectiveScrollHeight = scrollHeight + reserveDelta;
 
       let bottomOffset = scrollOffset - (prevContainerHeight || offsetHeight);
       const lastItemHeight = wasMessageAdded && lastItemElement ? lastItemElement.offsetHeight : 0;
@@ -886,11 +948,19 @@ const MessageList = ({
         // Break out of `forceLayout`
         requestMeasure(() => {
           const isScrollToBottom = !isBackgroundModeActive() || !firstUnreadElement;
+          const topReserve = getMessageListTopReserve(container);
+          const isFewMessagesScroll = container.parentElement?.classList.contains(FORCE_MESSAGES_SCROLL_CLASS);
+          const maxDistance = isFewMessagesScroll && isScrollToBottom
+            ? FEW_MESSAGES_SCROLL_RISE
+            : undefined;
           animateScroll({
             container,
             element: isScrollToBottom ? lastItemElement : firstUnreadElement,
             position: isScrollToBottom ? 'end' : 'start',
-            margin: BOTTOM_FOCUS_MARGIN,
+            margin: BOTTOM_FOCUS_MARGIN + (isScrollToBottom ? bottomReserve : topReserve),
+            topReserve,
+            bottomReserve,
+            maxDistance,
             forceDuration: noMessageSendingAnimation ? 0 : undefined,
           });
 
@@ -924,6 +994,7 @@ const MessageList = ({
           container,
           element: liveTailElement,
           position: 'end',
+          margin: bottomReserve,
           maxDistance: Number.MAX_SAFE_INTEGER,
           forceDuration: noMessageSendingAnimation ? 0 : undefined,
           shouldReturnMutationFn: true,
@@ -960,6 +1031,7 @@ const MessageList = ({
               container,
               element: typingDraftElement,
               position: 'end',
+              margin: bottomReserve,
               maxDistance: Number.MAX_SAFE_INTEGER,
               forceDuration: noMessageSendingAnimation ? 0 : undefined,
               shouldReturnMutationFn: true,
@@ -971,6 +1043,7 @@ const MessageList = ({
           container,
           element: typingDraftElement,
           position: 'end',
+          margin: bottomReserve,
           maxDistance: Number.MAX_SAFE_INTEGER,
           forceDuration: noMessageSendingAnimation ? 0 : undefined,
           shouldReturnMutationFn: true,
@@ -1001,7 +1074,15 @@ const MessageList = ({
         newScrollTop = scrollHeight - scrollOffset;
       }
 
+      const isBottomAnchored = !liveTailElement && !shouldFocusLiveTail && typingDraftScrollTop === undefined
+        && !shouldRevealTypingDraft && !anchor && !unreadDivider;
+      if (isBottomAnchored) {
+        newScrollTop += reserveDelta;
+      }
+
       return () => {
+        applyMessageListBottomInset(container, bottomReserve);
+
         const animateScrollMutation = animateLiveTailScroll || animateTypingDraftScroll;
         if (animateScrollMutation) {
           const animationStartScrollTop = shouldRestoreBeforeTypingDraftAnimation && scrollTopBeforeUpdate !== undefined
@@ -1013,7 +1094,7 @@ const MessageList = ({
           }
 
           animateScrollMutation();
-          scrollOffsetRef.current = Math.max(Math.ceil(scrollHeight - newScrollTop), offsetHeight);
+          scrollOffsetRef.current = Math.max(Math.ceil(effectiveScrollHeight - newScrollTop), offsetHeight);
           requestMeasure(() => {
             isReplacingHistoryRef.current = false;
           });
@@ -1027,7 +1108,7 @@ const MessageList = ({
         });
         restartCurrentScrollAnimation();
 
-        scrollOffsetRef.current = Math.max(Math.ceil(scrollHeight - newScrollTop), offsetHeight);
+        scrollOffsetRef.current = Math.max(Math.ceil(effectiveScrollHeight - newScrollTop), offsetHeight);
 
         if (!memoFocusingIdRef.current) {
           isScrollTopJustUpdatedRef.current = true;
@@ -1039,7 +1120,7 @@ const MessageList = ({
           });
         }
 
-        if (process.env.APP_ENV === 'perf') {
+        if (IS_PERF) {
           // eslint-disable-next-line no-console
           console.timeEnd('scrollTop');
         }
@@ -1059,8 +1140,13 @@ const MessageList = ({
   ]);
 
   useEffectWithPrevDeps(([prevIsSelectModeActive]) => {
-    if (prevIsSelectModeActive !== undefined) {
-      beginHeavyAnimation(SELECT_MODE_ANIMATION_DURATION + ANIMATION_END_DELAY);
+    if (prevIsSelectModeActive === undefined) return;
+    beginHeavyAnimation(SELECT_MODE_ANIMATION_DURATION + ANIMATION_END_DELAY);
+
+    const container = containerRef.current;
+    if (container) {
+      const wasAtBottom = container.classList.contains(BOTTOM_SNAP_CLASS);
+      syncMessageListBottomReserve(container, false, wasAtBottom);
     }
   }, [isSelectModeActive]);
 
@@ -1086,6 +1172,7 @@ const MessageList = ({
     'MessageList custom-scroll',
     noAvatars && 'no-avatars',
     !canPost && 'no-composer',
+    !hasFooter && 'no-footer',
     type === 'pinned' && 'type-pinned',
     withBottomShift && 'with-bottom-shift',
     withDefaultBg && 'with-default-bg',
@@ -1121,6 +1208,9 @@ const MessageList = ({
   ) : (
     Content.Loading
   );
+  const previousActiveKey = usePrevious(activeKey);
+  const shouldSkipContentTransition = previousActiveKey !== undefined
+    && (activeKey === Content.AccountInfo || previousActiveKey === Content.AccountInfo);
 
   function renderContent() {
     return activeKey === Content.Restricted ? (
@@ -1170,6 +1260,7 @@ const MessageList = ({
         threadId={threadId}
         type={type}
         isReady={isReady}
+        isActive={isActive}
         hasLinkedChat={hasLinkedChat}
         isSchedule={messageGroups ? type === 'scheduled' : false}
         shouldRenderAccountInfo={isBot || isNonContact}
@@ -1181,7 +1272,7 @@ const MessageList = ({
         canManageBotForumTopics={canManageBotForumTopics}
         shouldScrollToBottom={shouldScrollToBottom}
         onScrollDownToggle={onScrollDownToggle}
-        onNotchToggle={onNotchToggle}
+        onContentResize={handleContentResize}
         onIntersectPinnedMessage={onIntersectPinnedMessage}
       />
     ) : (
@@ -1193,7 +1284,7 @@ const MessageList = ({
     <Transition
       ref={containerRef}
       className={className}
-      name="fade"
+      name={shouldSkipContentTransition ? 'none' : 'fade'}
       activeKey={activeKey}
       shouldCleanup
       onScroll={handleScroll}
@@ -1319,6 +1410,7 @@ export default memo(withGlobal<OwnProps>(
       shouldAutoTranslate,
       canManageBotForumTopics: chat.isBotForum && user?.canManageBotForumTopics,
       shouldScrollToBottom,
+      reactionPollingPause: global.reactionPollingPause,
     };
   },
 )(MessageList));
