@@ -53,6 +53,7 @@ const DeleteProfilePhotoModal: FC<OwnProps> = ({
       onEnter={handleDeletePhoto}
       className="delete dialog-buttons-column"
       title={lang('AreYouSure')}
+      isNativeDialog
     >
       <div className="dialog-buttons mt-2">
         <Button color="danger" className="confirm-dialog-button" isText onClick={handleDeletePhoto}>
